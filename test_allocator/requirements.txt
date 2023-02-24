@@ -1,0 +1,1 @@
+vsm-allocator_core 0.1

@@ -1,0 +1,5 @@
+vsm-allocator 0.1
+vsm-core 0.1
+vsm-test_allocator 0.1 TEST
+vsm-test_core 0.1 TEST
+vsm-vector 0.1

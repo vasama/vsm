@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.24)
+
+project(package_test)
+enable_testing()
+
+find_package(vsm-function REQUIRED)
+
+add_executable(test_executable source/test.cpp)
+target_link_libraries(test_executable vsm::function)
+add_test(package_test test_executable)

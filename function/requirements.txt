@@ -1,0 +1,2 @@
+vsm-allocator 0.1
+vsm-core 0.1

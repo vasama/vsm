@@ -1,0 +1,4 @@
+vsm-core 0.1
+vsm-intrusive 0.1
+
+P2300 1.0 USER vasama

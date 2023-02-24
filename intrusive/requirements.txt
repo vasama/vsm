@@ -1,0 +1,3 @@
+vsm-core 0.1
+vsm-container_core 0.1
+vsm-tag_ptr 0.1

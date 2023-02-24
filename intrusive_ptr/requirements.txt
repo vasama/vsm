@@ -1,0 +1,2 @@
+vsm-core 0.1
+vsm-test_core 0.1 TEST

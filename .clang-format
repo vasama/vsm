@@ -1,0 +1,115 @@
+Language: Cpp
+AccessModifierOffset: -4
+AlignEscapedNewlines: DontAlign
+#TODO:
+AlignAfterOpenBracket: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLambdasOnASingleLine: Inline
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakBeforeMultilineStrings: true
+AttributeMacros:
+  - vsm_always_inline
+BinPackArguments: false
+#TODO: BinPackParameters: OnePerLine
+BinPackParameters: false
+BitFieldColonSpacing: Both
+BraceWrapping:
+  AfterCaseLabel: true
+  AfterClass: true
+  AfterControlStatement: Always
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: false
+  AfterStruct: true
+  AfterUnion: true
+  AfterExternBlock: false
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeLambdaBody: true
+  BeforeWhile: true
+  SplitEmptyFunction: true
+  SplitEmptyRecord: true
+  SplitEmptyNamespace: true
+BreakAfterAttributes: Leave
+#TODO: BreakAfterReturnType: Automatic
+#TODO: BreakBeforeBinaryOperators
+BreakBeforeBraces: Custom
+BreakBeforeConceptDeclarations: Allowed
+BreakBeforeTernaryOperators: true
+#TODO: BreakBinaryOperations: RespectPrecedence
+BreakConstructorInitializers: BeforeComma
+BreakInheritanceList: BeforeComma
+BreakStringLiterals: true
+#TODO: BreakTemplateDeclarations: Yes
+#TODO: Renamed to BreakTemplateDeclarations
+AlwaysBreakTemplateDeclarations: true
+ColumnLimit: 100
+CompactNamespaces: false
+EmptyLineBeforeAccessModifier: Always
+FixNamespaceComments: true
+IncludeBlocks: Preserve
+#TODO: IncludeCategories
+#TODO: IndentAccessModifiers
+IndentCaseBlocks: true
+IndentCaseLabels: false
+IndentExternBlock: NoIndent
+IndentGotoLabels: false
+IndentPPDirectives: AfterHash
+IndentRequiresClause: true
+#TODO: IndentWidth
+IndentWidth: 4
+IndentWrappedFunctionNames: false
+InsertBraces: false
+InsertNewlineAtEOF: true
+InsertTrailingCommas: Wrapped
+#TODO: IntegerLiteralSeparator
+#TODO: KeepEmptyLines:
+#TODO:   AtEndOfFile: false
+#TODO:   AtStartOfBlock: false
+#TODO:   AtStartOfFile: false
+#TODO: LambdaBodyIndentation
+#TODO: LineEnding
+Macros:
+  - vsm_static_operator=static
+  - vsm_static_operator_const=const
+MaxEmptyLinesToKeep: 2
+NamespaceIndentation: None
+PackConstructorInitializers: NextLineOnly
+#TODO: Penalty*
+PointerAlignment: Left
+#TODO: QualifierAlignment
+#TODO: QualifierOrder: [friend, static, inline, constexpr, type, const, volatile, restrict]
+ReferenceAlignment: Left
+ReflowComments: false
+RequiresClausePosition: OwnLine
+RequiresExpressionIndentation: OuterScope
+#TODO: SeparateDefinitionBlocks: Always
+ShortNamespaceLines: 0
+SortIncludes: CaseSensitive
+SortUsingDeclarations: Lexicographic
+SpaceAfterCStyleCast: false
+SpaceAfterLogicalNot: false
+SpaceAfterTemplateKeyword: false
+#SpaceAroundPointerQualifiers: Before
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCaseColon: false
+SpaceBeforeCpp11BracedList: false
+SpaceBeforeParens: Custom
+SpaceBeforeParensOptions:
+  AfterControlStatements: true
+  AfterPlacementOperator: true
+  AfterRequiresInClause: true
+  AfterRequiresInExpression: true
+#TODO: SpaceBeforeParens
+SpacesBeforeTrailingComments: 1
+SpacesInAngles: Never
+SpacesInLineCommentPrefix:
+  Minimum: 0
+  Maximum: 1
+SpacesInParens: Never
+TabWidth: 4
+UseTab: AlignWithSpaces
+WhitespaceSensitiveMacros:
+  - vsm_pp_include
+  - vsm_pp_str
