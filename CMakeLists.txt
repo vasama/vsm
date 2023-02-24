@@ -1,0 +1,25 @@
+cmake_minimum_required(VERSION 3.21)
+
+project(vsm_root)
+
+include(tools/cmake/vsm.cmake)
+
+find_package(Catch2 REQUIRED)
+
+add_subdirectory(algorithm)
+add_subdirectory(allocator)
+add_subdirectory(core)
+add_subdirectory(container_core)
+add_subdirectory(error_code)
+add_subdirectory(flags)
+#add_subdirectory(function)
+add_subdirectory(intrusive)
+add_subdirectory(intrusive_ptr)
+add_subdirectory(linear)
+add_subdirectory(pascal_string)
+add_subdirectory(propagate_const)
+add_subdirectory(result)
+add_subdirectory(shared_string)
+add_subdirectory(tag_ptr)
+add_subdirectory(unique_resource)
+add_subdirectory(vector)

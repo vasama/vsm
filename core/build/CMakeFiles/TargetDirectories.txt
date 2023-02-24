@@ -1,0 +1,4 @@
+D:/Code/vsm/core/build/CMakeFiles/vsm_core.dir
+D:/Code/vsm/core/build/CMakeFiles/INSTALL.dir
+D:/Code/vsm/core/build/CMakeFiles/ALL_BUILD.dir
+D:/Code/vsm/core/build/CMakeFiles/ZERO_CHECK.dir
