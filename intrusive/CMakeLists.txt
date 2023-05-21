@@ -1,21 +1,16 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.23)
 
 project(vsm_intrusive)
 
-if(PROJECT_IS_TOP_LEVEL)
-	find_package(vsm-core REQUIRED)
-	find_package(vsm-container-core REQUIRED)
-	find_package(vsm-linear REQUIRED)
-	find_package(vsm-tag-ptr REQUIRED)
-endif()
+vsm_find_sibling(vsm-core)
+vsm_find_sibling(vsm-container-core)
+vsm_find_sibling(vsm-linear)
+vsm_find_sibling(vsm-tag-ptr)
 
-add_library(vsm_intrusive)
+vsm_add_library(vsm_intrusive
+	EXPORT_ALIAS vsm::intrusive
 
-target_sources(vsm_intrusive
-	PUBLIC
-	FILE_SET HEADERS
-	BASE_DIRS include
-	FILES
+	HEADERS
 		include/vsm/intrusive/avl_tree.hpp
 		include/vsm/intrusive/heap.hpp
 		include/vsm/intrusive/link.hpp
@@ -23,46 +18,21 @@ target_sources(vsm_intrusive
 		include/vsm/intrusive/rb_tree.hpp
 		include/vsm/intrusive/wb_tree.hpp
 
-	PRIVATE
+	SOURCES
 		source/vsm/intrusive/impl/avl_tree.cpp
 		source/vsm/intrusive/impl/heap.cpp
 		source/vsm/intrusive/impl/list.cpp
 		source/vsm/intrusive/impl/wb_tree.cpp
-)
 
-target_include_directories(vsm_intrusive
-	PUBLIC
-		include
-)
-
-target_link_libraries(vsm_intrusive
-	PUBLIC
+	HEADER_DEPENDENCIES
 		vsm::core
 		vsm::container_core
 		vsm::linear
 		vsm::tag_ptr
-)
 
-install(TARGETS vsm_intrusive FILE_SET HEADERS)
-
-
-if(NOT PROJECT_IS_TOP_LEVEL)
-	add_library(vsm::intrusive ALIAS vsm_intrusive)
-endif()
-
-
-add_executable(vsm_intrusive_test
-	source/vsm/intrusive/impl/avl_tree.test.cpp
-	source/vsm/intrusive/impl/heap.test.cpp
-	source/vsm/intrusive/impl/list.test.cpp
-	source/vsm/intrusive/impl/wb_tree.test.cpp
-)
-target_include_directories(vsm_intrusive_test
-	PRIVATE
-		source
-)
-target_link_libraries(vsm_intrusive_test
-	PRIVATE
-		vsm_intrusive
-		Catch2WithMain
+	TEST_SOURCES
+		source/vsm/intrusive/test/avl_tree.cpp
+		source/vsm/intrusive/test/heap.cpp
+		source/vsm/intrusive/test/list.cpp
+		source/vsm/intrusive/test/wb_tree.cpp
 )

@@ -2,6 +2,7 @@
 
 #include <vsm/atomic.hpp>
 #include <vsm/intrusive_ptr.hpp>
+#include <vsm/standard.hpp>
 #include <vsm/utility.hpp>
 
 #include <atomic>
@@ -24,7 +25,7 @@ class atomic_intrusive_ptr
 	};
 
 	mutable atomic<atom> m_atom = {};
-	[[no_unique_address]] m_manager;
+	vsm_no_unique_address Manager m_manager;
 
 public:
 	atomic_intrusive_ptr() = default;
@@ -53,7 +54,7 @@ public:
 		// Therefore a relaxed load is fine here.
 		atom const atom = m_atom.load(std::memory_order::relaxed);
 
-		// Mutation always flushes the temporary refcount as the last step.
+		// Mutations always flush the temporary refcount as the last step.
 		// A non-zero refcount could only ever be observed here as a result of a race.
 		vsm_assert(atom.refcount == 0);
 
@@ -88,8 +89,6 @@ public:
 			{
 				break;
 			}
-			
-			atomic_spin_hint();
 		}
 
 		// Increment the local atom's refcount to reflect the mutation applied to the shared atom.
@@ -124,8 +123,6 @@ public:
 				// With the pointer changed, there is no longer any need to mutate the atom.
 				break;
 			}
-			
-			atomic_spin_hint();
 		}
 
 		// This thread is left holding one reference on the shared object.
@@ -188,8 +185,6 @@ public:
 				{
 					break;
 				}
-			
-				atomic_spin_hint();
 			}
 
 			// Increment the local atom's refcount to reflect the mutation applied to the shared atom.
@@ -244,8 +239,6 @@ public:
 
 					break;
 				}
-			
-				atomic_spin_hint();
 			}
 		}
 	}

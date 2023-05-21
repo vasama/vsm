@@ -6,3 +6,5 @@
 #define vsm_platform_assume(...) __assume(__VA_ARGS__)
 
 #define vsm_unreachable() __assume(0)
+
+#define vsm_alloca(...) _alloca(__VA_ARGS__)

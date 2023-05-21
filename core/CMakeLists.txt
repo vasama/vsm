@@ -1,14 +1,13 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.23.0)
 
 project(vsm_core)
 
-add_library(vsm_core)
+vsm_find_sibling(vsm-test_tools)
 
-target_sources(vsm_core
-	PUBLIC
-	FILE_SET HEADERS
-	BASE_DIRS include
-	FILES
+vsm_add_library(vsm_core
+	EXPORT_ALIAS vsm::core
+
+	HEADERS
 		include/vsm/detail/platform/arch.h
 		include/vsm/detail/platform/clang.h
 		include/vsm/detail/platform/compiler.h
@@ -21,7 +20,7 @@ target_sources(vsm_core
 		include/vsm/detail/platform/x86.h
 		include/vsm/detail/platform/x86_32.h
 		include/vsm/detail/platform/x86_64.h
-
+	
 		include/vsm/assert.h
 		include/vsm/concepts.hpp
 		include/vsm/lift.hpp
@@ -31,45 +30,20 @@ target_sources(vsm_core
 		include/vsm/tag_invoke.hpp
 		include/vsm/type_traits.hpp
 		include/vsm/utility.hpp
+
+	ADDITIONAL_SOURCES
+
+	TEST_SOURCES
+		source/vsm/impl/utility.test.cpp
+
+	TEST_DEPENDENCIES
+		vsm::test_tools
 )
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-	target_sources(vsm_core
-		PRIVATE
-			source/vsm/impl/assert.win32.cpp
-	)
-endif()
-
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
-	target_sources(vsm_core
-		PRIVATE
-			source/vsm/impl/assert.linux.cpp
-	)
-endif()
-
-target_include_directories(vsm_core
-	PUBLIC
-		include
-	PRIVATE
-		source
+vsm_target_platform_sources(vsm_core Windows
+	source/vsm/impl/assert.win32.cpp
 )
 
-install(TARGETS vsm_core FILE_SET HEADERS)
-
-if(NOT PROJECT_IS_TOP_LEVEL)
-	add_library(vsm::core ALIAS vsm_core)
-endif()
-
-
-#add_executable(vsm_core_test
-#	source/vsm/impl/utility.test.cpp
-#)
-#target_include_directories(vsm_core_test
-#	PRIVATE
-#		source
-#)
-#target_link_libraries(vsm_core_test
-#	PRIVATE
-#		vsm_core
-#		Catch2::Catch2WithMain
-#)
+vsm_target_platform_sources(vsm_core Linux
+	source/vsm/impl/assert.linux.cpp
+)

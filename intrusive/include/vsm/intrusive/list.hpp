@@ -15,10 +15,10 @@ using list_link = link<2>;
 
 namespace detail::list_ {
 
-#define vsm_list_hook(element) \
+#define vsm_detail_list_hook(element) \
 	(reinterpret_cast<list_::hook*>(static_cast<list_link*>(element)))
 
-#define vsm_list_elem(hook) \
+#define vsm_detail_list_elem(hook) \
 	(static_cast<T*>(reinterpret_cast<list_link*>(hook)))
 
 
@@ -50,36 +50,36 @@ struct base : link_container
 		adopt(list, size);
 	}
 
-	base(base&& src) noexcept
-		: link_container(static_cast<link_container&&>(src))
+	base(base&& other) noexcept
+		: link_container(static_cast<link_container&&>(other))
 	{
-		move_init(vsm_move(src));
+		move_init(vsm_move(other));
 	}
 
-	base& operator=(base&& src) & noexcept
+	base& operator=(base&& other) & noexcept
 	{
 		if (m_size != 0)
 		{
 			clear();
 		}
-		static_cast<link_container&>(*this) = static_cast<link_container&&>(src);
-		move_init(vsm_move(src));
+		static_cast<link_container&>(*this) = static_cast<link_container&&>(other);
+		move_init(vsm_move(other));
 		return *this;
 	}
 
-	void move_init(base&& src) noexcept
+	void move_init(base&& other) noexcept
 	{
-		if (src.m_size != 0)
+		if (other.m_size != 0)
 		{
-			m_root = src.m_root;
+			m_root = other.m_root;
 		}
 		else
 		{
 			m_root.loop();
 		}
-		src.m_root.loop();
-		m_size = src.m_size;
-		src.m_size = 0;
+		m_size = other.m_size;
+		other.m_root.loop();
+		other.m_size = 0;
 	}
 
 
@@ -110,9 +110,6 @@ public:
 		: m_node(node)
 	{
 	}
-
-protected:
-	bool operator==(iterator_base const&) const = default;
 };
 
 template<typename T, bool Direction = 0>
@@ -130,43 +127,46 @@ public:
 
 	[[nodiscard]] T& operator*() const noexcept
 	{
-		return *vsm_list_elem(m_hook);
+		return *vsm_detail_list_elem(m_node);
 	}
 
 	[[nodiscard]] T* operator->() const noexcept
 	{
-		return vsm_list_elem(m_hook);
+		return vsm_detail_list_elem(m_node);
 	}
 
 
 	iterator& operator++() & noexcept
 	{
-		m_hook = m_hook->siblings[Direction];
+		m_node = m_node->siblings[Direction];
 		return *this;
 	}
 
 	[[nodiscard]] iterator operator++(int) & noexcept
 	{
 		iterator result = *this;
-		m_hook = m_hook->siblings[Direction];
+		m_node = m_node->siblings[Direction];
 		return result;
 	}
 
 	iterator& operator--() & noexcept
 	{
-		m_hook = m_hook->siblings[!Direction];
+		m_node = m_node->siblings[!Direction];
 		return *this;
 	}
 
 	[[nodiscard]] iterator operator--(int) & noexcept
 	{
 		iterator result = *this;
-		m_hook = m_hook->siblings[!Direction];
+		m_node = m_node->siblings[!Direction];
 		return result;
 	}
 
 
-	[[nodiscard]] bool operator==(iterator const&) const = default;
+	[[nodiscard]] friend bool operator==(iterator const& lhs, iterator const& rhs)
+	{
+		return lhs.m_node == rhs.m_node;
+	}
 };
 
 
@@ -198,34 +198,34 @@ public:
 
 	/// @return First element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] T* first() noexcept
+	[[nodiscard]] T* front() noexcept
 	{
 		vsm_assert(m_size > 0);
-		return vsm_list_elem(m_root.siblings[0]);
+		return vsm_detail_list_elem(m_root.siblings[0]);
 	}
 
 	/// @return First element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] T const* first() const noexcept
+	[[nodiscard]] T const* front() const noexcept
 	{
 		vsm_assert(m_size > 0);
-		return vsm_list_elem(m_root.siblings[0]);
+		return vsm_detail_list_elem(m_root.siblings[0]);
 	}
 
 	/// @return Last element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] T* last() noexcept
+	[[nodiscard]] T* back() noexcept
 	{
 		vsm_assert(m_size > 0);
-		return vsm_list_elem(m_root.siblings[1]);
+		return vsm_detail_list_elem(m_root.siblings[1]);
 	}
 
 	/// @return Last element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] T const* last() const noexcept
+	[[nodiscard]] T const* back() const noexcept
 	{
 		vsm_assert(m_size > 0);
-		return vsm_list_elem(m_root.siblings[1]);
+		return vsm_detail_list_elem(m_root.siblings[1]);
 	}
 
 
@@ -233,22 +233,22 @@ public:
 	/// @brief Insert an element at the front of the list.
 	/// @param element Element to be inserted.
 	/// @pre @p element is not part of any container.
-	void prepend(T* const element) noexcept
+	void push_front(T* const element) noexcept
 	{
-		base::insert(&m_root, vsm_list_hook(element), 0);
+		base::insert(&m_root, vsm_detail_list_hook(element), 0);
 	}
 
-	void prepend_list(list<T>& list) noexcept;
+	void push_list_front(list<T>&& list) noexcept;
 
 	/// @brief Insert an element at the back of the list.
 	/// @param element Element to be inserted.
 	/// @pre @p element is not part of any container.
-	void append(T* const element) noexcept
+	void push_back(T* const element) noexcept
 	{
-		base::insert(&m_root, vsm_list_hook(element), 1);
+		base::insert(&m_root, vsm_detail_list_hook(element), 1);
 	}
 
-	void append_list(list<T>& list) noexcept;
+	void push_list_back(list<T>&& list) noexcept;
 
 	/// @brief Insert an element before another element.
 	/// @param existing Existing element positioned after the new element.
@@ -257,10 +257,10 @@ public:
 	/// @pre @p element is not part of any container.
 	void insert_before(T* const existing, T* const element) noexcept
 	{
-		base::insert(vsm_list_hook(existing), vsm_list_hook(element), 0);
+		base::insert(vsm_detail_list_hook(existing), vsm_detail_list_hook(element), 0);
 	}
 
-	void insert_list_before(T* const existing, list<T>& list) noexcept;
+	void insert_list_before(T* const existing, list<T>&& list) noexcept;
 
 	/// @brief Insert an element after another element.
 	/// @param existing Existing element positioned before the new element.
@@ -269,17 +269,17 @@ public:
 	/// @pre @p element is not part of any container.
 	void insert_after(T* const existing, T* const element) noexcept
 	{
-		base::insert(vsm_list_hook(existing), vsm_list_hook(element), 1);
+		base::insert(vsm_detail_list_hook(existing), vsm_detail_list_hook(element), 1);
 	}
 
-	void insert_list_after(T* const existing, list<T>& list) noexcept;
+	void insert_list_after(T* const existing, list<T>&& list) noexcept;
 
 	/// @brief Remove an element from the list.
 	/// @param element Element to be removed.
 	/// @pre @p element is part of this list.
 	void remove(T* const element) noexcept
 	{
-		base::remove(vsm_list_hook(element));
+		base::remove(vsm_detail_list_hook(element));
 	}
 
 	list<T> remove_list(T* const begin, T* const end) noexcept;
@@ -311,7 +311,7 @@ public:
 
 	[[nodiscard]] const_iterator end() const noexcept
 	{
-		return const_iterator(const_cast<Hook*>(&m_root));
+		return const_iterator(const_cast<hook*>(&m_root));
 	}
 
 
@@ -321,9 +321,6 @@ public:
 		swap(static_cast<base&>(lhs), static_cast<base&>(rhs));
 	}
 };
-
-#undef vsm_list_hook
-#undef vsm_list_elem
 
 } // namespace detail::list_
 

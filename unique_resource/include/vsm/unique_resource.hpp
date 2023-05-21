@@ -269,16 +269,16 @@ public:
 
 
 template<typename T>
-concept unique_resource_concept = requires (T& t)
+concept unique_resource_concept = requires (T&& t)
 {
 	t.get();
-	{ t.release() } -> std::same_as<decltype(t.get())>;
+	{ t.release() } -> std::same_as<std::remove_cvref_t<decltype(t.get())>>;
 };
 
 template<typename Consumer, unique_resource_concept... Resources>
 auto consume_resources(Consumer&& consumer, Resources&&... resources)
 {
-	auto r = consumer(resources.get()...);
+	auto r = vsm_forward(consumer)(resources.get()...);
 	if (r)
 	{
 		((void)resources.release(), ...);

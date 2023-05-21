@@ -6,6 +6,9 @@ using namespace vsm;
 using namespace vsm::intrusive;
 using namespace vsm::intrusive::detail::wb_tree_;
 
+namespace tree_namespace = vsm::intrusive::detail::wb_tree_;
+namespace list_namespace = vsm::intrusive::detail::list_;
+
 static_assert(sizeof(hook) == sizeof(wb_tree_link));
 static_assert(check_incomplete_tag_ptr<ptr<hook>>());
 
@@ -66,7 +69,7 @@ static void rebalance(hook** const root, hook** node, bool l, bool const insert)
 		l ^= !insert;
 		bool const r = !l;
 
-		hook* const parent = vsm_wb_hook_from_children(node);
+		hook* const parent = vsm_detail_wb_hook_from_children(node);
 		parent->weight += weight_increment;
 
 		hook* new_parent = parent;
@@ -99,7 +102,7 @@ static void rebalance(hook** const root, hook** node, bool l, bool const insert)
 
 static bool invariant(base const& self)
 {
-	if (const hook* node = self.m_root.value)
+	if (const hook* node = self.m_root)
 	{
 		struct frame
 		{
@@ -149,7 +152,7 @@ static bool invariant(base const& self)
 				return false;
 			}
 
-			node = vsm_wb_hook_from_children(node->parent);
+			node = vsm_detail_wb_hook_from_children(node->parent);
 			--height;
 		}
 	}
@@ -158,9 +161,9 @@ static bool invariant(base const& self)
 }
 
 
-hook* base::select(size_t const rank) const
+hook* base::select(size_t rank) const noexcept
 {
-	hook* node = m_root.value;
+	hook* node = m_root;
 	vsm_assert(node != nullptr);
 
 	while (true)
@@ -181,14 +184,14 @@ hook* base::select(size_t const rank) const
 	}
 }
 
-size_t base::rank(hook const* node) const
+size_t base::rank(hook const* node) const noexcept
 {
 	vsm_intrusive_link_check(*this, *node);
 
 	size_t rank = 0;
-	while (node->parent != &m_root.value)
+	while (node->parent != &m_root)
 	{
-		hook const* const parent = vsm_wb_hook_from_children(node->parent);
+		hook const* const parent = vsm_detail_wb_hook_from_children(node->parent);
 
 		if (node != parent->children[0])
 		{
@@ -200,7 +203,7 @@ size_t base::rank(hook const* node) const
 	return rank;
 }
 
-void base::insert(hook* const node, ptr<hook*> const parent_and_side)
+void base::insert(hook* const node, ptr<hook*> const parent_and_side) noexcept
 {
 	vsm_intrusive_link_insert(*this, *node);
 
@@ -213,12 +216,12 @@ void base::insert(hook* const node, ptr<hook*> const parent_and_side)
 	node->weight = 1;
 	parent[l] = node;
 	
-	rebalance(&m_root.value, parent, l, true);
+	rebalance(&m_root, parent, l, true);
 
 	vsm_assert_slow(invariant(*this));
 }
 
-void base::remove(hook* const node)
+void base::remove(hook* const node) noexcept
 {
 	vsm_intrusive_link_remove(*this, *node);
 
@@ -289,18 +292,18 @@ void base::remove(hook* const node)
 		parent[l] = nullptr;
 	}
 
-	rebalance(&m_root.value, balance_node, balance_l, false);
+	rebalance(&m_root, balance_node, balance_l, false);
 
 	vsm_assert_slow(invariant(*this));
 }
 
 void base::clear() noexcept
 {
-	if (m_root.value != nullptr)
+	if (m_root != nullptr)
 	{
-		hook** children = leftmost(m_root.value, 0)->children;
+		hook** children = leftmost(m_root, 0)->children;
 
-		while (children != &m_root.value)
+		while (children != &m_root)
 		{
 			if (children[1] != nullptr)
 			{
@@ -308,12 +311,12 @@ void base::clear() noexcept
 			}
 			else
 			{
-				hook* const node = vsm_wb_hook_from_children(children);
+				hook* const node = vsm_detail_wb_hook_from_children(children);
 
 				children = std::exchange(node->parent, nullptr);
 				children[node != children[0]] = nullptr;
 
-				vsm_intrusive_link_remove(*node, *this);
+				vsm_intrusive_link_remove(*this , *node);
 			}
 		}
 
@@ -323,9 +326,9 @@ void base::clear() noexcept
 	vsm_assert_slow(invariant(*this));
 }
 
-Private::list_::hook* base::flatten() noexcept
+list_namespace::hook* base::flatten() noexcept
 {
-	hook* root = m_root.value;
+	hook* root = m_root;
 
 	if (root != nullptr)
 	{
@@ -376,13 +379,13 @@ Private::list_::hook* base::flatten() noexcept
 }
 
 
-hook** detail::wb_tree_::iterator_begin(hook** const root)
+hook** tree_namespace::iterator_begin(hook** const root) noexcept
 {
 	hook* const node = *root;
 	return node != nullptr ? leftmost(node, 0)->children : root;
 }
 
-hook** detail::wb_tree_::iterator_advance(hook** const children, bool const l)
+hook** tree_namespace::iterator_advance(hook** const children, bool const l) noexcept
 {
 	bool const r = !l;
 
@@ -392,12 +395,12 @@ hook** detail::wb_tree_::iterator_advance(hook** const children, bool const l)
 		return leftmost(children[r], l)->children;
 	}
 
-	hook* node = vsm_wb_hook_from_children(children);
+	hook* node = vsm_detail_wb_hook_from_children(children);
 
 	// Iterate through ancestors until the branch where the node is the left child.
 	while (node != *node->parent)
 	{
-		node = vsm_wb_hook_from_children(node->parent);
+		node = vsm_detail_wb_hook_from_children(node->parent);
 	}
 
 	return node->parent;

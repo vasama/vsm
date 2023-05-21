@@ -64,7 +64,7 @@ public:
 	if (::vsm::unit_test::detail::type const variable = ::vsm::unit_test::detail::type(__VA_ARGS__)); else
 
 #define vsm_detail_unit_test_enter(type, ...) \
-	vsm_detail_unit_test_enter_1(type, vsm_pp_anon(vsm_detail_unit_test_enter_v), __VA_ARGS__)
+	vsm_detail_unit_test_enter_1(type, vsm_pp_anonymous(vsm_detail_unit_test_enter_v), __VA_ARGS__)
 
 #define vsm_unit_test_section_set(...) \
 	vsm_detail_unit_test_enter(section_set, __VA_ARGS__)

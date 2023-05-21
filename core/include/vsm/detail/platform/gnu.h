@@ -5,3 +5,5 @@
 #define vsm_unlikely(...) __builtin_expect((__VA_ARGS__), 0)
 
 #define vsm_unreachable() __builtin_unreachable()
+
+#define vsm_alloca(...) __builtin_alloca(__VA_ARGS__)

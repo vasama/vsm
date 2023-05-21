@@ -10,32 +10,62 @@
 #include <cstdint>
 
 namespace vsm {
-namespace detail {
 
 template<typename T, typename Tag, Tag Max>
 class incomplete_tag_ptr;
+
+namespace detail {
+
+template<typename T, typename Tag>
+consteval Tag tag_ptr_max_tag()
+{
+	/**/ if constexpr (std::is_same_v<Tag, bool>)
+	{
+		return alignof(T) > 1;
+	}
+	else if constexpr (std::is_enum_v<Tag>)
+	{
+		return static_cast<Tag>(tag_ptr_max_tag<T, std::underlying_type_t<Tag>>());
+	}
+	else if constexpr (std::is_signed_v<Tag>)
+	{
+		return static_cast<Tag>(tag_ptr_max_tag<T, std::make_unsigned_t<Tag>>() / 2);
+	}
+	else
+	{
+		uintptr_t max = alignof(T) - 1;
+		if (max > std::numeric_limits<Tag>::max())
+		{
+			max = std::numeric_limits<Tag>::max();
+		}
+		return max;
+	}
+}
+
+template<typename T, typename Tag>
+consteval bool tag_ptr_check_tag(Tag const max)
+{
+	/**/ if constexpr (std::is_same_v<Tag, bool>)
+	{
+		return tag_ptr_check_tag<T>(static_cast<unsigned char>(max));
+	}
+	else if constexpr (std::is_enum_v<Tag>)
+	{
+		return tag_ptr_check_tag<T>(static_cast<std::underlying_type_t<Tag>>(max));
+	}
+	else
+	{
+		return max > 0 && max <= tag_ptr_max_tag<T, Tag>();
+	}
+}
 
 template<typename In, typename InTag, InTag InMax, typename Out, typename OutTag, OutTag OutMax>
 void static_cast_constraint(incomplete_tag_ptr<In, InTag, InMax> const&, incomplete_tag_ptr<Out, OutTag, OutMax>&)
 	requires requires (In* in, InTag in_tag) { static_cast<Out*>(in); static_cast<OutTag>(in_tag); } && (static_cast<OutTag>(InMax) <= OutMax);
 
-template<typename Out, typename In, typename InTag, InTag InMax>
-Out static_pointer_cast(incomplete_tag_ptr<In, InTag, InMax> const ptr)
-	requires requires (Out& out) { static_cast_constraint(ptr, out); }
-{
-	return Out(static_cast<typename Out::element_type*>(ptr.ptr()), ptr.tag());
-}
-
 template<typename In, typename Tag, Tag Max, typename Out>
 void const_cast_constraint(incomplete_tag_ptr<In, Tag, Max> const&, incomplete_tag_ptr<Out, Tag, Max>&)
 	requires requires (In* in) { const_cast<Out*>(in); };
-
-template<typename Out, typename In, typename InTag, InTag InMax>
-Out const_pointer_cast(incomplete_tag_ptr<In, InTag, InMax> const ptr)
-	requires requires (Out& out) { const_cast_constraint(ptr, out); }
-{
-	return Out(ptr.m_value);
-}
 
 template<typename T, typename Tag, Tag Max>
 void reinterpret_cast_constraint_ptr(incomplete_tag_ptr<T, Tag, Max> const&, intptr_t&);
@@ -47,36 +77,53 @@ template<typename In, typename Tag, Tag Max, typename Out>
 void reinterpret_cast_constraint_ptr(incomplete_tag_ptr<In, Tag, Max> const&, incomplete_tag_ptr<Out, Tag, Max>&)
 	requires requires (In* in) { reinterpret_cast<Out*>(in); };
 
-template<typename Out, typename In, typename InTag, InTag InMax>
-Out reinterpret_pointer_cast(incomplete_tag_ptr<In, InTag, InMax> const ptr)
-	requires requires (Out& out) { reinterpret_cast_constraint_ptr(ptr, out); }
-{
-	return Out(ptr.m_value);
-}
-
 template<typename T, typename Tag, Tag Max>
 void reinterpret_cast_constraint_int(intptr_t&, incomplete_tag_ptr<T, Tag, Max>&);
 
 template<typename T, typename Tag, Tag Max>
 void reinterpret_cast_constraint_int(uintptr_t&, incomplete_tag_ptr<T, Tag, Max>&);
 
-template<typename Out, typename In>
-Out reinterpret_pointer_cast(In const value)
-	requires requires (In& in, Out& out) { reinterpret_cast_constraint_int(in, out); }
-{
-	return Out(value);
-}
-
 template<typename In, typename Tag, Tag Max, typename Out>
 void dynamic_cast_constraint(incomplete_tag_ptr<In, Tag, Max> const&, incomplete_tag_ptr<Out, Tag, Max>&)
 	requires requires (In* in) { dynamic_cast<Out*>(in); };
 
+} // namespace detail
+
+template<typename Out, typename In, typename InTag, InTag InMax>
+Out static_pointer_cast(incomplete_tag_ptr<In, InTag, InMax> const ptr)
+	requires requires (Out& out) { detail::static_cast_constraint(ptr, out); }
+{
+	return Out(static_cast<typename Out::element_type*>(ptr.ptr()), ptr.tag());
+}
+
+template<typename Out, typename In, typename InTag, InTag InMax>
+Out const_pointer_cast(incomplete_tag_ptr<In, InTag, InMax> const ptr)
+	requires requires (Out& out) { detail::const_cast_constraint(ptr, out); }
+{
+	return Out(ptr.m_value);
+}
+
+template<typename Out, typename In, typename InTag, InTag InMax>
+Out reinterpret_pointer_cast(incomplete_tag_ptr<In, InTag, InMax> const ptr)
+	requires requires (Out& out) { detail::reinterpret_cast_constraint_ptr(ptr, out); }
+{
+	return Out(ptr.m_value);
+}
+
+template<typename Out, typename In>
+Out reinterpret_pointer_cast(In const value)
+	requires requires (In& in, Out& out) { detail::reinterpret_cast_constraint_int(in, out); }
+{
+	return Out(value);
+}
+
 template<typename Out, typename In, typename InTag, InTag InMax>
 Out dynamic_pointer_cast(incomplete_tag_ptr<In, InTag, InMax> const ptr)
-	requires requires (Out& out) { dynamic_cast_constraint(ptr, out); }
+	requires requires (Out& out) { detail::dynamic_cast_constraint(ptr, out); }
 {
 	return Out(dynamic_cast<typename Out::element_type*>(ptr.ptr()), ptr.tag());
 }
+
 
 template<typename T, typename Tag, Tag Max>
 class incomplete_tag_ptr
@@ -175,6 +222,12 @@ public:
 	}
 
 
+	explicit operator bool() const
+	{
+		return (m_value & ptr_mask) != 0;
+	}
+
+
 	friend bool operator==(incomplete_tag_ptr const&, incomplete_tag_ptr const&) = default;
 
 	friend constexpr bool operator==(incomplete_tag_ptr const& ptr, decltype(nullptr))
@@ -193,55 +246,23 @@ private:
 
 	template<typename Out, typename In, typename InTag, InTag InMax>
 	friend Out const_pointer_cast(incomplete_tag_ptr<In, InTag, InMax> const ptr)
-		requires requires (Out& out) { const_cast_constraint(ptr, out); };
+		requires requires (Out& out) { detail::const_cast_constraint(ptr, out); };
 
 	template<typename Out, typename In, typename InTag, InTag InMax>
 	friend Out reinterpret_pointer_cast(incomplete_tag_ptr<In, InTag, InMax> const ptr)
-		requires requires (Out& out) { reinterpret_cast_constraint_ptr(ptr, out); };
+		requires requires (Out& out) { detail::reinterpret_cast_constraint_ptr(ptr, out); };
 
 	template<typename Out, typename In>
 	friend Out reinterpret_pointer_cast(In const value)
-		requires requires (In& in, Out& out) { reinterpret_cast_constraint_int(in, out); };
+		requires requires (In& in, Out& out) { detail::reinterpret_cast_constraint_int(in, out); };
 };
 
-
-template<typename T, typename Tag>
-consteval Tag tag_ptr_max_tag()
-{
-	if constexpr (std::is_enum_v<Tag>)
-	{
-		return static_cast<Tag>(tag_ptr_max_tag<T, std::underlying_type_t<Tag>>());
-	}
-
-	if constexpr (std::is_signed_v<Tag>)
-	{
-		return static_cast<Tag>(tag_ptr_max_tag<T, std::make_unsigned_t<Tag>>() / 2);
-	}
-
-	uintptr_t max = alignof(T) - 1;
-	if (max > std::numeric_limits<Tag>::max())
-	{
-		max = std::numeric_limits<Tag>::max();
-	}
-	return max;
-}
-
-template<typename T, typename Tag>
-consteval bool tag_ptr_check_tag(Tag const max)
-{
-	if constexpr (std::is_enum_v<Tag>)
-	{
-		return tag_ptr_check_tag<T>(static_cast<std::underlying_type_t<Tag>>(max));
-	}
-
-	return max > 0 && max <= tag_ptr_max_tag<T, Tag>();
-}
-
-} // namespace detail
-
-using detail::incomplete_tag_ptr;
-
-template<typename T, typename Tag = uintptr_t, Tag Max = detail::tag_ptr_max_tag<T, Tag>()>
+/// @brief A pointer with a secondary tag value stored in the alignment bits.
+/// @tparam T Type of the object pointed to by the pointer.
+/// @tparam Tag Type of the secondary tag value.
+/// @tparam Max Maximum value of the secondary tag.
+/// The default maximum is based on the alignment of @tparam T.
+template<typename T, typename Tag, Tag Max = detail::tag_ptr_max_tag<T, Tag>()>
 	requires (detail::tag_ptr_check_tag<T>(Max))
 using tag_ptr = incomplete_tag_ptr<T, Tag, Max>;
 

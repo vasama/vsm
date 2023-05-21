@@ -1,3 +1,7 @@
-#ifndef vsm_atomic_spin_hint
-#	define vsm_atomic_spin_hint() ((void)0)
+#ifndef vsm_word_32
+#	define vsm_word_32 0
+#endif
+
+#ifndef vsm_word_64
+#	define vsm_word_64 0
 #endif

@@ -14,7 +14,10 @@ namespace detail::pascal_string_ {
 using size_type = uint32_t;
 
 template<typename Char>
-using size_buffer = array<Char, sizeof(size_type) / sizeof(Char)>;
+inline constexpr size_t size_buffer_size = sizeof(size_type) / sizeof(Char);
+
+template<typename Char>
+using size_buffer = array<Char, size_buffer_size<Char>>;
 
 template<typename Char>
 constexpr size_type get_size(Char const* const buffer)
@@ -35,7 +38,7 @@ struct static_string
 	using value_type = Char;
 
 	using size_buffer = pascal_string_::size_buffer<Char>;
-	static constexpr size_t data_offset = std::tuple_size<size_buffer>;
+	static constexpr size_t data_offset = std::tuple_size_v<size_buffer>;
 	
 	Char buffer alignas(size_type)[data_offset + Size];
 
@@ -118,17 +121,17 @@ public:
 
 	constexpr Char const* data() const
 	{
-		return m_buffer + size_buffer::element_count;
+		return m_buffer + detail::pascal_string_::size_buffer_size<Char>;
 	}
 
 	constexpr Char const* begin() const
 	{
-		return m_buffer + size_buffer::element_count;
+		return m_buffer + detail::pascal_string_::size_buffer_size<Char>;
 	}
 
 	constexpr Char const* end() const
 	{
-		return m_buffer + size_buffer::element_count + size();
+		return m_buffer + detail::pascal_string_::size_buffer_size<Char> + size();
 	}
 
 	operator std::basic_string_view<Char, Traits>() const

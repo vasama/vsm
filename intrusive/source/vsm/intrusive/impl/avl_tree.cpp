@@ -8,13 +8,17 @@ using namespace vsm;
 using namespace vsm::intrusive;
 using namespace vsm::intrusive::detail::avl_tree_;
 
+namespace tree_namespace = vsm::intrusive::detail::avl_tree_;
+namespace list_namespace = vsm::intrusive::detail::list_;
+
+
 static_assert(sizeof(hook) == sizeof(avl_tree_link));
 static_assert(check_incomplete_tag_ptr<ptr<hook>>());
 
 
 static hook* leftmost(hook* node, bool const l)
 {
-	while (!node->children[l].is_zero())
+	while (node->children[l] != nullptr)
 	{
 		node = node->children[l].ptr();
 	}
@@ -55,7 +59,7 @@ static void rebalance(ptr<hook>* const root, ptr<hook>* node, bool l, bool const
 		bool const r = !l;
 
 		// The node is not the root, so it is a hook.
-		hook* const parent = vsm_avl_hook_from_children(node);
+		hook* const parent = vsm_detail_avl_hook_from_children(node);
 		hook* new_parent = parent;
 
 		// If the node is now +2 on the l side.
@@ -117,13 +121,13 @@ static void rebalance(ptr<hook>* const root, ptr<hook>* node, bool l, bool const
 
 static bool invariant(base const& self)
 {
-	if (self.m_root.value.tag() != 0)
+	if (self.m_root.tag() != 0)
 	{
 		return false;
 	}
 
 	size_t size = 0;
-	if (hook const* node = self.m_root.value.ptr())
+	if (hook const* node = self.m_root.ptr())
 	{
 		struct frame
 		{
@@ -182,22 +186,22 @@ static bool invariant(base const& self)
 
 			r_height = std::max(l_height, r_height) + 1;
 
-			node = vsm_avl_hook_from_children(node->parent);
+			node = vsm_detail_avl_hook_from_children(node->parent);
 			--height;
 
 			++size;
 		}
 	}
 
-	return size == self.m_size.value;
+	return size == self.m_size;
 }
 
 
-void base::insert(hook* const node, ptr<ptr<hook>> const parent_and_side)
+void base::insert(hook* const node, ptr<ptr<hook>> const parent_and_side) noexcept
 {
 	vsm_intrusive_link_insert(*this, *node);
 
-	++m_size.value;
+	++m_size;
 
 	ptr<hook>* const parent = parent_and_side.ptr();
 	bool const l = parent_and_side.tag();
@@ -207,16 +211,16 @@ void base::insert(hook* const node, ptr<ptr<hook>> const parent_and_side)
 	node->parent = parent;
 	parent[l].set_ptr(node);
 
-	rebalance(&m_root.value, parent, l, true);
+	rebalance(&m_root, parent, l, true);
 
 	vsm_assert_slow(invariant(this));
 }
 
-void base::remove(hook* const node)
+void base::remove(hook* const node) noexcept
 {
 	vsm_intrusive_link_remove(*this, *node);
 
-	--m_size.value;
+	--m_size;
 
 	ptr<hook>* const parent = node->parent;
 	bool const l = parent->ptr() != node;
@@ -225,7 +229,7 @@ void base::remove(hook* const node)
 	bool balance_l = l;
 
 	// If node is not a leaf.
-	if (!node->children[0].is_zero() || !node->children[1].is_zero())
+	if (node->children[0] != nullptr || node->children[1] != nullptr)
 	{
 		// Higher side of the tree on the left.
 		bool const succ_l = node->children[1].tag();
@@ -240,7 +244,7 @@ void base::remove(hook* const node)
 		balance_node = l_child->children;
 		balance_l = succ_l;
 
-		if (!l_child->children[succ_r].is_zero())
+		if (l_child->children[succ_r] != nullptr)
 		{
 			successor = leftmost(l_child, succ_r);
 
@@ -281,44 +285,44 @@ void base::remove(hook* const node)
 		parent[l].set_ptr(nullptr);
 	}
 
-	rebalance(&m_root.value, balance_node, balance_l, false);
+	rebalance(&m_root, balance_node, balance_l, false);
 
 	vsm_assert_slow(invariant(this));
 }
 
-void base::clear()
+void base::clear() noexcept
 {
-	if (!m_root.value.is_zero())
+	if (m_root != nullptr)
 	{
-		ptr<hook>* children = leftmost(m_root.value.ptr(), 0)->children;
+		ptr<hook>* children = leftmost(m_root.ptr(), 0)->children;
 
-		while (children != &m_root.value)
+		while (children != &m_root)
 		{
-			if (!children[1].is_zero())
+			if (children[1] != nullptr)
 			{
 				children = leftmost(children[1].ptr(), 0)->children;
 			}
 			else
 			{
-				hook* const node = vsm_avl_hook_from_children(children);
+				hook* const node = vsm_detail_avl_hook_from_children(children);
 
 				children = std::exchange(node->parent, nullptr);
 				children[node != children[0].ptr()] = nullptr;
 
-				vsm_intrusive_link_remove(*node, *this);
+				vsm_intrusive_link_remove(*this, *node);
 			}
 		}
 
-		m_root.value = nullptr;
-		m_size.value = 0;
+		m_root = nullptr;
+		m_size = 0;
 	}
 
 	vsm_assert_slow(invariant(this));
 }
 
-detail::list_::hook* base::flatten()
+list_namespace::hook* base::flatten() noexcept
 {
-	hook* root = m_root.value.ptr();
+	hook* root = m_root.ptr();
 
 	if (root != nullptr)
 	{
@@ -329,7 +333,7 @@ detail::list_::hook* base::flatten()
 		{
 			bool const r = !l;
 
-			while (node->children[l].is_zero())
+			while (node->children[l] == nullptr)
 			{
 				// Rotate the whole left subtree right to left turning it into a list.
 				// It is important that each non-zero child pointer is overwritten to reset tags.
@@ -337,7 +341,7 @@ detail::list_::hook* base::flatten()
 				hook* const tail = node->children[l].ptr();
 				hook* head = tail;
 
-				while (!head->children[r].is_zero())
+				while (head->children[r] != nullptr)
 				{
 					hook* const pivot = head->children[r].ptr();
 
@@ -371,28 +375,28 @@ detail::list_::hook* base::flatten()
 }
 
 
-ptr<hook>* detail::avl_tree_::iterator_begin(ptr<hook>* const root)
+ptr<hook>* tree_namespace::iterator_begin(ptr<hook>* const root)
 {
 	hook* const node = root->ptr();
 	return node != nullptr ? leftmost(node, 0)->children : root;
 }
 
-ptr<hook>* detail::avl_tree_::iterator_advance(ptr<hook>* const children, bool const l)
+ptr<hook>* tree_namespace::iterator_advance(ptr<hook>* const children, bool const l)
 {
 	bool const r = l ^ 1;
 
 	// If node has a right child: stop at its leftmost descendant.
-	if (!children[r].is_zero())
+	if (children[r] != nullptr)
 	{
 		return leftmost(children[r].ptr(), l)->children;
 	}
 
-	hook* node = vsm_avl_hook_from_children(children);
+	hook* node = vsm_detail_avl_hook_from_children(children);
 
 	// Iterate through ancestors until the branch where the node is the left child.
 	while (node != node->parent->ptr())
 	{
-		node = vsm_avl_hook_from_children(node->parent);
+		node = vsm_detail_avl_hook_from_children(node->parent);
 	}
 
 	return node->parent;

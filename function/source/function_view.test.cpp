@@ -10,10 +10,10 @@ namespace static_tests {
 template<int Category>
 struct callable
 {
-	void operator()() & requires (Category & 0b1000);
-	void operator()() && requires (Category & 0b0100);
-	void operator()() const& requires (Category & 0b0010);
-	void operator()() const&& requires (Category & 0b0001);
+	void operator()() & requires ((Category & 0b1000) != 0);
+	void operator()() && requires ((Category & 0b0100) != 0);
+	void operator()() const& requires ((Category & 0b0010) != 0);
+	void operator()() const&& requires ((Category & 0b0001) != 0);
 };
 
 template<int Category>

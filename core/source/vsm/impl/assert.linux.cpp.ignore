@@ -1,0 +1,147 @@
+#include <vsm/assert.h>
+#include <vsm/defer.hpp>
+
+#include <span>
+#include <string_view>
+
+#include <cstdlib>
+
+#include <fcntl.h>
+#include <unistd.h>
+
+namespace {
+
+class file_buffer
+{
+	char m_buffer[256];
+	char const* m_pos = nullptr;
+	char const* m_end = nullptr;
+
+public:
+	class sentinel
+	{
+	};
+
+	class iterator
+	{
+		file_buffer* m_buffer;
+		char m_character = 0;
+
+	public:
+		[[nodiscard]] char operator*() const
+		{
+			return m_character;
+		}
+
+		iterator& operator++() &
+		{
+			m_character = m_buffer->advance();
+			return *this;
+		}
+
+		[[nodiscard]] iterator operator++(int) &
+		{
+			auto it = *this;
+			m_character = m_buffer->advance();
+			return it;
+		}
+
+		
+	};
+
+	file_buffer(file_buffer const&) = delete;
+	file_buffer& operator=(file_buffer const&) = delete;
+
+	[[nodiscard]] iterator begin()
+	{
+		return iterator(this);
+	}
+
+	[[nodiscard]] sentinel end()
+	{
+		return sentinel();
+	}
+
+private:
+	bool advance(char& value)
+	{
+		if (m_pos != m_end)
+		{
+			value = *m_pos++;
+			return true;
+		}
+
+		
+	}
+};
+
+class status_parser
+{
+	struct pair
+	{
+		std::string_view key;
+		std::string_view value;
+	};
+
+	char m_buffer[256];
+	size_t m_key_offset;
+	size_t m_val_offset;
+	size_t m_end_offset;
+
+public:
+	status_parser(status_parser const&) = delete;
+	status_parser& operator=(status_parser const&) = delete;
+
+	pair next(int const fd)
+	{
+		ssize_t const size = read(fd, m_buffer, sizeof(buffer));
+
+		if (size == -1)
+		{
+			return {};
+		}
+
+		
+	}
+};
+
+} // namespace
+
+static bool is_process_traced()
+{
+	int const fd = open("/proc/self/status", O_RDONLY);
+
+	if (fd == -1)
+	{
+		return false;
+	}
+
+	vsm_defer { close(fd) };
+
+
+	for (status_parser parser;;)
+	{
+		auto const r = parser.next(fd);
+
+		if (r.key.empty())
+		{
+			return false;
+		}
+
+		if (r.key == "TracerPid")
+		{
+			return r.value != "0";
+		}
+	}
+}
+
+extern "C"
+bool vsm_assert_fail(char const* const file, int const line, char const* const expr) __attribute__((weak))
+{
+	if (is_process_traced())
+	{
+		return true;
+	}
+
+	std::abort();
+}

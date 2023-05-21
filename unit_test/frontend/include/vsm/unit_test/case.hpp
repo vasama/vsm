@@ -91,7 +91,7 @@ public:
 	vsm_detail_unit_test_case_instance_1( \
 		vsm_pp_cat(vsm_detail_unit_test_case_template_f,name), \
 		vsm_pp_cat(vsm_detail_unit_test_case_template_v,name), \
-		vsm_pp_anon(vsm_detail_unit_test_case_instance_v), __VA_ARGS__)
+		vsm_pp_anonymous(vsm_detail_unit_test_case_instance_v), __VA_ARGS__)
 
 #define vsm_detail_unit_test_case_instance_1(function, variable, instance, ...) \
 	::vsm::unit_test::detail::test_case_instance instance(variable, function<__VA_ARGS__>, #__VA_ARGS__)

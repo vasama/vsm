@@ -17,3 +17,7 @@
 #ifndef vsm_unreachable
 #	define vsm_unreachable() ((void)0)
 #endif
+
+#ifndef vsm_restrict
+#	define vsm_restrict __restrict
+#endif

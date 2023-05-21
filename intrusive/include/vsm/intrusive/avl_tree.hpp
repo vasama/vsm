@@ -5,7 +5,6 @@
 
 #include <vsm/insert_result.hpp>
 #include <vsm/key_selector.hpp>
-#include <vsm/linear.hpp>
 #include <vsm/tag_ptr.hpp>
 #include <vsm/utility.hpp>
 
@@ -19,14 +18,14 @@ using avl_tree_link = link<3>;
 
 namespace detail::avl_tree_ {
 
-#define vsm_avl_hook(element, ...) \
-	(reinterpret_cast<avl_tree_::hook __VA_ARGS__*>(static_cast<avl_tree_link __VA_ARGS__*>(element)))
+#define vsm_detail_avl_hook(element, ...) \
+	(reinterpret_cast<hook __VA_ARGS__*>(static_cast<avl_tree_link __VA_ARGS__*>(element)))
 
-#define vsm_avl_elem(hook, ...) \
+#define vsm_detail_avl_elem(hook, ...) \
 	(static_cast<T __VA_ARGS__*>(reinterpret_cast<avl_tree_link __VA_ARGS__*>(hook)))
 
-#define vsm_avl_hook_from_children(children) \
-	static_cast<avl_tree_::hook*>(reinterpret_cast<avl_tree_::hook_data*>(children))
+#define vsm_detail_avl_hook_from_children(children) \
+	static_cast<hook*>(reinterpret_cast<hook_data*>(children))
 
 
 template<typename T>
@@ -47,26 +46,41 @@ struct hook : link_base, hook_data {};
 
 struct base : link_container
 {
-	linear<ptr<hook>> m_root;
-	linear<size_t> m_size;
+	ptr<hook> m_root = {};
+	size_t m_size = {};
 
 
-	base(base&&) = default;
+	base() = default;
 
-	base& operator=(base&& src) & noexcept
+	base(base&& other) noexcept
+		: link_container(static_cast<link_container&&>(other))
+		, m_root(other.m_root)
+		, m_size(other.m_size)
 	{
-		if (!m_root.value.is_zero())
+		other.m_root = {};
+		other.m_size = {};
+	}
+
+	base& operator=(base&& other) & noexcept
+	{
+		if (!m_root.is_zero())
 		{
 			clear();
 		}
-		m_root = vsm_move(src.m_root);
-		m_size = vsm_move(src.m_size);
+
+		static_cast<link_container&>(*this) = static_cast<link_container&&>(other);
+
+		m_root = other.m_root;
+		m_size = other.m_size;
+		other.m_root = {};
+		other.m_size = {};
+
 		return *this;
 	}
 
 	~base()
 	{
-		if (!m_root.value.is_zero())
+		if (!m_root.is_zero())
 		{
 			clear();
 		}
@@ -121,12 +135,12 @@ public:
 
 	[[nodiscard]] T& operator*() const noexcept
 	{
-		return *vsm_avl_elem(vsm_avl_hook_from_children(m_children));
+		return *vsm_detail_avl_elem(vsm_detail_avl_hook_from_children(m_children));
 	}
 
 	[[nodiscard]] T* operator->() const noexcept
 	{
-		return vsm_avl_elem(vsm_avl_hook_from_children(m_children));
+		return vsm_detail_avl_elem(vsm_detail_avl_hook_from_children(m_children));
 	}
 
 
@@ -161,7 +175,7 @@ public:
 };
 
 
-template<std::derived_from<avl_tree_link> T
+template<std::derived_from<avl_tree_link> T,
 	key_selector<T> KeySelector = identity_key_selector,
 	typename Comparator = std::compare_three_way>
 class avl_tree : base
@@ -204,13 +218,13 @@ public:
 	/// @return Size of the set.
 	[[nodiscard]] size_t size() const noexcept
 	{
-		return m_size.value;
+		return m_size;
 	}
 
 	/// @return True if the set is empty.
 	[[nodiscard]] bool empty() const noexcept
 	{
-		return m_size.value == 0;
+		return m_size == 0;
 	}
 
 
@@ -220,16 +234,16 @@ public:
 	[[nodiscard]] T* find(key_type const& key)
 		noexcept(noexcept(find_internal(key)))
 	{
-		return vsm_avl_elem(find_internal(key).node);
+		return vsm_detail_avl_elem(find_internal(key).node);
 	}
 
 	/// @brief Find element by homogeneous key.
 	/// @param key Lookup key.
 	/// @return Pointer to element, or null if not found.
-	[[nodiscard]] T const* find(const KeyType& key) const
+	[[nodiscard]] T const* find(const key_type& key) const
 		noexcept(noexcept(find_internal(key)))
 	{
-		return vsm_avl_elem(find_internal(key).node);
+		return vsm_detail_avl_elem(find_internal(key).node);
 	}
 
 	/// @brief Find element by heterogeneous key.
@@ -240,7 +254,7 @@ public:
 		noexcept(noexcept(find_internal(key)))
 		requires (requires (key_type const& tree_key) { m_comparator(key, tree_key); })
 	{
-		return vsm_avl_elem(find_internal(key).node);
+		return vsm_detail_avl_elem(find_internal(key).node);
 	}
 
 	/// @brief Find element by heterogeneous key.
@@ -251,7 +265,7 @@ public:
 		noexcept(noexcept(find_internal(key)))
 		requires (requires (key_type const& tree_key) { m_comparator(key, tree_key); })
 	{
-		return vsm_avl_elem(find_internal(key).node);
+		return vsm_detail_avl_elem(find_internal(key).node);
 	}
 
 
@@ -263,9 +277,9 @@ public:
 		auto const r = find_internal(m_key_selector(*element));
 		if (r.node != nullptr)
 		{
-			return { vsm_avl_elem(r.node), false };
+			return { vsm_detail_avl_elem(r.node), false };
 		}
-		base::insert(vsm_avl_hook(element), const_pointer_cast<ptr<ptr<hook>>>(r.parent));
+		base::insert(vsm_detail_avl_hook(element), const_pointer_cast<ptr<ptr<hook>>>(r.parent));
 		return { element, true };
 	}
 
@@ -274,7 +288,7 @@ public:
 	/// @pre @p element is part of this tree.
 	void remove(T* const element) noexcept
 	{
-		base::remove(vsm_avl_hook(element));
+		base::remove(vsm_detail_avl_hook(element));
 	}
 
 	/// @brief Remove all elements from the tree.
@@ -294,7 +308,7 @@ public:
 	[[nodiscard]] iterator make_iterator(T* const element) noexcept
 	{
 		vsm_intrusive_link_check(*this, *element);
-		return iterator(vsm_avl_hook(element));
+		return iterator(vsm_detail_avl_hook(element));
 	}
 
 	/// @brief Create an iterator referring to an element.
@@ -303,28 +317,28 @@ public:
 	[[nodiscard]] const_iterator make_iterator(T const* const element) const noexcept
 	{
 		vsm_intrusive_link_check(*this, *element);
-		return const_iterator(vsm_avl_hook(element, const));
+		return const_iterator(vsm_detail_avl_hook(element, const));
 	}
 
 
 	[[nodiscard]] iterator begin() noexcept
 	{
-		return iterator(iterator_begin(&m_root.value));
+		return iterator(iterator_begin(&m_root));
 	}
 
 	[[nodiscard]] const_iterator begin() const noexcept
 	{
-		return const_iterator(iterator_begin(const_cast<ptr<hook>*>(&m_root.value)));
+		return const_iterator(iterator_begin(const_cast<ptr<hook>*>(&m_root)));
 	}
 
 	[[nodiscard]] iterator end() noexcept
 	{
-		return iterator(&m_root.value);
+		return iterator(&m_root);
 	}
 
 	[[nodiscard]] const_iterator end() const noexcept
 	{
-		return const_iterator(const_cast<ptr<hook>*>(&m_root.value));
+		return const_iterator(const_cast<ptr<hook>*>(&m_root));
 	}
 
 
@@ -341,14 +355,14 @@ private:
 	find_result find_internal(Key const& key) const
 		noexcept(noexcept(m_comparator(key, std::declval<key_type const&>())))
 	{
-		ptr<hook> const* parent = &m_root.value;
+		ptr<hook> const* parent = &m_root;
 		bool l = 0;
 
 		while (!parent[l].is_zero())
 		{
 			hook* const child = parent[l].ptr();
 
-			auto const ordering = m_comparator(key, m_key_selector(*vsm_avl_elem(child)));
+			auto const ordering = m_comparator(key, m_key_selector(*vsm_detail_avl_elem(child)));
 			if (ordering == 0)
 			{
 				return { child, { parent, l } };
@@ -361,10 +375,6 @@ private:
 		return find_result{ nullptr, { parent, l } };
 	}
 };
-
-#undef vsm_avl_hook
-#undef vsm_avl_elem
-#undef vsm_avl_hook_from_children
 
 } // namespace detail::avl_tree_
 

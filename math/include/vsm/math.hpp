@@ -1,9 +1,9 @@
 #pragma once
 
 #include <vsm/assert.h>
+#include <vsm/concepts.hpp>
 
 #include <bit>
-#include <concepts>
 #include <type_traits>
 
 namespace vsm {

@@ -2,42 +2,20 @@ cmake_minimum_required(VERSION 3.23.0)
 
 project(vsm_tag_ptr)
 
-if(PROJECT_IS_TOP_LEVEL)
-	find_package(vsm-core REQUIRED)
-endif()
+vsm_find_sibling(vsm-core)
 
-add_library(vsm_tag_ptr INTERFACE)
+vsm_add_library(vsm_tag_ptr
+	EXPORT_ALIAS vsm::tag_ptr
 
-target_sources(vsm_tag_ptr
-	PUBLIC
-	FILE_SET HEADERS
-	BASE_DIRS include
-	FILES
+	HEADERS
 		include/vsm/tag_ptr.hpp
-)
 
-target_include_directories(vsm_tag_ptr
-	INTERFACE
-		include
-)
-
-target_link_libraries(vsm_tag_ptr
-	INTERFACE
+	HEADER_DEPENDENCIES
 		vsm::core
-)
 
-install(TARGETS vsm_tag_ptr FILE_SET HEADERS)
+	TEST_SOURCES
+		source/vsm/test/tag_ptr.cpp
 
-if(NOT PROJECT_IS_TOP_LEVEL)
-	add_library(vsm::tag_ptr ALIAS vsm_tag_ptr)
-endif()
-
-
-add_executable(vsm_tag_ptr_test
-	source/vsm/impl/tag_ptr.test.cpp
-)
-target_link_libraries(vsm_tag_ptr_test
-	PRIVATE
-		vsm_tag_ptr
-		Catch2::Catch2WithMain
+	TEST_DEPENDENCIES
+		vsm::test_tools
 )

@@ -80,8 +80,8 @@ TEMPLATE_LIST_TEST_CASE("vector push_back & emplace_back", "[container][vector]"
 		int const v = i + 1;
 	
 		use_emplace
-			? vec.emplace_back(v)
-			: vec.push_back(v);
+			? (void)vec.emplace_back(v)
+			: (void)vec.push_back(v);
 
 		REQUIRE(vec.size() == v);
 	}

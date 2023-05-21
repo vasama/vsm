@@ -4,12 +4,15 @@ using namespace vsm;
 using namespace vsm::intrusive;
 using namespace vsm::intrusive::detail::list_;
 
+static_assert(sizeof(hook) == sizeof(list_link));
+
+
 static bool invariant(base const& self)
 {
 	size_t size = 0;
 
 	hook const* hare = &self.m_root;
-	hook const* tortoise = &self.m_root;
+	hook const* tortoise = hare;
 
 	while (true)
 	{
@@ -84,7 +87,7 @@ void base::remove(hook* const node)
 
 void base::clear_internal()
 {
-	for (hook* node = m_root.children[0]; node != &m_root; node = node->children[0])
+	for (hook* node = m_root.siblings[0]; node != &m_root; node = node->siblings[0])
 	{
 		vsm_intrusive_link_remove(*this, *node);
 	}

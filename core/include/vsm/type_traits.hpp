@@ -63,10 +63,10 @@ struct copy
 };
 
 template<typename T>
-struct copy<const T>
+struct copy<T const>
 {
 	template<typename U>
-	using cv = const U;
+	using cv = U const;
 
 	template<typename U>
 	using ref = U;
@@ -86,13 +86,13 @@ struct copy<T&>
 };
 
 template<typename T>
-struct copy<const T&>
+struct copy<T const&>
 {
 	template<typename U>
 	using ref = U&;
 
 	template<typename U>
-	using cvref = const U&;
+	using cvref = U const&;
 };
 
 template<typename T>
@@ -106,13 +106,13 @@ struct copy<T&&>
 };
 
 template<typename T>
-struct copy<const T&&>
+struct copy<T const&&>
 {
 	template<typename U>
-	using ref = const U;
+	using ref = U&&;
 
 	template<typename U>
-	using cvref = const U&&;
+	using cvref = U const&&;
 };
 
 
@@ -161,7 +161,7 @@ struct integer_of_size<8>
 /* type comparison */
 
 template<typename... Ts>
-inline constexpr bool all_same_v = detail::type_traits_::all_same<(sizeof...(Ts) > 0)>::template X<Ts...>;
+inline constexpr bool all_same_v = detail::type_traits_::all_same<(sizeof...(Ts) > 1)>::template X<Ts...>;
 
 template<typename... Ts>
 using all_same = std::bool_constant<all_same_v<Ts...>>;

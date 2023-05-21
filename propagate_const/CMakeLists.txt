@@ -1,47 +1,22 @@
-cmake_minimum_required(VERSION 3.23.0)
+cmake_minimum_required(VERSION 3.23)
 
 project(vsm_propagate_const)
 
-if(PROJECT_IS_TOP_LEVEL)
-	find_package(vsm-core REQUIRED)
-endif()
+vsm_find_sibling(vsm-core)
+vsm_find_sibling(vsm-test_tools)
 
-add_library(vsm_propagate_const INTERFACE)
+vsm_add_library(vsm_propagate_const
+	EXPORT_ALIAS vsm::propagate_const
 
-target_sources(vsm_propagate_const
-	INTERFACE
-	FILE_SET HEADERS
-	BASE_DIRS include
-	FILES
+	HEADERS
 		include/vsm/propagate_const.hpp
-)
 
-target_include_directories(vsm_propagate_const
-	INTERFACE
-		include
-)
-
-target_link_libraries(vsm_propagate_const
-	INTERFACE
+	HEADER_DEPENDENCIES
 		vsm::core
-)
 
-install(TARGETS vsm_propagate_const FILE_SET HEADERS)
-
-if(NOT PROJECT_IS_TOP_LEVEL)
-	add_library(vsm::propagate_const ALIAS vsm_propagate_const)
-endif()
-
-
-add_executable(vsm_propagate_const_test
-	source/vsm/impl/propagate_const.test.cpp
-)
-target_include_directories(vsm_propagate_const_test
-	PRIVATE
-		source
-)
-target_link_libraries(vsm_propagate_const_test
-	PRIVATE
-		vsm_propagate_const
-		Catch2::Catch2WithMain
+	TEST_SOURCES
+		source/vsm/test/propagate_const.cpp
+		
+	TEST_DEPENDENCIES
+		vsm::test_tools
 )

@@ -2,8 +2,10 @@
 
 #include <vsm/assert.h>
 #include <vsm/algorithm/remove_unstable.hpp>
+#include <vsm/concepts.hpp>
 #include <vsm/default_allocator.hpp>
 #include <vsm/platform.h>
+#include <vsm/type_traits.hpp>
 #include <vsm/utility.hpp>
 
 #include <algorithm>
@@ -104,7 +106,7 @@ struct front_pad_1<1>
 	template<size_t Size, size_t Alignment>
 	struct padding
 	{
-		byte padding[((Size + Alignment - 1) & ~(Alignment - 1)) - Size];
+		char padding[((Size + Alignment - 1) & ~(Alignment - 1)) - Size];
 	};
 
 	template<typename T, size_t Alignment>
@@ -128,6 +130,8 @@ template<typename Allocator>
 struct allocator_wrapper
 {
 	[[no_unique_address]] Allocator allocator;
+
+	allocator_wrapper() = default;
 
 	explicit vsm_always_inline allocator_wrapper(any_cvref_of<Allocator> auto&& allocator)
 		: allocator(allocator)
@@ -760,16 +764,16 @@ class vector
 #define storage_capacity (Capacity * sizeof(T))
 
 #pragma push_macro("construct_type")
-#define construct_type std::conditional_t<std::is_trivially_constructible_v<T>, byte, T>
+#define construct_type select_t<std::is_trivially_constructible_v<T>, byte, T>
 
 #pragma push_macro("destroy_type")
-#define destroy_type std::conditional_t<std::is_trivially_destructible_v<T>, byte, T>
+#define destroy_type select_t<std::is_trivially_destructible_v<T>, byte, T>
 
 #pragma push_macro("relocate_type")
-#define relocate_type std::conditional_t<is_trivially_relocatable_v<T>, byte, T>
+#define relocate_type select_t<is_trivially_relocatable_v<T>, byte, T>
 
 #pragma push_macro("copy_type")
-#define copy_type std::conditional_t<std::is_trivially_copyable_v<T>, byte, T>
+#define copy_type select_t<std::is_trivially_copyable_v<T>, byte, T>
 
 #pragma push_macro("operations")
 #define operations operations<sizeof(T), relocate_type, Allocator, has_local_storage>
