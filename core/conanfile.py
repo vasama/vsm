@@ -7,4 +7,4 @@ class package(ConanFile):
 	vsm_name = "vsm::core"
 	version = "0.1"
 
-	test_requires = "vsm_test_tools/[^0.1]"
+	test_requires = "vsm_test_tools/0.1"

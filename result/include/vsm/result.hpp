@@ -1,23 +1,26 @@
 #pragma once
 
+#include <vsm/detail/expected.hpp>
 #include <vsm/preprocessor.h>
 #include <vsm/type_traits.hpp>
 
-#include <expected>
 #include <system_error>
 
 namespace vsm {
 
-template<typename T, typename E = std::error_code>
-using result = std::expected<T, E>;
+using detail::expected_namespace::expected;
+using detail::expected_namespace::unexpected;
 
-inline constexpr auto const& result_value = std::in_place;
-inline constexpr auto const& result_error = std::unexpect;
+template<typename T, typename E = std::error_code>
+using result = detail::expected_namespace::expected<T, E>;
+
+inline constexpr auto const& result_value = detail::expected_namespace::in_place;
+inline constexpr auto const& result_error = detail::expected_namespace::unexpect;
 
 template<typename E = std::error_code>
-inline std::unexpected<E> error(E&& error) noexcept
+inline unexpected<E> error(E&& error) noexcept
 {
-	return std::unexpected<std::error_code>(error);
+	return unexpected<std::error_code>(error);
 }
 
 inline result<void> as_result(std::error_code const error) noexcept
@@ -110,7 +113,7 @@ result<void, E> discard_value(result<T, E> const& r)
 	if (!result) \
 	{ \
 		vsm_detail_try_unlikely \
-		return ::std::unexpected(static_cast<decltype(result)&&>(result).error()); \
+		return ::vsm::unexpected(static_cast<decltype(result)&&>(result).error()); \
 	}
 
 /* vsm_try */

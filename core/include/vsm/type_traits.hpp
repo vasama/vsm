@@ -3,6 +3,7 @@
 #include <type_traits>
 
 #include <cstddef>
+#include <cstdint>
 
 namespace vsm {
 namespace detail::type_traits_ {
