@@ -75,7 +75,7 @@ public:
 		base::insert(&m_root, vsm_detail_forward_list_hook(element), 0);
 	}
 
-	void push_list_front(list<T>&& list) noexcept;
+	void push_list_front(forward_list<T>&& list) noexcept;
 
 	/// @brief Remove the first element from the list.
 	/// @return The first element in the list.

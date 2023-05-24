@@ -1,26 +1,19 @@
-cmake_minimum_required(VERSION 3.23.0)
+cmake_minimum_required(VERSION 3.23)
 
 project(vsm_container_core)
 
-add_library(vsm_container_core INTERFACE)
+vsm_find_sibling(vsm-core)
+vsm_find_sibling(vsm-container-core)
+vsm_find_sibling(vsm-tag-ptr)
 
-target_sources(vsm_container_core
-	INTERFACE
-	FILE_SET HEADERS
-	BASE_DIRS include
-	FILES
+vsm_add_library(vsm_container_core
+	EXPORT_ALIAS vsm::container_core
+
+	HEADERS
 		include/vsm/insert_result.hpp
 		include/vsm/key_selector.hpp
 		include/vsm/key_value_pair.hpp
+
+	HEADER_DEPENDENCIES
+		vsm::core
 )
-
-target_include_directories(vsm_container_core
-	INTERFACE
-		include
-)
-
-install(TARGETS vsm_container_core FILE_SET HEADERS)
-
-if(NOT PROJECT_IS_TOP_LEVEL)
-	add_library(vsm::container_core ALIAS vsm_container_core)
-endif()

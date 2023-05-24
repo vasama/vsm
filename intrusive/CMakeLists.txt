@@ -4,7 +4,6 @@ project(vsm_intrusive)
 
 vsm_find_sibling(vsm-core)
 vsm_find_sibling(vsm-container-core)
-vsm_find_sibling(vsm-linear)
 vsm_find_sibling(vsm-tag-ptr)
 
 vsm_add_library(vsm_intrusive
@@ -27,7 +26,6 @@ vsm_add_library(vsm_intrusive
 	HEADER_DEPENDENCIES
 		vsm::core
 		vsm::container_core
-		vsm::linear
 		vsm::tag_ptr
 
 	TEST_SOURCES
