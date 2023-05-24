@@ -10,7 +10,7 @@ using forward_list_link = link<1>;
 namespace detail::forward_list_ {
 
 #define vsm_detail_forward_list_hook(element) \
-	(reinterpret_cast<forward_list_::hook*>(static_cast<forward_list_link*>(element)))
+	(reinterpret_cast<detail::forward_list_::hook*>(static_cast<forward_list_link*>(element)))
 
 #define vsm_detail_forward_list_elem(hook) \
 	(static_cast<T*>(reinterpret_cast<forward_list_link*>(hook)))
@@ -19,6 +19,11 @@ namespace detail::forward_list_ {
 struct hook : link_base
 {
 	hook* next;
+
+	constexpr void loop()
+	{
+		next = this;
+	}
 };
 
 struct base : link_container
@@ -29,7 +34,9 @@ struct base : link_container
 
 	constexpr base();
 
-	void insert(hook* node) noexcept;
+	void push_front(hook* node) noexcept;
+	void push_back(hook* node) noexcept;
+	hook* pop_front() noexcept;
 };
 
 } // namespace detail::forward_list_
@@ -46,7 +53,7 @@ public:
 	/// @return True if the list is empty.
 	[[nodiscard]] bool empty() const noexcept
 	{
-		return m_head != nullptr;
+		return m_root.next != nullptr;
 	}
 
 
@@ -54,16 +61,16 @@ public:
 	/// @pre The list is not empty.
 	[[nodiscard]] T* front() noexcept
 	{
-		vsm_assert(m_size > 0);
-		return vsm_detail_forward_list_elem(m_head);
+		vsm_assert(!empty());
+		return vsm_detail_forward_list_elem(m_root.next);
 	}
 
 	/// @return First element in the list.
 	/// @pre The list is not empty.
 	[[nodiscard]] T const* front() const noexcept
 	{
-		vsm_assert(m_size > 0);
-		return vsm_detail_forward_list_elem(m_head);
+		vsm_assert(!empty());
+		return vsm_detail_forward_list_elem(m_root.next);
 	}
 
 
@@ -82,13 +89,14 @@ public:
 	/// @pre The list is not empty.
 	[[nodiscard]] T* pop_front() noexcept
 	{
-		
+		vsm_assert(!empty());
+		return vsm_detail_forward_list_elem(base::pop_front());
 	}
 
 
 	void clear() noexcept
 	{
-		if (m_head != nullptr)
+		if (m_root.next != nullptr)
 		{
 			base::clear();
 		}

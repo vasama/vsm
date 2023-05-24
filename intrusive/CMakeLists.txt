@@ -11,16 +11,20 @@ vsm_add_library(vsm_intrusive
 
 	HEADERS
 		include/vsm/intrusive/avl_tree.hpp
+		include/vsm/intrusive/forward_list.hpp
 		include/vsm/intrusive/heap.hpp
 		include/vsm/intrusive/link.hpp
 		include/vsm/intrusive/list.hpp
+		include/vsm/intrusive/mpsc_queue.hpp
 		include/vsm/intrusive/rb_tree.hpp
 		include/vsm/intrusive/wb_tree.hpp
 
 	SOURCES
 		source/vsm/intrusive/impl/avl_tree.cpp
+		source/vsm/intrusive/impl/forward_list.cpp
 		source/vsm/intrusive/impl/heap.cpp
 		source/vsm/intrusive/impl/list.cpp
+		source/vsm/intrusive/impl/mpsc_queue.cpp
 		source/vsm/intrusive/impl/wb_tree.cpp
 
 	HEADER_DEPENDENCIES

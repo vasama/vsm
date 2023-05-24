@@ -41,15 +41,38 @@ static bool invariant(base const& self)
 	}
 }
 
-void base::insert(hook* const node)
+void base::push_front(hook* const node) noexcept
 {
-	node->next = m_root.next;
-	m_root.next = node;
-
-	if (m_tail == nullptr)
+	if (m_tail == &m_root)
 	{
 		m_tail = node;
 	}
 
+	node->next = m_root.next;
+	m_root.next = node;
+
 	vsm_assert_slow(invariant(*this));
+}
+
+void base::push_back(hook* const node) noexcept
+{
+	m_tail->next = node;
+	m_tail = node;
+
+	vsm_assert_slow(invariant(*this));
+}
+
+hook* base::pop_front() noexcept
+{
+	hook* const head = m_root.next;
+	m_root.next = head->next;
+
+	if (m_tail == head)
+	{
+		m_tail = &m_root;
+	}
+
+	vsm_assert_slow(invariant(*this));
+
+	return head;
 }
