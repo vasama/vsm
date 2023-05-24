@@ -32,10 +32,16 @@ struct base : link_container
 	hook* m_tail;
 
 
-	constexpr base();
+	constexpr base()
+	{
+		m_root.loop();
+		m_tail = &m_root;
+	}
 
 	void push_front(hook* node) noexcept;
+	void push_front(base& list) noexcept;
 	void push_back(hook* node) noexcept;
+	void push_back(base& list) noexcept;
 	hook* pop_front() noexcept;
 };
 
@@ -61,7 +67,7 @@ public:
 	/// @pre The list is not empty.
 	[[nodiscard]] T* front() noexcept
 	{
-		vsm_assert(!empty());
+		vsm_assert(m_root.next != &m_root);
 		return vsm_detail_forward_list_elem(m_root.next);
 	}
 
@@ -69,7 +75,7 @@ public:
 	/// @pre The list is not empty.
 	[[nodiscard]] T const* front() const noexcept
 	{
-		vsm_assert(!empty());
+		vsm_assert(m_root.next != &m_root);
 		return vsm_detail_forward_list_elem(m_root.next);
 	}
 
@@ -79,24 +85,27 @@ public:
 	/// @pre @p element is not part of any container.
 	void push_front(T* const element) noexcept
 	{
-		base::insert(&m_root, vsm_detail_forward_list_hook(element), 0);
+		base::push_front(vsm_detail_forward_list_hook(element));
 	}
 
-	void push_list_front(forward_list<T>&& list) noexcept;
+	void push_list_front(forward_list<T>&& list) noexcept
+	{
+		base::push_front(list);
+	}
 
 	/// @brief Remove the first element from the list.
 	/// @return The first element in the list.
 	/// @pre The list is not empty.
 	[[nodiscard]] T* pop_front() noexcept
 	{
-		vsm_assert(!empty());
+		vsm_assert(m_root.next != &m_root);
 		return vsm_detail_forward_list_elem(base::pop_front());
 	}
 
 
 	void clear() noexcept
 	{
-		if (m_root.next != nullptr)
+		if (m_root.next != &m_root)
 		{
 			base::clear();
 		}
