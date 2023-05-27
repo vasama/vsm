@@ -67,7 +67,7 @@ std::optional<typename OrderStatisticTree::key_type>
 		}
 		else
 		{
-			
+
 		}
 	}
 }

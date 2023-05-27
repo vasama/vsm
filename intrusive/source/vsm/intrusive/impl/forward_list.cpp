@@ -41,25 +41,54 @@ static bool invariant(base const& self)
 	}
 }
 
-void base::push_front(hook* const node) noexcept
+void base::push_front(hook* const head, hook* const tail) noexcept
 {
 	if (m_tail == &m_root)
 	{
-		m_tail = node;
+		m_tail = tail;
 	}
 
-	node->next = m_root.next;
-	m_root.next = node;
+	tail->next = m_root.next;
+	m_root.next = head;
+
+	vsm_assert_slow(invariant(*this));
+}
+
+void base::push_front(hook* const node) noexcept
+{
+	return push_front(node, node);
+}
+
+void base::splice_front(base& list) noexcept
+{
+	if (list.m_root.next != &list.m_root)
+	{
+		push_front(list.m_root.next, list.m_tail);
+		list.clear();
+	}
+}
+
+void base::push_back(hook* const head, hook* const tail) noexcept
+{
+	tail->next = &m_root;
+	m_tail->next = head;
+	m_tail = tail;
 
 	vsm_assert_slow(invariant(*this));
 }
 
 void base::push_back(hook* const node) noexcept
 {
-	m_tail->next = node;
-	m_tail = node;
+	push_back(node, node);
+}
 
-	vsm_assert_slow(invariant(*this));
+void base::splice_back(base& list) noexcept
+{
+	if (list.m_root.next != &list.m_root)
+	{
+		push_back(list.m_root.next, list.m_tail);
+		list.clear();
+	}
 }
 
 hook* base::pop_front() noexcept
@@ -75,4 +104,10 @@ hook* base::pop_front() noexcept
 	vsm_assert_slow(invariant(*this));
 
 	return head;
+}
+
+void base::clear() noexcept
+{
+	m_root.loop();
+	m_tail = &m_root;
 }

@@ -44,7 +44,7 @@ void base::adopt(hook* const head, size_t const size)
 
 	m_root.siblings[0] = head;
 	head->siblings[1] = &m_root;
-	
+
 	m_root.siblings[1] = tail;
 	tail->siblings[0] = &m_root;
 

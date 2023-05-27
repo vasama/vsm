@@ -4,6 +4,8 @@
 #include <bit>
 #include <limits>
 
+#include <climits>
+
 using namespace vsm;
 using namespace vsm::intrusive;
 using namespace vsm::intrusive::detail::heap_;

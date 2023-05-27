@@ -350,7 +350,7 @@ public:
 	{
 		return iterator(iterator_begin(&m_root));
 	}
-	
+
 	[[nodiscard]] const_iterator begin() const noexcept
 	{
 		return const_iterator(iterator_begin(const_cast<hook**>(&m_root)));

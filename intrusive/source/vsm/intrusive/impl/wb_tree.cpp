@@ -215,7 +215,7 @@ void base::insert(hook* const node, ptr<hook*> const parent_and_side) noexcept
 	node->parent = parent;
 	node->weight = 1;
 	parent[l] = node;
-	
+
 	rebalance(&m_root, parent, l, true);
 
 	vsm_assert_slow(invariant(*this));

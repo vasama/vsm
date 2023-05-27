@@ -10,6 +10,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 
 namespace vsm::detail::swiss_table {
 #include <vsm/detail/swiss_table.ipp>
@@ -480,7 +481,7 @@ insert_result<void> insert(policies_layout<Policies>& table, size_t const hash, 
 }
 
 template<typename Key, typename UserKey>
-void* remove(core const& table, size_t const element_size, size_t const hash, const_t<UserKey> key)
+void* remove(core& table, size_t const element_size, size_t const hash, const_t<UserKey> key)
 {
 	size_t const slot_index = find_impl<Key, UserKey>(table, element_size, hash, key);
 

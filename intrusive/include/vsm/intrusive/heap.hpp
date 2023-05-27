@@ -7,6 +7,7 @@
 #include <vsm/utility.hpp>
 
 #include <concepts>
+#include <functional>
 #include <type_traits>
 #include <utility>
 

@@ -34,7 +34,9 @@ vsm_add_library(vsm_intrusive
 
 	TEST_SOURCES
 		source/vsm/intrusive/test/avl_tree.cpp
+		source/vsm/intrusive/test/forward_list.cpp
 		source/vsm/intrusive/test/heap.cpp
 		source/vsm/intrusive/test/list.cpp
+		source/vsm/intrusive/test/mpsc_queue.cpp
 		source/vsm/intrusive/test/wb_tree.cpp
 )
