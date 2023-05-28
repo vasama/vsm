@@ -45,7 +45,7 @@ template<typename T>
 	}
 
 #define vsm_detail_flag_enum_a(T, O, ...) \
-	[[nodiscard]] inline constexpr __VA_ARGS__ T& operator O ## =(T& l, T const r) \
+	inline constexpr __VA_ARGS__ T& operator O ## =(T& l, T const r) \
 	{ \
 		using U = ::std::underlying_type_t<T>; \
 		return l = static_cast<T>(static_cast<U>(l) O static_cast<U>(r)); \
