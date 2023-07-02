@@ -4,7 +4,6 @@ project(vsm_result)
 
 vsm_find_sibling(vsm-core)
 vsm_find_sibling(vsm-test_tools)
-find_package(tl-expected REQUIRED)
 
 vsm_add_library(vsm_result
 	EXPORT_ALIAS vsm::result
@@ -14,7 +13,6 @@ vsm_add_library(vsm_result
 
 	HEADER_DEPENDENCIES
 		vsm::core
-		tl::expected
 
 	TEST_SOURCES
 		source/vsm/test/result.cpp

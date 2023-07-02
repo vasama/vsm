@@ -314,6 +314,11 @@ public:
 		return lhs.m_ptr == rhs.m_ptr;
 	}
 
+	[[nodiscard]] friend bool operator==(intrusive_ptr const& lhs, T const* const rhs)
+	{
+		return lhs.m_ptr == rhs;
+	}
+
 	[[nodiscard]] friend bool operator==(intrusive_ptr const& ptr, decltype(nullptr))
 	{
 		return ptr.m_ptr == nullptr;
@@ -322,6 +327,11 @@ public:
 	[[nodiscard]] friend auto operator<=>(intrusive_ptr const& lhs, intrusive_ptr const& rhs)
 	{
 		return std::compare_three_way()(lhs.m_ptr, rhs.m_ptr);
+	}
+
+	[[nodiscard]] friend auto operator<=>(intrusive_ptr const& lhs, T const* const rhs)
+	{
+		return std::compare_three_way()(lhs.m_ptr, rhs);
 	}
 
 	[[nodiscard]] friend auto operator<=>(intrusive_ptr const& ptr, decltype(nullptr))

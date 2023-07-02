@@ -66,7 +66,7 @@ struct static_string
 
 	consteval void set_data(Char const* const data)
 	{
-		char* const s = buffer + data_offset;
+		Char* const s = buffer + data_offset;
 
 		for (size_t i = 0; i < Size; ++i)
 		{

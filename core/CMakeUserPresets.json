@@ -4,6 +4,6 @@
         "conan": {}
     },
     "include": [
-        "/home/untelo/c/vsm/core/build/Debug/generators/CMakePresets.json"
+        "D:\\Code\\vsm\\core\\build\\generators\\CMakePresets.json"
     ]
 }
