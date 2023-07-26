@@ -2,9 +2,16 @@
 
 #include <vsm/detail/categories.hpp>
 #include <vsm/platform.h>
-#include <vsm/type_traits.hpp>
+#include <vsm/preprocessor.h>
 #include <vsm/utility.hpp>
 
+#if __has_include(vsm_pp_include(vsm/detail/atomic/vsm_arch.hpp))
+#	include vsm_pp_include(vsm/detail/atomic/vsm_arch.hpp)
+#else
+#	define vsm_detail_atomic_ref_base(T) std::atomic_ref<T>
+#endif
+
+#if 0
 #if vsm_arch_x86_64
 #	include <vsm/detail/atomic_x86_64.hpp>
 
@@ -12,6 +19,7 @@
 		select_t<sizeof(T) == 16, detail::atomic_ref_x86_64<T>, std::atomic_ref<T>>
 #else
 #	define vsm_detail_atomic_ref_base(T) std::atomic_ref<T>
+#endif
 #endif
 
 #include <atomic>
