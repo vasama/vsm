@@ -85,7 +85,7 @@ public:
 	}
 };
 
-#	define vsm_detail_atomic_ref_base(T) \
+#define vsm_detail_atomic_ref_base(T) \
 	select_t<sizeof(T) == 16, detail::atomic_ref_base<T>, std::atomic_ref<T>>
 
 #pragma pop_macro("cmpxchg16")

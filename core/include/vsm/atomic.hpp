@@ -173,8 +173,7 @@ public:
 
 
 #define vsm_detail_fetch_mutate(operation) \
-	[[nodiscard]] vsm_always_inline auto operation(auto const& operand, std::memory_order const order) const noexcept \
-		-> decltype(base::operation(operand, order)) \
+	[[nodiscard]] vsm_always_inline decltype(auto) operation(auto const& operand, std::memory_order const order) const noexcept \
 	{ \
 		return base::operation(operand, order); \
 	} \
@@ -246,8 +245,7 @@ public:
 
 
 #define vsm_detail_fetch_mutate(operation) \
-	[[nodiscard]] vsm_always_inline auto operation(auto const& operand, std::memory_order const order) & noexcept \
-		-> decltype(ref_type(m_storage).operation(operand, order)) \
+	[[nodiscard]] vsm_always_inline decltype(auto) operation(auto const& operand, std::memory_order const order) & noexcept \
 	{ \
 		return ref_type(m_storage).operation(operand, order); \
 	} \
