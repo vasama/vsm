@@ -5,6 +5,7 @@
 
 #include <vsm/insert_result.hpp>
 #include <vsm/key_selector.hpp>
+#include <vsm/standard.hpp>
 #include <vsm/tag_ptr.hpp>
 #include <vsm/utility.hpp>
 
@@ -91,13 +92,13 @@ struct base : link_container
 		ptr<hook*> parent;
 	};
 
-	hook* select(size_t rank) const noexcept;
-	size_t rank(hook const* node) const noexcept;
+	hook* select(size_t rank) const;
+	size_t rank(hook const* node) const;
 
-	void insert(hook* node, ptr<hook*> parent_and_side) noexcept;
-	void remove(hook* node) noexcept;
-	void clear() noexcept;
-	list_::hook* flatten() noexcept;
+	void insert(hook* node, ptr<hook*> parent_and_side);
+	void remove(hook* node);
+	void clear();
+	list_::hook* flatten();
 
 	friend void swap(base& lhs, base& rhs) noexcept
 	{
@@ -106,8 +107,8 @@ struct base : link_container
 	};
 };
 
-hook** iterator_begin(hook** root) noexcept;
-hook** iterator_advance(hook** children, bool l) noexcept;
+hook** iterator_begin(hook** root);
+hook** iterator_advance(hook** children, bool l);
 
 
 template<typename T>
@@ -180,8 +181,8 @@ template<std::derived_from<wb_tree_link> T,
 	typename Comparator = std::compare_three_way>
 class wb_tree : base
 {
-	[[no_unique_address]] KeySelector m_key_selector;
-	[[no_unique_address]] Comparator m_comparator;
+	vsm_no_unique_address KeySelector m_key_selector;
+	vsm_no_unique_address Comparator m_comparator;
 
 public:
 	using element_type = T;
@@ -195,17 +196,17 @@ public:
 
 	wb_tree() = default;
 
-	explicit constexpr wb_tree(KeySelector key_selector) noexcept
+	explicit constexpr wb_tree(KeySelector key_selector)
 		: m_key_selector(vsm_move(key_selector))
 	{
 	}
 
-	explicit constexpr wb_tree(Comparator comparator) noexcept
+	explicit constexpr wb_tree(Comparator comparator)
 		: m_comparator(vsm_move(comparator))
 	{
 	}
 
-	explicit constexpr wb_tree(KeySelector key_selector, Comparator comparator) noexcept
+	explicit constexpr wb_tree(KeySelector key_selector, Comparator comparator)
 		: m_key_selector(vsm_move(key_selector))
 		, m_comparator(vsm_move(comparator))
 	{
@@ -215,45 +216,45 @@ public:
 
 
 	/// @return Size of the set.
-	[[nodiscard]] size_t size() const noexcept
+	[[nodiscard]] size_t size() const
 	{
 		return m_root != nullptr ? m_root->weight : 0;
 	}
 
 	/// @return True if the set is empty.
-	[[nodiscard]] bool empty() const noexcept
+	[[nodiscard]] bool empty() const
 	{
 		return m_root == nullptr;
 	}
 
 
-	[[nodiscard]] T* root() noexcept
+	[[nodiscard]] T* root()
 	{
 		vsm_assert(m_root != nullptr);
 		return vsm_detail_wb_elem(m_root);
 	}
 
-	[[nodiscard]] T const* root() const noexcept
+	[[nodiscard]] T const* root() const
 	{
 		vsm_assert(m_root != nullptr);
 		return vsm_detail_wb_elem(m_root);
 	}
 
 
-	[[nodiscard]] size_t weight(T const* const element) const noexcept
+	[[nodiscard]] size_t weight(T const* const element) const
 	{
 		vsm_intrusive_link_check(*this, *element);
 		return vsm_detail_wb_hook(element, const)->weight;
 	}
 
-	[[nodiscard]] wb_tree_children<T> children(T const* const element) noexcept
+	[[nodiscard]] wb_tree_children<T> children(T const* const element)
 	{
 		vsm_intrusive_link_check(*this, *element);
 		hook const* const node = vsm_detail_wb_hook(element, const);
 		return { vsm_detail_wb_elem(hook->children[0]), vsm_detail_wb_elem(hook->children[1]) };
 	}
 
-	[[nodiscard]] wb_tree_children<T const> children(T const* const element) const noexcept
+	[[nodiscard]] wb_tree_children<T const> children(T const* const element) const
 	{
 		vsm_intrusive_link_check(*this, *element);
 		hook const* const node = vsm_detail_wb_hook(element, const);
@@ -318,14 +319,14 @@ public:
 		return { element, true };
 	}
 
-	void remove(T* const element) noexcept
+	void remove(T* const element)
 	{
 		base::remove(vsm_detail_wb_hook(element));
 	}
 
 	using base::clear;
 
-	[[nodiscard]] list<T> flatten() noexcept
+	[[nodiscard]] list<T> flatten()
 	{
 		size_t const size = this->size();
 		return list<T>(static_cast<link_container&&>(*this), base::flatten(), size);
@@ -333,35 +334,35 @@ public:
 
 
 
-	[[nodiscard]] iterator make_iterator(T* const element) noexcept
+	[[nodiscard]] iterator make_iterator(T* const element)
 	{
 		vsm_intrusive_link_check(*this, *element);
 		return iterator(vsm_detail_wb_hook(element));
 	}
 
-	[[nodiscard]] const_iterator make_iterator(T const* const element) const noexcept
+	[[nodiscard]] const_iterator make_iterator(T const* const element) const
 	{
 		vsm_intrusive_link_check(*this, *element);
 		return const_iterator(vsm_detail_wb_hook(element, const));
 	}
 
 
-	[[nodiscard]] iterator begin() noexcept
+	[[nodiscard]] iterator begin()
 	{
 		return iterator(iterator_begin(&m_root));
 	}
 
-	[[nodiscard]] const_iterator begin() const noexcept
+	[[nodiscard]] const_iterator begin() const
 	{
 		return const_iterator(iterator_begin(const_cast<hook**>(&m_root)));
 	}
 
-	[[nodiscard]] iterator end() noexcept
+	[[nodiscard]] iterator end()
 	{
 		return iterator(&m_root);
 	}
 
-	[[nodiscard]] const_iterator end() const noexcept
+	[[nodiscard]] const_iterator end() const
 	{
 		return const_iterator(const_cast<hook**>(&m_root));
 	}

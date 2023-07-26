@@ -12,3 +12,5 @@ class package(ConanFile):
 		"vsm_container_core/0.1",
 		"vsm_tag_ptr/0.1"
 	)
+
+	vsm_libs = ["vsm_intrusive"]

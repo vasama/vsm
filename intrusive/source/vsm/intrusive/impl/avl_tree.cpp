@@ -197,7 +197,7 @@ static bool invariant(base const& self)
 }
 
 
-void base::insert(hook* const node, ptr<ptr<hook>> const parent_and_side) noexcept
+void base::insert(hook* const node, ptr<ptr<hook>> const parent_and_side)
 {
 	vsm_intrusive_link_insert(*this, *node);
 
@@ -216,7 +216,7 @@ void base::insert(hook* const node, ptr<ptr<hook>> const parent_and_side) noexce
 	vsm_assert_slow(invariant(this));
 }
 
-void base::remove(hook* const node) noexcept
+void base::remove(hook* const node)
 {
 	vsm_intrusive_link_remove(*this, *node);
 
@@ -290,7 +290,7 @@ void base::remove(hook* const node) noexcept
 	vsm_assert_slow(invariant(this));
 }
 
-void base::clear() noexcept
+void base::clear()
 {
 	if (m_root != nullptr)
 	{
@@ -320,7 +320,7 @@ void base::clear() noexcept
 	vsm_assert_slow(invariant(this));
 }
 
-list_namespace::hook* base::flatten() noexcept
+list_namespace::hook* base::flatten()
 {
 	hook* root = m_root.ptr();
 

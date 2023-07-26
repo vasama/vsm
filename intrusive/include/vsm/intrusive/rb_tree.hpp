@@ -6,6 +6,7 @@
 #include <vsm/insert_result.hpp>
 #include <vsm/key_selector.hpp>
 #include <vsm/linear.hpp>
+#include <vsm/standard.hpp>
 #include <vsm/tag_ptr.hpp>
 #include <vsm/utility.hpp>
 
@@ -79,10 +80,10 @@ struct base : link_container
 		ptr<const ptr<hook>> parent;
 	};
 
-	void insert(hook* node, ptr<hook*> parent_and_side) noexcept;
-	void remove(hook* node) noexcept;
-	void clear() noexcept;
-	list_::hook* flatten() noexcept;
+	void insert(hook* node, ptr<hook*> parent_and_side);
+	void remove(hook* node);
+	void clear();
+	list_::hook* flatten();
 
 	friend void swap(base& lhs, base& rhs) noexcept
 	{
@@ -116,37 +117,37 @@ public:
 	}
 
 
-	[[nodiscard]] T& operator*() const noexcept
+	[[nodiscard]] T& operator*() const
 	{
 		return *vsm_rb_elem(vsm_rb_hook_from_children(m_children));
 	}
 
-	[[nodiscard]] T* operator->() const noexcept
+	[[nodiscard]] T* operator->() const
 	{
 		return vsm_rb_elem(vsm_rb_hook_from_children(m_children));
 	}
 
 
-	iterator& operator++() & noexcept
+	iterator& operator++() &
 	{
 		m_children = iterator_advance(m_children, 0);
 		return *this;
 	}
 
-	[[nodiscard]] iterator operator++(int) & noexcept
+	[[nodiscard]] iterator operator++(int) &
 	{
 		iterator result = *this;
 		m_children = iterator_advance(m_children, 0);
 		return result;
 	}
 
-	iterator& operator--() & noexcept
+	iterator& operator--() &
 	{
 		m_children = iterator_advance(m_children, 1);
 		return *this;
 	}
 
-	[[nodiscard]] iterator operator--(int) & noexcept
+	[[nodiscard]] iterator operator--(int) &
 	{
 		iterator result = *this;
 		m_children = iterator_advance(m_children, 1);
@@ -165,8 +166,8 @@ class rb_tree : base
 {
 	using key_type = decltype(std::declval<KeySelector const&>()(std::declval<T const&>()));
 
-	[[no_unique_address]] KeySelector m_key_selector;
-	[[no_unique_address]] Comparator m_comparator;
+	vsm_no_unique_address KeySelector m_key_selector;
+	vsm_no_unique_address Comparator m_comparator;
 
 public:
 	using element_type = T;
@@ -179,17 +180,17 @@ public:
 
 	rb_tree() = default;
 
-	explicit constexpr rb_tree(KeySelector key_selector) noexcept
+	explicit constexpr rb_tree(KeySelector key_selector)
 		: m_key_selector(vsm_move(key_selector))
 	{
 	}
 
-	explicit constexpr rb_tree(Comparator comparator) noexcept
+	explicit constexpr rb_tree(Comparator comparator)
 		: m_comparator(vsm_move(comparator))
 	{
 	}
 
-	explicit constexpr rb_tree(KeySelector key_selector, Comparator comparator) noexcept
+	explicit constexpr rb_tree(KeySelector key_selector, Comparator comparator)
 		: m_key_selector(vsm_move(key_selector))
 		, m_comparator(vsm_move(comparator))
 	{
@@ -199,13 +200,13 @@ public:
 
 
 	/// @return Size of the set.
-	[[nodiscard]] size_t size() const noexcept
+	[[nodiscard]] size_t size() const
 	{
 		return m_size.value;
 	}
 
 	/// @return True if the set is empty.
-	[[nodiscard]] bool empty() const noexcept
+	[[nodiscard]] bool empty() const
 	{
 		return m_size.value == 0;
 	}
@@ -269,7 +270,7 @@ public:
 	/// @brief Remove an element from the tree.
 	/// @param element Element to be removed.
 	/// @pre @p element is part of this tree.
-	void remove(T* const element) noexcept
+	void remove(T* const element)
 	{
 		base::remove(vsm_rb_hook(element));
 	}
@@ -278,7 +279,7 @@ public:
 	using base::clear;
 
 	/// @brief Flatten the tree into a linked list using an in-order traversal.
-	[[nodiscard]] list<T> flatten() noexcept
+	[[nodiscard]] list<T> flatten()
 	{
 		size_t const size = this->size();
 		return list<T>(static_cast<link_container&&>(*this), base::flatten(), size);
@@ -288,7 +289,7 @@ public:
 	/// @brief Create an iterator referring to an element.
 	/// @pram element Element to which the resulting iterator shall refer.
 	/// @pre @p element is part of this tree.
-	[[nodiscard]] iterator make_iterator(T* const element) noexcept
+	[[nodiscard]] iterator make_iterator(T* const element)
 	{
 		vsm_intrusive_link_check(*this, *element);
 		return iterator(vsm_rb_hook(element));
@@ -297,29 +298,29 @@ public:
 	/// @brief Create an iterator referring to an element.
 	/// @pram element Element to which the resulting iterator shall refer.
 	/// @pre @p element is part of this tree.
-	[[nodiscard]] const_iterator make_iterator(T const* const element) const noexcept
+	[[nodiscard]] const_iterator make_iterator(T const* const element) const
 	{
 		vsm_intrusive_link_check(*this, *element);
 		return const_iterator(vsm_rb_hook(element, const));
 	}
 
 
-	[[nodiscard]] iterator begin() noexcept
+	[[nodiscard]] iterator begin()
 	{
 		return iterator(iterator_begin(&m_root.value));
 	}
 
-	[[nodiscard]] const_iterator begin() const noexcept
+	[[nodiscard]] const_iterator begin() const
 	{
 		return const_iterator(iterator_begin(const_cast<hook**>(&m_root.value)));
 	}
 
-	[[nodiscard]] iterator end() noexcept
+	[[nodiscard]] iterator end()
 	{
 		return iterator(&m_root.value);
 	}
 
-	[[nodiscard]] const_iterator end() const noexcept
+	[[nodiscard]] const_iterator end() const
 	{
 		return const_iterator(const_cast<hook**>(&m_root.value));
 	}

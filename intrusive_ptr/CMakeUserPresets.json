@@ -4,6 +4,7 @@
         "conan": {}
     },
     "include": [
-        "D:\\Code\\vsm\\intrusive_ptr\\build\\generators\\CMakePresets.json"
+        "D:\\Code\\vsm\\intrusive_ptr\\build\\generators\\CMakePresets.json",
+        "D:/Code/vsm/intrusive_ptr\\build\\generators\\CMakePresets.json"
     ]
 }

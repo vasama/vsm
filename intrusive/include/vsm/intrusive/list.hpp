@@ -39,13 +39,13 @@ struct base : link_container
 	hook m_root;
 	size_t m_size;
 
-	constexpr base()
+	constexpr base() noexcept
 	{
 		m_root.loop();
 		m_size = 0;
 	}
 
-	base(link_container&& container, hook* const list, size_t const size) noexcept
+	base(link_container&& container, hook* const list, size_t const size)
 		: link_container(vsm_move(container))
 	{
 		adopt(list, size);
@@ -68,7 +68,7 @@ struct base : link_container
 		return *this;
 	}
 
-	void move_init(base&& other) noexcept
+	void move_init(base&& other)
 	{
 		if (other.m_size != 0)
 		{
@@ -113,43 +113,43 @@ public:
 
 	iterator() = default;
 
-	explicit iterator(hook* const node) noexcept
+	explicit iterator(hook* const node)
 		: m_node(node)
 	{
 	}
 
 
-	[[nodiscard]] T& operator*() const noexcept
+	[[nodiscard]] T& operator*() const
 	{
 		return *vsm_detail_list_elem(m_node);
 	}
 
-	[[nodiscard]] T* operator->() const noexcept
+	[[nodiscard]] T* operator->() const
 	{
 		return vsm_detail_list_elem(m_node);
 	}
 
 
-	iterator& operator++() & noexcept
+	iterator& operator++() &
 	{
 		m_node = m_node->siblings[Direction];
 		return *this;
 	}
 
-	[[nodiscard]] iterator operator++(int) & noexcept
+	[[nodiscard]] iterator operator++(int) &
 	{
 		iterator result = *this;
 		m_node = m_node->siblings[Direction];
 		return result;
 	}
 
-	iterator& operator--() & noexcept
+	iterator& operator--() &
 	{
 		m_node = m_node->siblings[!Direction];
 		return *this;
 	}
 
-	[[nodiscard]] iterator operator--(int) & noexcept
+	[[nodiscard]] iterator operator--(int) &
 	{
 		iterator result = *this;
 		m_node = m_node->siblings[!Direction];
@@ -180,13 +180,13 @@ public:
 
 
 	/// @return Size of the list.
-	[[nodiscard]] size_t size() const noexcept
+	[[nodiscard]] size_t size() const
 	{
 		return m_size;
 	}
 
 	/// @return True if the list is empty.
-	[[nodiscard]] bool empty() const noexcept
+	[[nodiscard]] bool empty() const
 	{
 		return m_size == 0;
 	}
@@ -194,7 +194,7 @@ public:
 
 	/// @return First element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] T* front() noexcept
+	[[nodiscard]] T* front()
 	{
 		vsm_assert(m_size > 0);
 		return vsm_detail_list_elem(m_root.siblings[0]);
@@ -202,7 +202,7 @@ public:
 
 	/// @return First element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] T const* front() const noexcept
+	[[nodiscard]] T const* front() const
 	{
 		vsm_assert(m_size > 0);
 		return vsm_detail_list_elem(m_root.siblings[0]);
@@ -210,7 +210,7 @@ public:
 
 	/// @return Last element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] T* back() noexcept
+	[[nodiscard]] T* back()
 	{
 		vsm_assert(m_size > 0);
 		return vsm_detail_list_elem(m_root.siblings[1]);
@@ -218,7 +218,7 @@ public:
 
 	/// @return Last element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] T const* back() const noexcept
+	[[nodiscard]] T const* back() const
 	{
 		vsm_assert(m_size > 0);
 		return vsm_detail_list_elem(m_root.siblings[1]);
@@ -229,65 +229,65 @@ public:
 	/// @brief Insert an element at the front of the list.
 	/// @param element Element to be inserted.
 	/// @pre @p element is not part of any container.
-	void push_front(T* const element) noexcept
+	void push_front(T* const element)
 	{
 		base::insert(&m_root, vsm_detail_list_hook(element), 0);
 	}
 
-	void splice_front(list<T>&& list) noexcept;
+	void splice_front(list<T>&& list);
 
 	/// @brief Insert an element at the back of the list.
 	/// @param element Element to be inserted.
 	/// @pre @p element is not part of any container.
-	void push_back(T* const element) noexcept
+	void push_back(T* const element)
 	{
 		base::insert(&m_root, vsm_detail_list_hook(element), 1);
 	}
 
-	void splice_back(list<T>&& list) noexcept;
+	void splice_back(list<T>&& list);
 
 	/// @brief Insert an element before another element.
 	/// @param existing Existing element positioned after the new element.
 	/// @param element Element to be inserted.
 	/// @pre @p existing is part of this container.
 	/// @pre @p element is not part of any container.
-	void insert_before(T* const existing, T* const element) noexcept
+	void insert_before(T* const existing, T* const element)
 	{
 		base::insert(vsm_detail_list_hook(existing), vsm_detail_list_hook(element), 0);
 	}
 
-	void insert_before(iterator const existing, T* const element) noexcept;
+	void insert_before(iterator const existing, T* const element);
 
-	void splice_before(T* const existing, list<T>&& list) noexcept;
-	void splice_before(iterator const existing, list<T>&& list) noexcept;
+	void splice_before(T* const existing, list<T>&& list);
+	void splice_before(iterator const existing, list<T>&& list);
 
 	/// @brief Insert an element after another element.
 	/// @param existing Existing element positioned before the new element.
 	/// @param element Element to be inserted.
 	/// @pre @p existing is part of this container.
 	/// @pre @p element is not part of any container.
-	void insert_after(T* const existing, T* const element) noexcept
+	void insert_after(T* const existing, T* const element)
 	{
 		base::insert(vsm_detail_list_hook(existing), vsm_detail_list_hook(element), 1);
 	}
 
-	void insert_after(iterator const existing, T* const element) noexcept;
+	void insert_after(iterator const existing, T* const element);
 
-	void splice_after(T* const existing, list<T>&& list) noexcept;
-	void splice_after(iterator const existing, list<T>&& list) noexcept;
+	void splice_after(T* const existing, list<T>&& list);
+	void splice_after(iterator const existing, list<T>&& list);
 
 	/// @brief Remove an element from the list.
 	/// @param element Element to be removed.
 	/// @pre @p element is part of this list.
-	void remove(T* const element) noexcept
+	void remove(T* const element)
 	{
 		base::remove(vsm_detail_list_hook(element));
 	}
 
-	list<T> remove_list(T* const begin, T* const end) noexcept;
+	list<T> remove_list(T* const begin, T* const end);
 
 
-	void clear() noexcept
+	void clear()
 	{
 		if (m_size != 0)
 		{
@@ -296,32 +296,32 @@ public:
 	}
 
 
-	[[nodiscard]] iterator before_begin() noexcept
+	[[nodiscard]] iterator before_begin()
 	{
 		return iterator(&m_root);
 	}
 
-	[[nodiscard]] const_iterator before_begin() const noexcept
+	[[nodiscard]] const_iterator before_begin() const
 	{
 		return const_iterator(const_cast<detail::list_::hook*>(&m_root));
 	}
 
-	[[nodiscard]] iterator begin() noexcept
+	[[nodiscard]] iterator begin()
 	{
 		return iterator(m_root.siblings[0]);
 	}
 
-	[[nodiscard]] const_iterator begin() const noexcept
+	[[nodiscard]] const_iterator begin() const
 	{
 		return const_iterator(m_root.siblings[0]);
 	}
 
-	[[nodiscard]] iterator end() noexcept
+	[[nodiscard]] iterator end()
 	{
 		return iterator(&m_root);
 	}
 
-	[[nodiscard]] const_iterator end() const noexcept
+	[[nodiscard]] const_iterator end() const
 	{
 		return const_iterator(const_cast<detail::list_::hook*>(&m_root));
 	}

@@ -20,9 +20,14 @@ vsm_add_library(vsm_core
 		include/vsm/detail/platform/x86.h
 		include/vsm/detail/platform/x86_32.h
 		include/vsm/detail/platform/x86_64.h
+		include/vsm/detail/atomic_x86_64.hpp
+		include/vsm/detail/categories.hpp
 	
 		include/vsm/assert.h
+		include/vsm/atomic.hpp
 		include/vsm/concepts.hpp
+		include/vsm/defer.hpp
+		include/vsm/int128.hpp
 		include/vsm/lift.hpp
 		include/vsm/platform.h
 		include/vsm/preprocessor.h

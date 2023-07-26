@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.23.0)
 project(vsm_tag_ptr)
 
 vsm_find_sibling(vsm-core)
+vsm_find_sibling(vsm-test_tools)
 
 vsm_add_library(vsm_tag_ptr
 	EXPORT_ALIAS vsm::tag_ptr

@@ -38,14 +38,14 @@ struct base : link_container
 		m_tail = &m_root;
 	}
 
-	void push_front(hook* head, hook* tail) noexcept;
-	void push_front(hook* node) noexcept;
-	void splice_front(base& list) noexcept;
-	void push_back(hook* head, hook* tail) noexcept;
-	void push_back(hook* node) noexcept;
-	void splice_back(base& list) noexcept;
-	hook* pop_front() noexcept;
-	void clear() noexcept;
+	void push_front(hook* head, hook* tail);
+	void push_front(hook* node);
+	void splice_front(base& list);
+	void push_back(hook* head, hook* tail);
+	void push_back(hook* node);
+	void splice_back(base& list);
+	hook* pop_front();
+	void clear();
 };
 
 
@@ -69,24 +69,24 @@ public:
 	}
 
 
-	[[nodiscard]] T& operator*() const noexcept
+	[[nodiscard]] T& operator*() const
 	{
 		return *vsm_detail_forward_list_elem(m_node);
 	}
 
-	[[nodiscard]] T* operator->() const noexcept
+	[[nodiscard]] T* operator->() const
 	{
 		return vsm_detail_forward_list_elem(m_node);
 	}
 	
 	
-	iterator& operator++() const noexcept
+	iterator& operator++() const
 	{
 		m_node = m_node->next;
 		return *this;
 	}
 
-	[[nodiscard]] iterator operator++(int) & noexcept
+	[[nodiscard]] iterator operator++(int) &
 	{
 		iterator result = *this;
 		m_node = m_node->next;
@@ -113,7 +113,7 @@ public:
 
 
 	/// @return True if the list is empty.
-	[[nodiscard]] bool empty() const noexcept
+	[[nodiscard]] bool empty() const
 	{
 		return m_root.next == &m_root;
 	}
@@ -121,7 +121,7 @@ public:
 
 	/// @return First element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] T* front() noexcept
+	[[nodiscard]] T* front()
 	{
 		vsm_assert(m_root.next != &m_root);
 		return vsm_detail_forward_list_elem(m_root.next);
@@ -129,7 +129,7 @@ public:
 
 	/// @return First element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] T const* front() const noexcept
+	[[nodiscard]] T const* front() const
 	{
 		vsm_assert(m_root.next != &m_root);
 		return vsm_detail_forward_list_elem(m_root.next);
@@ -139,23 +139,23 @@ public:
 	/// @brief Insert an element at the front of the list.
 	/// @param element Element to be inserted.
 	/// @pre @p element is not part of any container.
-	void push_front(T* const element) noexcept
+	void push_front(T* const element)
 	{
 		base::push_front(vsm_detail_forward_list_hook(element));
 	}
 
-	void splice_front(forward_list<T>&& other) noexcept
+	void splice_front(forward_list<T>&& other)
 	{
 		base::splice_front(other);
 	}
 
 
-	void push_back(T* const element) noexcept
+	void push_back(T* const element)
 	{
 		base::push_back(vsm_detail_forward_list_hook(element));
 	}
 
-	void splice_back(forward_list<T>&& other) noexcept
+	void splice_back(forward_list<T>&& other)
 	{
 		base::splice_back(other);
 	}
@@ -164,14 +164,14 @@ public:
 	/// @brief Remove the first element from the list.
 	/// @return The first element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] T* pop_front() noexcept
+	[[nodiscard]] T* pop_front()
 	{
 		vsm_assert(m_root.next != &m_root);
 		return vsm_detail_forward_list_elem(base::pop_front());
 	}
 
 
-	void clear() noexcept
+	void clear()
 	{
 		if (m_root.next != &m_root)
 		{
@@ -180,32 +180,32 @@ public:
 	}
 
 
-	[[nodiscard]] iterator before_begin() noexcept
+	[[nodiscard]] iterator before_begin()
 	{
 		return iterator(&m_root);
 	}
 
-	[[nodiscard]] const_iterator before_begin() const noexcept
+	[[nodiscard]] const_iterator before_begin() const
 	{
 		return const_iterator(const_cast<detail::forward_list_::hook*>(&m_root));
 	}
 
-	[[nodiscard]] iterator begin() noexcept
+	[[nodiscard]] iterator begin()
 	{
 		return iterator(m_root.next);
 	}
 
-	[[nodiscard]] const_iterator begin() const noexcept
+	[[nodiscard]] const_iterator begin() const
 	{
 		return const_iterator(m_root.next);
 	}
 
-	[[nodiscard]] iterator end() noexcept
+	[[nodiscard]] iterator end()
 	{
 		return iterator(&m_root);
 	}
 
-	[[nodiscard]] const_iterator end() const noexcept
+	[[nodiscard]] const_iterator end() const
 	{
 		return const_iterator(const_cast<detail::forward_list_::hook*>(&m_root));
 	}

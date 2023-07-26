@@ -55,15 +55,15 @@ class link_base
 
 class link_container
 {
-	friend void vsm_intrusive_link_insert(link_container& container, link_base& link) noexcept
+	friend void vsm_intrusive_link_insert(link_container& container, link_base& link)
 	{
 	}
 
-	friend void vsm_intrusive_link_remove(link_container& container, link_base& link) noexcept
+	friend void vsm_intrusive_link_remove(link_container& container, link_base& link)
 	{
 	}
 
-	friend void vsm_intrusive_link_check(link_container const& container, link_base const& link) noexcept
+	friend void vsm_intrusive_link_check(link_container const& container, link_base const& link)
 	{
 	}
 };

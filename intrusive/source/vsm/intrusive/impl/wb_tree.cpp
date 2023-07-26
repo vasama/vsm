@@ -161,7 +161,7 @@ static bool invariant(base const& self)
 }
 
 
-hook* base::select(size_t rank) const noexcept
+hook* base::select(size_t rank) const
 {
 	hook* node = m_root;
 	vsm_assert(node != nullptr);
@@ -184,7 +184,7 @@ hook* base::select(size_t rank) const noexcept
 	}
 }
 
-size_t base::rank(hook const* node) const noexcept
+size_t base::rank(hook const* node) const
 {
 	vsm_intrusive_link_check(*this, *node);
 
@@ -203,7 +203,7 @@ size_t base::rank(hook const* node) const noexcept
 	return rank;
 }
 
-void base::insert(hook* const node, ptr<hook*> const parent_and_side) noexcept
+void base::insert(hook* const node, ptr<hook*> const parent_and_side)
 {
 	vsm_intrusive_link_insert(*this, *node);
 
@@ -221,7 +221,7 @@ void base::insert(hook* const node, ptr<hook*> const parent_and_side) noexcept
 	vsm_assert_slow(invariant(*this));
 }
 
-void base::remove(hook* const node) noexcept
+void base::remove(hook* const node)
 {
 	vsm_intrusive_link_remove(*this, *node);
 
@@ -297,7 +297,7 @@ void base::remove(hook* const node) noexcept
 	vsm_assert_slow(invariant(*this));
 }
 
-void base::clear() noexcept
+void base::clear()
 {
 	if (m_root != nullptr)
 	{
@@ -326,7 +326,7 @@ void base::clear() noexcept
 	vsm_assert_slow(invariant(*this));
 }
 
-list_namespace::hook* base::flatten() noexcept
+list_namespace::hook* base::flatten()
 {
 	hook* root = m_root;
 
@@ -379,13 +379,13 @@ list_namespace::hook* base::flatten() noexcept
 }
 
 
-hook** tree_namespace::iterator_begin(hook** const root) noexcept
+hook** tree_namespace::iterator_begin(hook** const root)
 {
 	hook* const node = *root;
 	return node != nullptr ? leftmost(node, 0)->children : root;
 }
 
-hook** tree_namespace::iterator_advance(hook** const children, bool const l) noexcept
+hook** tree_namespace::iterator_advance(hook** const children, bool const l)
 {
 	bool const r = !l;
 

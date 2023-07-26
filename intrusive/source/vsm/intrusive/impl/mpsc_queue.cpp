@@ -18,12 +18,12 @@ static hook* reverse_list(hook* head)
 }
 
 
-void base::push_one(hook* const node) noexcept
+void base::push_one(hook* const node)
 {
 	push_all(node, node);
 }
 
-void base::push_all(hook* const head, hook* const tail) noexcept
+void base::push_all(hook* const head, hook* const tail)
 {
 	hook* expected = m_produce_head.load(std::memory_order_acquire);
 
@@ -36,7 +36,7 @@ void base::push_all(hook* const head, hook* const tail) noexcept
 		std::memory_order_release, std::memory_order_acquire));
 }
 
-hook_pair base::pop_all() noexcept
+hook_pair base::pop_all()
 {
 	if (m_produce_head.load(std::memory_order_acquire) == nullptr)
 	{

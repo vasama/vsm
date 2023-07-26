@@ -55,9 +55,20 @@ class base:
 	def layout(self):
 		cmake_layout(self)
 
+#		gen = self.conf.get("tools.cmake.cmaketoolchain:generator")
+#		if gen:
+#			multi = "Visual" in gen or "Xcode" in gen or "Multi-Config" in gen
+#		else:
+#			multi = self.settings.get_safe("compiler") in ("Visual Studio", "msvc")
+#
+#		self.folders.source = "."
+#		if multi:
+#			self.folders.build = "build"
+#			self.folders.generators = "build/conan"
+
 	def build(self):
 		# Path of this file during the user package build.
-		tools_path = self.python_requires["vsm_tools"].path
+		#tools_path = self.python_requires["vsm_tools"].path
 
 		cmake = CMake(self)
 		cmake.configure()
@@ -74,3 +85,6 @@ class base:
 	def package_info(self):
 		self.cpp_info.set_property("cmake_file_name", self.vsm_name.replace("::", "-"))
 		self.cpp_info.set_property("cmake_target_name", self.vsm_name)
+
+		if (hasattr(self, "vsm_libs")):
+			self.cpp_info.libs.extend(self.vsm_libs)

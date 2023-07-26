@@ -4,6 +4,7 @@
 
 #include <vsm/assert.h>
 #include <vsm/key_selector.hpp>
+#include <vsm/standard.hpp>
 #include <vsm/utility.hpp>
 
 #include <concepts>
@@ -92,35 +93,33 @@ struct base : link_container
 };
 
 
-template<std::derived_from<heap_link> T,
-	typename Comparator,
-	key_selector<T> KeySelector = identity_key_selector>
+template<
+	typename T, typename Comparator,
+	typename KeySelector = identity_key_selector>
 class heap : base
 {
+	static_assert(std::derived_from<T, heap_link>);
+	static_assert(key_selector<KeySelector, T>);
+
 	using key_type = decltype(std::declval<KeySelector const&>()(std::declval<T const&>()));
 
-	static constexpr bool noexcept_compare = noexcept(
-		std::declval<Comparator const&>()(
-			std::declval<key_type const&>(),
-			std::declval<key_type const&>()));
-
-	[[no_unique_address]] KeySelector m_key_selector;
-	[[no_unique_address]] Comparator m_comparator;
+	vsm_no_unique_address KeySelector m_key_selector;
+	vsm_no_unique_address Comparator m_comparator;
 
 public:
 	heap() = default;
 
-	explicit constexpr heap(KeySelector key_selector) noexcept
+	explicit constexpr heap(KeySelector key_selector)
 		: m_key_selector(vsm_move(key_selector))
 	{
 	}
 
-	explicit constexpr heap(Comparator comparator) noexcept
+	explicit constexpr heap(Comparator comparator)
 		: m_comparator(vsm_move(comparator))
 	{
 	}
 
-	explicit constexpr heap(KeySelector key_selector, Comparator comparator) noexcept
+	explicit constexpr heap(KeySelector key_selector, Comparator comparator)
 		: m_key_selector(vsm_move(key_selector))
 		, m_comparator(vsm_move(comparator))
 	{
@@ -130,13 +129,13 @@ public:
 
 
 	/// @return Size of the heap.
-	[[nodiscard]] size_t size() const noexcept
+	[[nodiscard]] size_t size() const
 	{
 		return m_size;
 	}
 
 	/// @return True if the heap is empty.
-	[[nodiscard]] bool empty() const noexcept
+	[[nodiscard]] bool empty() const
 	{
 		return m_size == 0;
 	}
@@ -144,7 +143,7 @@ public:
 
 	/// @return The minimum element of the heap.
 	/// @pre The heap is not empty.
-	[[nodiscard]] T* peek() noexcept
+	[[nodiscard]] T* peek()
 	{
 		vsm_assert(m_size > 0);
 		return vsm_detail_heap_elem(m_root);
@@ -152,7 +151,7 @@ public:
 
 	/// @return The minimum element of the heap.
 	/// @pre The heap is not empty.
-	[[nodiscard]] T const* peek() const noexcept
+	[[nodiscard]] T const* peek() const
 	{
 		vsm_assert(m_size > 0);
 		return vsm_detail_heap_elem(m_root);
@@ -162,7 +161,7 @@ public:
 	/// @brief Insert an element into the heap.
 	/// @param element Element to be inserted.
 	/// @pre @p element is not part of any container.
-	void push(T* const element) noexcept(noexcept_compare)
+	void push(T* const element)
 	{
 		base::push(vsm_detail_heap_hook(element), comparator);
 	}
@@ -170,7 +169,7 @@ public:
 	/// @brief Remove an element from the heap.
 	/// @param element Element to be removed.
 	/// @pre @p element is part of this heap.
-	void remove(T* const element) noexcept(noexcept_compare)
+	void remove(T* const element)
 	{
 		base::remove(vsm_detail_heap_hook(element), comparator);
 	}
@@ -178,7 +177,7 @@ public:
 	/// @brief Pop the minimum element of the heap.
 	/// @return The minimum element.
 	/// @pre The heap is not empty.
-	[[nodiscard]] T* pop() noexcept(noexcept_compare)
+	[[nodiscard]] T* pop()
 	{
 		return vsm_detail_heap_elem(base::pop(comparator));
 	}
@@ -209,10 +208,10 @@ private:
 
 using detail::heap_::heap;
 
-template<std::derived_from<heap_link> T, key_selector<T> KeySelector = identity_key_selector>
+template<typename T, typename KeySelector = identity_key_selector>
 using max_heap = heap<T, std::less<>, KeySelector>;
 
-template<std::derived_from<heap_link> T, key_selector<T> KeySelector = identity_key_selector>
+template<typename T, typename KeySelector = identity_key_selector>
 using min_heap = heap<T, std::greater<>, KeySelector>;
 
 } // namespace vsm::intrusive

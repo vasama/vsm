@@ -56,12 +56,13 @@ struct intrusive_ptr_delete_cpo
 };
 
 
+template<typename Counter>
 struct intrusive_ref_count_base
 {
 	template<typename T>
 	using type = T;
 
-	atomic<size_t> m_ref_count;
+	Counter m_ref_count;
 
 	explicit intrusive_ref_count_base(size_t const ref_count)
 		: m_ref_count(ref_count)
@@ -69,12 +70,13 @@ struct intrusive_ref_count_base
 	}
 };
 
+template<typename Counter>
 struct intrusive_ref_count_mutable_base
 {
 	template<typename T>
 	using type = T const;
 
-	atomic<size_t> mutable m_ref_count;
+	Counter mutable m_ref_count;
 
 	explicit intrusive_ref_count_mutable_base(size_t const ref_count)
 		: m_ref_count(ref_count)
@@ -111,7 +113,7 @@ protected:
 	template<std::derived_from<basic_intrusive_ref_count> T>
 	friend void tag_invoke(intrusive_ptr_acquire_cpo, typename Base::template type<T>* const ptr, size_t const count)
 	{
-		ptr->m_ref_count.fetch_add(count, std::memory_order_relaxed);
+		(void)ptr->m_ref_count.fetch_add(count, std::memory_order_relaxed);
 	}
 
 	template<std::derived_from<basic_intrusive_ref_count> T>
@@ -130,8 +132,14 @@ protected:
 
 } // namespace detail
 
-using intrusive_ref_count = detail::basic_intrusive_ref_count<detail::intrusive_ref_count_base>;
-using intrusive_mutable_ref_count = detail::basic_intrusive_ref_count<detail::intrusive_ref_count_mutable_base>;
+template<typename Counter>
+using basic_intrusive_ref_count = detail::basic_intrusive_ref_count<detail::intrusive_ref_count_base<Counter>>;
+
+template<typename Counter>
+using basic_intrusive_mutable_ref_count = detail::basic_intrusive_ref_count<detail::intrusive_ref_count_mutable_base<Counter>>;
+
+using intrusive_ref_count = basic_intrusive_ref_count<atomic<size_t>>;
+using intrusive_mutable_ref_count = basic_intrusive_mutable_ref_count<atomic<size_t>>;
 
 inline constexpr detail::intrusive_ptr_acquire_cpo intrusive_ptr_acquire = {};
 inline constexpr detail::intrusive_ptr_release_cpo intrusive_ptr_release = {};
@@ -162,12 +170,12 @@ public:
 	{
 	}
 
-	constexpr intrusive_ptr(decltype(nullptr)) noexcept
+	constexpr intrusive_ptr(decltype(nullptr))
 		: m_ptr(nullptr)
 	{
 	}
 
-	explicit constexpr intrusive_ptr(T* const ptr) noexcept
+	explicit constexpr intrusive_ptr(T* const ptr)
 		: m_ptr(ptr)
 	{
 		if (ptr != nullptr)
@@ -176,7 +184,7 @@ public:
 		}
 	}
 
-	explicit constexpr intrusive_ptr(T* const ptr, any_cvref_of<Manager> auto&& manager) noexcept
+	explicit constexpr intrusive_ptr(T* const ptr, any_cvref_of<Manager> auto&& manager)
 		: m_ptr(ptr)
 		, m_manager(vsm_forward(manager))
 	{
@@ -241,7 +249,7 @@ public:
 		return *this;
 	}
 
-	constexpr ~intrusive_ptr() noexcept
+	constexpr ~intrusive_ptr()
 	{
 		if (m_ptr != nullptr)
 		{
@@ -269,24 +277,24 @@ public:
 	[[nodiscard]] constexpr T* operator->() const
 	{
 		vsm_assert(m_ptr != nullptr);
-		return *m_ptr;
+		return m_ptr;
 	}
 
 
-	constexpr void reset(T* const new_ptr)
+	constexpr void reset(T* const new_ptr = nullptr)
 	{
 		T* const old_ptr = m_ptr;
 		m_ptr = nullptr;
 		
 		if (new_ptr != nullptr)
 		{
-			m_manager.acquire(new_ptr);
+			m_manager.acquire(new_ptr, 1);
 		}
 		m_ptr = new_ptr;
 		
 		if (old_ptr != nullptr)
 		{
-			m_manager.release(old_ptr);
+			m_manager.release(old_ptr, 1);
 		}
 	}
 
@@ -337,6 +345,11 @@ public:
 	[[nodiscard]] friend auto operator<=>(intrusive_ptr const& ptr, decltype(nullptr))
 	{
 		return std::compare_three_way()(ptr.m_ptr, static_cast<T*>(nullptr));
+	}
+
+	[[nodiscard]] explicit operator bool() const
+	{
+		return m_ptr != nullptr;
 	}
 
 private:

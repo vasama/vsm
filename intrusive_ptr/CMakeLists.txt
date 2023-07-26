@@ -9,14 +9,14 @@ vsm_add_library(vsm_intrusive_ptr
 	EXPORT_ALIAS vsm::intrusive_ptr
 
 	HEADERS
-		#include/vsm/atomic_intrusive_ptr.hpp
+		include/vsm/atomic_intrusive_ptr.hpp
 		include/vsm/intrusive_ptr.hpp
 
 	HEADER_DEPENDENCIES
 		vsm::core
 
 	TEST_SOURCES
-		#source/vsm/test/atomic_intrusive_ptr.cpp
+		source/vsm/test/atomic_intrusive_ptr.cpp
 		source/vsm/test/intrusive_ptr.cpp
 
 	TEST_DEPENDENCIES

@@ -22,9 +22,9 @@ struct base : link_container
 {
 	atomic<hook*> m_produce_head = nullptr;
 
-	void push_one(hook* node) noexcept;
-	void push_all(hook* head, hook* tail) noexcept;
-	hook_pair pop_all() noexcept;
+	void push_one(hook* node);
+	void push_all(hook* head, hook* tail);
+	hook_pair pop_all();
 };
 
 } // namespace detail::mpsc_queue_
@@ -39,15 +39,15 @@ public:
 
 
 	/// @pre @p element is not null.
-	void push(T* const element) noexcept
+	void push(T* const element)
 	{
 		vsm_assert(element != nullptr);
 		base::push_one(vsm_detail_forward_list_hook(element));
 	}
 
-	void push_list(forward_list<T>&& list) noexcept;
+	void push_list(forward_list<T>&& list);
 
-	[[nodiscard]] forward_list<T> pop_all() noexcept
+	[[nodiscard]] forward_list<T> pop_all()
 	{
 		auto const pair = base::pop_all();
 		return forward_list<T>(pair.head, pair.tail);

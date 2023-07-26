@@ -63,7 +63,7 @@ consteval bool tag_ptr_check_tag(Tag const max)
 }
 
 template<typename In, typename InTag, InTag InMax, typename Out, typename OutTag, OutTag OutMax>
-void static_cast_constraint(incomplete_tag_ptr<In, InTag, InMax>, incomplete_tag_ptr<Out, OutTag, OutMax>**)
+auto static_cast_constraint(incomplete_tag_ptr<In, InTag, InMax>, incomplete_tag_ptr<Out, OutTag, OutMax>**) -> incomplete_tag_ptr<Out, OutTag, OutMax>
 	requires
 		requires (In* in, InTag in_tag)
 		{
@@ -73,7 +73,7 @@ void static_cast_constraint(incomplete_tag_ptr<In, InTag, InMax>, incomplete_tag
 		&& (static_cast<OutTag>(InMax) <= OutMax);
 
 template<typename In, typename Tag, Tag Max, typename Out>
-void const_cast_constraint(incomplete_tag_ptr<In, Tag, Max>, incomplete_tag_ptr<Out, Tag, Max>**)
+auto const_cast_constraint(incomplete_tag_ptr<In, Tag, Max>, incomplete_tag_ptr<Out, Tag, Max>**) -> incomplete_tag_ptr<Out, Tag, Max>
 	requires requires (In* in) { const_cast<Out*>(in); };
 
 template<typename T, typename Tag, Tag Max, intptr Integer>
