@@ -197,7 +197,7 @@ class atomic
 {
 	using ref_type = atomic_ref<T>;
 
-	mutable alignas(ref_type::required_alignment) T m_storage = {};
+	alignas(ref_type::required_alignment) mutable T m_storage = {};
 
 public:
 	static constexpr bool is_always_lock_free = true;
