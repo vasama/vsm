@@ -251,14 +251,14 @@ public:
 	{
 		vsm_intrusive_link_check(*this, *element);
 		hook const* const node = vsm_detail_wb_hook(element, const);
-		return { vsm_detail_wb_elem(hook->children[0]), vsm_detail_wb_elem(hook->children[1]) };
+		return { vsm_detail_wb_elem(node->children[0]), vsm_detail_wb_elem(node->children[1]) };
 	}
 
 	[[nodiscard]] wb_tree_children<T const> children(T const* const element) const
 	{
 		vsm_intrusive_link_check(*this, *element);
 		hook const* const node = vsm_detail_wb_hook(element, const);
-		return { vsm_detail_wb_elem(hook->children[0]), vsm_detail_wb_elem(hook->children[1]) };
+		return { vsm_detail_wb_elem(node->children[0]), vsm_detail_wb_elem(node->children[1]) };
 	}
 
 

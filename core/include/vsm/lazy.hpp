@@ -10,8 +10,6 @@ namespace detail {
 template<typename Lambda>
 class lazy
 {
-	using result_type = std::invoke_result_t<Lambda&&>;
-
 	Lambda m_lambda;
 
 public:
@@ -21,31 +19,7 @@ public:
 	}
 
 
-	operator result_type() &&
-		noexcept(noexcept(vsm_move(m_lambda)()))
-	{
-		return vsm_move(m_lambda)();
-	}
-
-	template<typename T>
-		requires std::is_convertible_v<result_type, T>
-	operator T() &&
-		noexcept(noexcept(T(vsm_move(m_lambda)())))
-	{
-		return vsm_move(m_lambda)();
-	}
-
-	template<typename T>
-		requires std::is_reference_v<result_type> && std::is_convertible_v<result_type, T&>
-	operator T&() &&
-		noexcept(noexcept(vsm_move(m_lambda)()))
-	{
-		return vsm_move(m_lambda)();
-	}
-
-	template<typename T>
-		requires std::is_reference_v<result_type> && std::is_convertible_v<result_type, T&&>
-	operator T&&() &&
+	operator std::invoke_result_t<Lambda&&>() &&
 		noexcept(noexcept(vsm_move(m_lambda)()))
 	{
 		return vsm_move(m_lambda)();

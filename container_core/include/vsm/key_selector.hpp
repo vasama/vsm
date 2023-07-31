@@ -17,7 +17,7 @@ struct select_key_cpo
 	template<typename T, typename Selector>
 	vsm_static_operator decltype(auto) operator()(T const& key, Selector const& selector) vsm_static_operator_const noexcept
 	{
-		return tag_invoke(*this, key, selector);
+		return tag_invoke(select_key_cpo(), key, selector);
 	}
 };
 
@@ -32,7 +32,7 @@ struct simplify_key_cpo
 	template<typename T, typename Selector>
 	vsm_static_operator decltype(auto) operator()(T const& key, Selector const& selector) vsm_static_operator_const noexcept
 	{
-		return tag_invoke(*this, key, selector);
+		return tag_invoke(simplify_key_cpo(), key, selector);
 	}
 };
 
@@ -72,8 +72,8 @@ struct default_key_selector
 	template<typename T>
 	vsm_static_operator decltype(auto) operator()(T const& key) vsm_static_operator_const noexcept
 	{
-		decltype(auto) k = tag_invoke(select_key, key, *this);
-		decltype(auto) s = tag_invoke(simplify_key, k, *this);
+		decltype(auto) k = tag_invoke(select_key, key, default_key_selector());
+		decltype(auto) s = tag_invoke(simplify_key, k, default_key_selector());
 
 		if constexpr (std::is_reference_v<decltype(k)>)
 		{
