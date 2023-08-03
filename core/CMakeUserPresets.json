@@ -1,9 +1,0 @@
-{
-    "version": 4,
-    "vendor": {
-        "conan": {}
-    },
-    "include": [
-        "/home/vasama/c/vsm/core/build/Debug/generators/CMakePresets.json"
-    ]
-}
