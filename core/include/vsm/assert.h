@@ -2,6 +2,10 @@
 
 #include <vsm/platform.h>
 
+#ifndef vsm_config_assert
+#	define vsm_config_assert 2
+#endif
+
 #if __cplusplus
 extern "C" {
 #endif
@@ -13,14 +17,6 @@ extern "C" {
 /// @return Returns true if the program should raise a debuggable interrupt at the callsite.
 bool vsm_assert_fail(char const* file, int line, char const* expr);
 
-#if __cplusplus
-constexpr
-#endif
-inline bool vsm_detail_assert_args(bool const value)
-{
-	return value;
-}
-
 #define vsm_detail_assert_fail(...) ( \
 		vsm_assert_fail(__FILE__, __LINE__, #__VA_ARGS__) \
 			? vsm_debugbreak() \
@@ -28,7 +24,7 @@ inline bool vsm_detail_assert_args(bool const value)
 	)
 
 #define vsm_detail_assert(...) ( \
-		vsm_detail_assert_args(__VA_ARGS__) \
+		(__VA_ARGS__) \
 			? (void)0 \
 			: vsm_detail_assert_fail(__VA_ARGS__) \
 	)
