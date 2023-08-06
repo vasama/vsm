@@ -41,4 +41,10 @@ bool vsm_assert_fail_default(char const* const file, int const line, char const*
 	}
 }
 
-#pragma comment(linker, "/alternatename:_vsm_assert_fail=_vsm_assert_fail_default")
+extern "C"
+bool vsm_assert_fail(char const* const file, int const line, char const* const expr)
+{
+	return vsm_assert_fail_default(file, line, expr);
+}
+
+//#pragma comment(linker, "/alternatename:_vsm_assert_fail=_vsm_assert_fail_default")

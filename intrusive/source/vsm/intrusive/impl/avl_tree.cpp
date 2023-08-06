@@ -213,7 +213,7 @@ void base::insert(hook* const node, ptr<ptr<hook>> const parent_and_side)
 
 	rebalance(&m_root, parent, l, true);
 
-	vsm_assert_slow(invariant(this));
+	vsm_assert_slow(invariant(*this));
 }
 
 void base::remove(hook* const node)
@@ -287,7 +287,7 @@ void base::remove(hook* const node)
 
 	rebalance(&m_root, balance_node, balance_l, false);
 
-	vsm_assert_slow(invariant(this));
+	vsm_assert_slow(invariant(*this));
 }
 
 void base::clear()
@@ -317,7 +317,7 @@ void base::clear()
 		m_size = 0;
 	}
 
-	vsm_assert_slow(invariant(this));
+	vsm_assert_slow(invariant(*this));
 }
 
 list_namespace::hook* base::flatten()
@@ -369,7 +369,7 @@ list_namespace::hook* base::flatten()
 		root = head;
 	}
 
-	vsm_assert_slow(invariant(this));
+	vsm_assert_slow(invariant(*this));
 
 	return reinterpret_cast<list_::hook*>(root);
 }
