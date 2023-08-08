@@ -13,7 +13,7 @@ class deferral
 	Lambda m_lambda;
 
 public:
-	explicit deferral(std::convertible_to<Lambda> auto&& lambda)
+	deferral(std::convertible_to<Lambda> auto&& lambda)
 		: m_lambda(vsm_forward(lambda))
 	{
 	}
@@ -28,7 +28,7 @@ public:
 };
 
 template<typename Lambda>
-deferral(Lambda) -> deferral<std::decay_t<Lambda>>;
+deferral(Lambda&&) -> deferral<std::remove_reference_t<Lambda>>;
 
 } // namespace detail
 

@@ -1,5 +1,7 @@
 #include <vsm/assert.h>
 
+#include <vsm/preprocessor.h>
+
 #include <cstdio>
 #include <cstdlib>
 
@@ -41,10 +43,10 @@ bool vsm_assert_fail_default(char const* const file, int const line, char const*
 	}
 }
 
-extern "C"
-bool vsm_assert_fail(char const* const file, int const line, char const* const expr)
-{
-	return vsm_assert_fail_default(file, line, expr);
-}
+#if vsm_arch_x86_32
+#	define vsm_detail_mangle(name) vsm_pp_cat(_, name)
+#else
+#	define vsm_detail_mangle(name) name
+#endif
 
-//#pragma comment(linker, "/alternatename:_vsm_assert_fail=_vsm_assert_fail_default")
+__pragma(comment(linker, vsm_pp_str(/ALTERNATENAME:vsm_detail_mangle(vsm_assert_fail), vsm_detail_mangle(vsm_assert_fail_default))))
