@@ -24,6 +24,8 @@ class unique_resource_storage
 	Resource m_resource;
 
 public:
+	using resource_type = Resource;
+
 	using sentinel_type = decltype(Sentinel);
 	static_assert(std::is_convertible_v<sentinel_type, Resource>);
 

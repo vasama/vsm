@@ -49,4 +49,10 @@ bool vsm_assert_fail_default(char const* const file, int const line, char const*
 #	define vsm_detail_mangle(name) name
 #endif
 
-__pragma(comment(linker, vsm_pp_str(/ALTERNATENAME:vsm_detail_mangle(vsm_assert_fail), vsm_detail_mangle(vsm_assert_fail_default))))
+__pragma(comment(linker, vsm_pp_str(/ALTERNATENAME:vsm_detail_mangle(vsm_assert_fail)=vsm_detail_mangle(vsm_assert_fail_default))))
+
+extern "C"
+bool vsm_assert_fail_thunk(char const* const file, int const line, char const* const expr)
+{
+	return vsm_assert_fail(file, line, expr);
+}

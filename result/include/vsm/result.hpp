@@ -17,12 +17,6 @@ using result = detail::expected_namespace::expected<T, E>;
 inline constexpr auto const& result_value = detail::expected_namespace::in_place;
 inline constexpr auto const& result_error = detail::expected_namespace::unexpect;
 
-template<typename E = std::error_code>
-inline unexpected<E> error(E&& error) noexcept
-{
-	return unexpected<std::error_code>(error);
-}
-
 inline result<void> as_result(std::error_code const error) noexcept
 {
 	return error
@@ -44,44 +38,88 @@ result<void, E> discard_value(result<T, E> const& r)
 }
 
 
+/// @brief Evaluate an expression and test the result.
+///        Returns from the current subroutine if the result contains an error.
+/// @param spec Name and optionally the type of the introduced variable.
+/// @param ... Expression to evaluate.
 #define vsm_try_result(spec, ...) \
 	vsm_detail_try_result_1(return, spec, __VA_ARGS__)
 
+/// @brief Evaluate an expression and test the result.
+///        Returns from the current coroutine if the result contains an error.
+/// @param spec Name and optionally the type of the introduced variable.
+/// @param ... Expression to evaluate.
 #define vsm_co_try_result(spec, ...) \
 	vsm_detail_try_result_1(co_return, spec, __VA_ARGS__)
 
 
+/// @brief Evaluate an expression and unwrap its non-void result into a new variable.
+///        Returns from the current subroutine if the result contains an error.
+/// @param spec Name and optionally the type of the introduced variable.
+/// @param ... Expression to evaluate.
 #define vsm_try(spec, ...) \
 	vsm_detail_try_1(return, spec, __VA_ARGS__)
 
+/// @brief Evaluate an expression and unwrap its non-void result into a new variable.
+///        Returns from the current coroutine if the result contains an error.
+/// @param spec Name and optionally the type of the introduced variable.
+/// @param ... Expression to evaluate.
 #define vsm_co_try(spec, ...) \
 	vsm_detail_try_1(co_return, spec, __VA_ARGS__)
 
 
+/// @brief Evaluate an expression and unwrap its void result.
+///        Returns from the current subroutine if the result contains an error.
+/// @param ... Expression to evaluate.
 #define vsm_try_void(...) \
 	vsm_detail_try_void_1(return, __VA_ARGS__)
 
+/// @brief Evaluate an expression and unwrap its void result.
+///        Returns from the current coroutine if the result contains an error.
+/// @param ... Expression to evaluate.
 #define vsm_co_try_void(...) \
 	vsm_detail_try_void_1(co_return, __VA_ARGS__)
 
 
+/// @brief Evaluate an expression and unwrap its result discarding it.
+///        Returns from the current subroutine if the result contains an error.
+/// @param ... Expression to evaluate.
 #define vsm_try_discard(...) \
 	vsm_detail_try_discard_1(return, __VA_ARGS__)
 
+/// @brief Evaluate an expression and unwrap its result discarding it.
+///        Returns from the current coroutine if the result contains an error.
+/// @param ... Expression to evaluate.
 #define vsm_co_try_discard(...) \
 	vsm_detail_try_discard_1(co_return, __VA_ARGS__)
 
 
+/// @brief Evaluate an expression and unwrap its non-void result into new variables in a structured binding.
+///        Returns from the current subroutine if the result contains an error.
+/// @param spec List of names introduced by the structured binding.
+/// @param ... Expression to evaluate.
 #define vsm_try_bind(spec, ...) \
 	vsm_detail_try_bind_1(return, spec, __VA_ARGS__)
 
+/// @brief Evaluate an expression and unwrap its non-void result into new variables in a structured binding.
+///        Returns from the current coroutine if the result contains an error.
+/// @param spec List of names introduced by the structured binding.
+/// @param ... Expression to evaluate.
 #define vsm_co_try_bind(spec, ...) \
 	vsm_detail_try_bind_1(co_return, spec, __VA_ARGS__)
 
 
+/// @brief Evaluate an expression and unwrap its non-void result assigning it to the specified lvalue expression.
+///        Returns from the current subroutine if the result contains an error.
+/// @param left Mutable lvalue expressiont to which the result is assigned.
+/// @param ... Expression to evaluate.
 #define vsm_try_assign(left, ...) \
 	vsm_detail_try_assign_1(return, left, __VA_ARGS__)
 
+/// @brief Evaluate an expression and unwrap its non-void result assigning it to the specified lvalue expression.
+///        Returns from the current coroutine if the result contains an error.
+/// @param left Mutable lvalue expressiont to which the result is assigned.
+/// @param ... Expression to evaluate.
 #define vsm_co_try_assign(left, ...) \
 	vsm_detail_try_assign_1(co_return, left, __VA_ARGS__)
 
@@ -116,7 +154,7 @@ result<void, E> discard_value(result<T, E> const& r)
 		return ::vsm::unexpected(static_cast<decltype(result)&&>(result).error()); \
 	}
 
-/* vsm_try */
+/* vsm_try_result */
 
 #define vsm_detail_try_result_2(return, hspec, result, ...) \
 	vsm_detail_try_intro(return, hspec, result, __VA_ARGS__) \
@@ -125,6 +163,8 @@ result<void, E> discard_value(result<T, E> const& r)
 #define vsm_detail_try_result_1(return, spec, ...) \
 	vsm_detail_try_result_2(return, vsm_detail_try_h(spec), vsm_detail_try_v(spec), __VA_ARGS__)
 
+
+/* vsm_try */
 
 #define vsm_detail_try_2(return, hspec, vspec, result, ...) \
 	vsm_detail_try_intro(return, hspec, result, __VA_ARGS__) \

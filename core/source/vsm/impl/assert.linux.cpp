@@ -7,3 +7,9 @@ bool vsm_assert_fail(char const* const file, int const line, char const* const e
 {
 	std::abort();
 }
+
+extern "C"
+bool vsm_assert_fail_thunk(char const* const file, int const line, char const* const expr)
+{
+	return vsm_assert_fail(file, line, expr);
+}

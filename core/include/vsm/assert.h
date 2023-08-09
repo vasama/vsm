@@ -17,8 +17,10 @@ extern "C" {
 /// @return Returns true if the program should raise a debuggable interrupt at the callsite.
 bool vsm_assert_fail(char const* file, int line, char const* expr);
 
+bool vsm_assert_fail_thunk(char const* file, int line, char const* expr);
+
 #define vsm_detail_assert_fail(...) ( \
-		vsm_assert_fail(__FILE__, __LINE__, #__VA_ARGS__) \
+		vsm_assert_fail_thunk(__FILE__, __LINE__, #__VA_ARGS__) \
 			? vsm_debugbreak() \
 			: (void)0 \
 	)
