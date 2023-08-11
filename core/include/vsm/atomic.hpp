@@ -157,6 +157,12 @@ public:
 	vsm_detail_fetch_mutate(fetch_or)
 	vsm_detail_fetch_mutate(fetch_xor)
 #undef vsm_detail_fetch_mutate
+
+
+	operator ref_type() &
+	{
+		return ref_type(m_storage);
+	}
 };
 
 } // namespace vsm
