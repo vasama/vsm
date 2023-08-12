@@ -99,17 +99,7 @@ function(vsm_target_platform_dependencies target platform)
 endfunction()
 
 
-function(vsm_detail_configure public_type private_type)
-	set(multi_value_keywords
-		HEADERS
-		SOURCES
-		HEADER_DEPENDENCIES
-		SOURCE_DEPENDENCIES
-		TEST_SOURCES
-		TEST_DEPENDENCIES
-	)
-	cmake_parse_arguments(OPT "${}" "${}" "${multi_value_keywords}" ${ARGN})
-
+function(vsm_detail_configure target public_type private_type)
 	if(DEFINED OPT_HEADERS)
 		target_sources(${target}
 			${public_type}
@@ -119,7 +109,7 @@ function(vsm_detail_configure public_type private_type)
 		)
 
 		get_target_property(install_headers ${target} vsm_detail_install_headers)
-		if(NOT DEFINED install_headers)
+		if(${install_headers} STREQUAL "install_headers-NOTFOUND")
 			set_property(TARGET ${target} PROPERTY vsm_detail_install_headers "")
 			install(TARGETS ${target} FILE_SET HEADERS)
 		endif()
@@ -140,7 +130,7 @@ function(vsm_detail_configure public_type private_type)
 	if(DEFINED OPT_TEST_SOURCES OR DEFINED OPT_TEST_DEPENDENCIES)
 		get_target_property(test_target ${target} vsm_detail_test_target)
 
-		if(NOT DEFINED test_target)
+		if(${test_target} STREQUAL "test_target-NOTFOUND")
 			set(test_target ${target}_test)
 			set_property(TARGET ${target} PROPERTY vsm_detail_test_target ${test_target})
 
@@ -173,34 +163,56 @@ function(vsm_add_library2 name)
 	set(options
 		ADDITIONAL_SOURCES
 	)
-	cmake_parse_arguments(OPT "${options}" "" "" ${ARGN})
+	set(multi_value_keywords
+		HEADERS
+		SOURCES
+		HEADER_DEPENDENCIES
+		SOURCE_DEPENDENCIES
+		TEST_SOURCES
+		TEST_DEPENDENCIES
+	)
+	cmake_parse_arguments(OPT "${options}" "" "${multi_value_keywords}" ${ARGN})
+
+	string(REPLACE "::" "_" target ${name})
 
 	set(add_library_args "")
 	set(public_type INTERFACE)
 	set(private_type INTERFACE)
 
 	if(DEFINED OPT_SOURCES OR OPT_ADDITIONAL_SOURCES)
+		target_include_directories(${target} PRIVATE source)
+
 		set(public_type PUBLIC)
 		set(private_type PRIVATE)
 	else()
 		list(APPEND add_library_args "INTERFACE")
 	endif()
 
-	string(REPLACE "::" "_" target ${name})
 	add_library(${target} ${add_library_args})
-	add_library(${name} ALIAS ${target})
+
+	if(NOT ${target} STREQUAL ${name})
+		add_library(${name} ALIAS ${target})
+	endif()
 
 	target_include_directories(${target} ${public_type} include)
 	target_compile_options(${target} ${private_type} ${vsm_compile_options})
 
-	vsm_detail_configure(${target} ${public_type} ${private_type} ${OPT_UNPARSED_ARGUMENTS})
+	vsm_detail_configure(${target} ${public_type} ${private_type})
 endfunction()
 
-function(vsm_configure target)
+function(vsm_configure name)
 	set(one_value_keywords
 		PLATFORM
 	)
-	cmake_parse_arguments(OPT "" "${one_value_keywords}" "" ${ARGN})
+	set(multi_value_keywords
+		HEADERS
+		SOURCES
+		HEADER_DEPENDENCIES
+		SOURCE_DEPENDENCIES
+		TEST_SOURCES
+		TEST_DEPENDENCIES
+	)
+	cmake_parse_arguments(OPT "" "${one_value_keywords}" "${multi_value_keywords}" ${ARGN})
 
 	if(DEFINED OPT_PLATFORM)
 		if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL ${OPT_PLATFORM})
@@ -208,10 +220,10 @@ function(vsm_configure target)
 		endif()
 	endif()
 
+	string(REPLACE "::" "_" target ${name})
+
 	set(public_type PUBLIC)
 	set(private_type PRIVATE)
-
-	string(REPLACE "::" "_" target ${name})
 
 	get_target_property(target_type ${target} TYPE)
 	if (target_type STREQUAL INTERFACE_LIBRARY)
@@ -219,5 +231,5 @@ function(vsm_configure target)
 		set(private_type INTERFACE)
 	endif()
 
-	vsm_detail_configure(${public_type} ${private_type} ${OPT_UNPARSED_ARGUMENTS})
+	vsm_detail_configure(${target} ${public_type} ${private_type})
 endfunction()
