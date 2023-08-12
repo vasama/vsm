@@ -180,8 +180,6 @@ function(vsm_add_library2 name)
 	set(private_type INTERFACE)
 
 	if(DEFINED OPT_SOURCES OR OPT_ADDITIONAL_SOURCES)
-		target_include_directories(${target} PRIVATE source)
-
 		set(public_type PUBLIC)
 		set(private_type PRIVATE)
 	else()
@@ -189,12 +187,17 @@ function(vsm_add_library2 name)
 	endif()
 
 	add_library(${target} ${add_library_args})
-
+	
 	if(NOT ${target} STREQUAL ${name})
 		add_library(${name} ALIAS ${target})
 	endif()
 
 	target_include_directories(${target} ${public_type} include)
+
+	if(${public_type} STREQUAL PUBLIC)
+		target_include_directories(${target} PRIVATE source)
+	endif()
+
 	target_compile_options(${target} ${private_type} ${vsm_compile_options})
 
 	vsm_detail_configure(${target} ${public_type} ${private_type})
