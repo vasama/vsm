@@ -36,7 +36,7 @@ result<void, E> discard_value(result<T, E> const& result)
 {
 	return result
 		? vsm::result<void, E>{}
-		: vsm::result<void, E>(result_error, r.error());
+		: vsm::result<void, E>(result_error, result.error());
 }
 
 
