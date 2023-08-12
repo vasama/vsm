@@ -32,9 +32,11 @@ inline std::error_code as_error_code(result<void> const& result) noexcept
 }
 
 template<typename T, typename E>
-result<void, E> discard_value(result<T, E> const& r)
+result<void, E> discard_value(result<T, E> const& result)
 {
-	return r ? result<void, E>{} : result<void, E>(r.error());
+	return result
+		? vsm::result<void, E>{}
+		: vsm::result<void, E>(result_error, r.error());
 }
 
 
