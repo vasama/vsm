@@ -1,16 +1,16 @@
 cmake_minimum_required(VERSION 3.23)
 
-project(vsm_function)
+project(vsm_optional)
 
 vsm_find_sibling(vsm-core)
 
-vsm_add_library2(vsm::function
+vsm_add_library2(vsm::optional
 	HEADERS
-		include/vsm/function_view.hpp
+		include/vsm/optional.hpp
 
 	HEADER_DEPENDENCIES
 		vsm::core
 
 	TEST_SOURCES
-		source/vsm/test/function_view.cpp
+		source/vsm/test/optional.cpp
 )

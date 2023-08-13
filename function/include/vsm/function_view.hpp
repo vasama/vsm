@@ -1,102 +1,171 @@
 #pragma once
 
-#include <vsm/assert.h>
 #include <vsm/concepts.hpp>
 #include <vsm/detail/function.hpp>
-#include <vsm/standard.hpp>
+#include <vsm/utility.hpp>
 
 namespace vsm {
+
 namespace detail {
 
-template<typename T>
-std::integral_constant<int, 0b1000> function_category_detect_1(T&);
+struct nontype_base_t {};
 
-template<typename T>
-std::integral_constant<int, 0b0100> function_category_detect_1(T&&);
+} // namespace detail
 
-template<typename T>
-std::integral_constant<int, 0b0010> function_category_detect_1(T const&);
+template<auto Value>
+struct nontype_t : detail::nontype_base_t{};
 
-template<typename T>
-std::integral_constant<int, 0b0001> function_category_detect_1(T const&&);
+template<auto Value>
+inline constexpr nontype_t<Value> nontype = {};
 
-template<typename T>
-inline constexpr int function_category_detect = decltype(
-	function_category_detect_1<std::remove_cvref_t<T>>(std::declval<T>()))::value;
 
-template<typename Signature, int Category>
-class function_view_impl;
+namespace detail {
 
-template<typename Result, typename... Params, int Category>
-class function_view_impl<Result(Params...), Category>
+template<bool N>
+struct is_invocable_using_impl;
+
+template<>
+struct is_invocable_using_impl<0>
 {
-	using signature_type = Result(Params...);
-	using context_type = function_context<Result, Params...>;
+	template<typename T, typename R, typename... Ps>
+	static constexpr bool value = std::is_invocable_r_v<R, T, Ps...>;
+};
 
-	Result(*m_invoke)(context_type context, function_category_0, Params... args);
-	context_type m_context;
+template<>
+struct is_invocable_using_impl<1>
+{
+	template<typename T, typename R, typename... Ps>
+	static constexpr bool value = std::is_nothrow_invocable_r_v<R, T, Ps...>;
+};
+
+template<typename T, bool N, typename R, typename... Ps>
+inline constexpr bool is_invocable_using = is_invocable_using_impl<N>::template value<T, R, Ps...>;
+
+template<bool C, typename T>
+using apply_const = select_t<C, T const, T>;
+
+
+template<bool C, bool N, typename R, typename... Ps>
+class function_view_impl
+{
+	R(*m_invoke)(function_context context, Ps... args) noexcept(N);
+	function_context m_context;
 
 public:
-	constexpr function_view_impl()
-		: m_invoke(nullptr)
-	{
-		vsm_if_consteval
-		{
-			m_context.object = nullptr;
-		}
-	}
-
-	template<no_cvref_of<function_view_impl> Callable,
-		int CallableCategory = function_category_detect<Callable&&>>
-	constexpr function_view_impl(Callable&& callable)
-		requires detail::callable<std::remove_cvref_t<Callable>, Category, Result, Params...>
-		: m_invoke(function_invoke_object<std::decay_t<Callable>, CallableCategory, Result, Params...>)
-		, m_context(&callable)
+	/// @brief Construct from a reference to a callable object.
+	template<no_cvref_of<function_view_impl> T>
+		requires (
+			is_invocable_using<apply_const<C, std::remove_reference_t<T>>&, N, R, Ps...>
+			&& !std::is_function_v<std::remove_reference_t<T>>
+			&& !std::is_member_pointer_v<std::remove_reference_t<T>>
+		)
+	constexpr function_view_impl(T&& object)
+		: m_invoke(invoke_object<N, apply_const<C, std::remove_reference_t<T>>, R, Ps...>)
+		, m_context{ .object = std::addressof(object) }
 	{
 	}
 
-	constexpr function_view_impl(signature_type& function)
-		: m_invoke(function_invoke_pointer<Category, Result, Params...>)
-		, m_context(&function)
+	/// @brief Construct from a reference to a function.
+	template<typename F>
+		requires
+			is_invocable_using<F, N, R, Ps...>
+			&& std::is_function_v<F>
+	vsm_detail_function_ptr_constexpr function_view_impl(F& function)
+		: m_invoke(invoke_function<N, F, R, Ps...>)
+		, m_context{ .function = &function }
 	{
 	}
 
-	// Deleted because borrowing a function pointer is likely not intended.
-	// Dereference the function pointer to instead bind directly to the function.
-	template<typename Signature>
-	constexpr function_view_impl(Signature*)
-		requires std::is_function_v<Signature> = delete;
-
-	template<int OtherCategory>
-	constexpr function_view_impl(function_view_impl<signature_type, OtherCategory> const& src)
-		requires ((OtherCategory & Category) == Category)
-		: m_invoke(src.m_invoke)
-		, m_context(src.m_context)
+	/// @brief Construct from a pointer to a function.
+	template<typename F>
+		requires
+			is_invocable_using<F*, N, R, Ps...>
+			&& std::is_function_v<F>
+	vsm_detail_function_ptr_constexpr function_view_impl(F* const function)
+		: m_invoke(invoke_function<N, F, R, Ps...>)
+		, m_context{ .function = function }
 	{
 	}
 
-	function_view_impl(function_view_impl const&) = default;
-	function_view_impl& operator=(function_view_impl const&) & = default;
-
-
-	explicit constexpr operator bool() const
+	/// @brief Construct from a nontype_t naming a function.
+	template<auto F>
+		requires is_invocable_using<decltype(F), N, R, Ps...>
+	constexpr function_view_impl(nontype_t<F>)
+		: m_invoke(invoke_nontype_unused<N, F, R, Ps...>)
+		, m_context{ .unused = {} }
 	{
-		return m_invoke != nullptr;
+	}
+	
+	/// @brief Construct from a nontype_t naming a function and a reference to an object.
+	template<auto F, typename T>
+		requires
+			is_invocable_using<decltype(F), N, R, apply_const<C, std::remove_reference_t<T>>&, Ps...>
+			&& std::is_convertible_v<T&&, apply_const<C, std::remove_reference_t<T>>&>
+	constexpr function_view_impl(nontype_t<F>, T&& object)
+		: m_invoke(invoke_nontype_object<N, F, apply_const<C, std::remove_reference_t<T>>, R, Ps...>)
+		, m_context{ .object = &object }
+	{
 	}
 
-
-	Result operator()(std::convertible_to<Params> auto&&... args) const
+	/// @brief Construct from a nontype_t naming a function and a pointer to an object.
+	template<auto F, typename T>
+		requires
+			is_invocable_using<decltype(F), N, R, apply_const<C, T>*, Ps...>
+			&& std::is_convertible_v<T*, apply_const<C, T>*>
+	constexpr function_view_impl(nontype_t<F>, T* const object)
+		: m_invoke(invoke_nontype_object<N, F, apply_const<C, T>*, R, Ps...>)
+		, m_context{ .object = object }
 	{
-		vsm_assert(m_invoke != nullptr);
-		return m_invoke(m_context, {}, vsm_forward(args)...);
+	}
+
+	function_view_impl(function_view_impl const&) noexcept = default;
+	function_view_impl& operator=(function_view_impl const&) & noexcept = default;
+	
+	template<no_cvref_of<function_view_impl> T>
+		requires (
+			!std::is_pointer_v<T>
+			&& !std::is_base_of_v<nontype_base_t, T>
+		)
+	function_view_impl& operator=(T) = delete;
+
+
+	vsm_detail_function_ptr_constexpr R operator()(std::convertible_to<Ps> auto&&... args) const noexcept(N)
+	{
+		return m_invoke(m_context, vsm_forward(args)...);
 	}
 };
 
 } // namespace detail
 
 template<typename Signature>
-using function_view = detail::function_view_impl<
-	typename detail::function_traits<Signature>::signature,
-	detail::function_traits<Signature>::category>;
+struct function_view;
+
+template<typename R, typename... Ps>
+struct function_view<R(Ps...)>
+	: detail::function_view_impl<0, 0, R, Ps...>
+{
+	using detail::function_view_impl<0, 0, R, Ps...>::function_view_impl;
+};
+
+template<typename R, typename... Ps>
+struct function_view<R(Ps...) const>
+	: detail::function_view_impl<1, 0, R, Ps...>
+{
+	using detail::function_view_impl<1, 0, R, Ps...>::function_view_impl;
+};
+
+template<typename R, typename... Ps>
+struct function_view<R(Ps...) noexcept>
+	: detail::function_view_impl<0, 1, R, Ps...>
+{
+	using detail::function_view_impl<0, 1, R, Ps...>::function_view_impl;
+};
+
+template<typename R, typename... Ps>
+struct function_view<R(Ps...) const noexcept>
+	: detail::function_view_impl<1, 1, R, Ps...>
+{
+	using detail::function_view_impl<1, 1, R, Ps...>::function_view_impl;
+};
 
 } // namespace vsm

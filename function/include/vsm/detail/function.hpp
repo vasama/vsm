@@ -2,182 +2,74 @@
 
 #include <vsm/platform.h>
 #include <vsm/utility.hpp>
+#include <vsm/tag_invoke.hpp>
 
-#include <bit>
+#include <utility>
 
 namespace vsm::detail {
 
-template<typename Signature>
-struct function_traits;
+#define vsm_detail_function_ptr_constexpr
 
-template<typename Result, typename... Params>
-struct function_traits<Result(Params...)>
+class function_ptr_t
 {
-	using signature = Result(Params...);
-	static constexpr int category = 0b1111;
+	struct incomplete_type;
+	using function_type = void(incomplete_type);
+
+	function_type* m_function;
+
+public:
+	template<typename F>
+	function_ptr_t(F* const function)
+		requires std::is_function_v<F>
+		: m_function(reinterpret_cast<function_type*>(function))
+	{
+	}
+
+	template<typename F>
+	explicit operator F*() const
+		requires std::is_function_v<F>
+	{
+		return reinterpret_cast<F*>(m_function);
+	}
 };
 
-template<typename Result, typename... Params>
-struct function_traits<Result(Params...) const>
-{
-	using signature = Result(Params...);
-	static constexpr int category = 0b0011;
-};
 
-template<typename Result, typename... Params>
-struct function_traits<Result(Params...) &>
-{
-	using signature = Result(Params...);
-	static constexpr int category = 0b1000;
-};
+struct function_unused {};
 
-template<typename Result, typename... Params>
-struct function_traits<Result(Params...) &&>
-{
-	using signature = Result(Params...);
-	static constexpr int category = 0b0100;
-};
-
-template<typename Result, typename... Params>
-struct function_traits<Result(Params...) const&>
-{
-	using signature = Result(Params...);
-	static constexpr int category = 0b0010;
-};
-
-template<typename Result, typename... Params>
-struct function_traits<Result(Params...) const&&>
-{
-	using signature = Result(Params...);
-	static constexpr int category = 0b0001;
-};
-
-template<typename T, int Category, typename Result, typename... Params>
-concept callable =
-	((Category & 0b1000) == 0 || std::is_convertible_v<std::invoke_result_t<T&, Params...>, Result>) &&
-	((Category & 0b0100) == 0 || std::is_convertible_v<std::invoke_result_t<T&&, Params...>, Result>) &&
-	((Category & 0b0010) == 0 || std::is_convertible_v<std::invoke_result_t<T const&, Params...>, Result>) &&
-	((Category & 0b0001) == 0 || std::is_convertible_v<std::invoke_result_t<T const&&, Params...>, Result>);
-
-template<typename Result, typename... Params>
 union function_context
 {
+	function_unused unused;
 	void const* object;
-	Result(*function)(Params...);
-
-	constexpr function_context() = default;
-
-	constexpr function_context(void const* const object)
-		: object(object)
-	{
-	}
-
-	constexpr function_context(Result(*function)(Params...))
-		: function(function)
-	{
-	}
+	function_ptr_t function;
 };
 
-class function_category_0
+
+struct get_function_context_cpo {};
+//TODO: Use the get_function_context_cpo to optimise function_view.
+
+
+template<bool N, typename T, typename R, typename... Ps>
+constexpr R invoke_object(function_context const context, Ps... args) noexcept(N)
 {
-public:
-	function_category_0() = default;
-
-	consteval function_category_0(int)
-	{
-	}
-	
-	static constexpr bool equals(int)
-	{
-		return true;
-	}
-};
-
-template<int Category>
-class function_category_1
-{
-	int m_value;
-
-public:
-	consteval function_category_1(int const value)
-		: m_value(value)
-	{
-	}
-
-	constexpr bool equals(int const value)
-	{
-		return m_value == value;
-	}
-};
-
-template<bool>
-struct function_category_select;
-
-template<>
-struct function_category_select<0>
-{
-	template<int Category>
-	using type = function_category_0;
-};
-
-template<>
-struct function_category_select<1>
-{
-	template<int Category>
-	using type = function_category_1<Category>;
-};
-
-template<int Category>
-using function_category = typename function_category_select<(Category & Category - 1)>::template type<Category>;
-
-template<typename T, int Category, typename Result, typename... Params>
-Result function_invoke_object(
-	function_context<Result, Params...> const context,
-	function_category<Category> const category, Params... args)
-{
-	static_assert(Category & 0b1111);
-
-	if constexpr (Category & 0b1000)
-	{
-		if (category.value == 0)
-		{
-			return static_cast<T&>(*static_cast<T*>(const_cast<void*>(context.object)))(vsm_move(args)...);
-		}
-	}
-
-	if constexpr (Category & 0b0100)
-	{
-		if (category.value == 1)
-		{
-			return static_cast<T&&>(*static_cast<T*>(const_cast<void*>(context.object)))(vsm_move(args)...);
-		}
-	}
-
-	if constexpr (Category & 0b0010)
-	{
-		if (category.value == 2)
-		{
-			return static_cast<T const&>(*static_cast<T const*>(context.object))(vsm_move(args)...);
-		}
-	}
-
-	if constexpr (Category & 0b0001)
-	{
-		if (category.value == 3)
-		{
-			return static_cast<T const&&>(*static_cast<T const*>(context.object))(vsm_move(args)...);
-		}
-	}
-
-	vsm_unreachable();
+	return const_cast<T&>(*static_cast<T const*>(context.object))(vsm_move(args)...);
 }
 
-template<int Category, typename Result, typename... Params>
-Result function_invoke_pointer(
-	function_context<Result, Params...> const context,
-	function_category<Category> const category, Params... args)
+template<bool N, typename F, typename R, typename... Ps>
+vsm_detail_function_ptr_constexpr R invoke_function(function_context const context, Ps... args) noexcept(N)
 {
-	return context.function(vsm_move(args)...);
+	return static_cast<F*>(context.function)(vsm_move(args)...);
+}
+
+template<bool N, auto F, typename R, typename... Ps>
+constexpr R invoke_nontype_unused(function_context const context, Ps... args) noexcept(N)
+{
+	return F(vsm_move(args)...);
+}
+
+template<bool N, auto F, typename T, typename R, typename... Ps>
+constexpr R invoke_nontype_object(function_context const context, Ps... args) noexcept(N)
+{
+	return F(const_cast<T&>(*static_cast<T const*>(context.object)), vsm_move(args)...);
 }
 
 inline constexpr size_t function_default_capacity = 2 * sizeof(void*);

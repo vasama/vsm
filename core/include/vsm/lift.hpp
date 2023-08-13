@@ -4,7 +4,7 @@
 
 #define vsm_detail_lift(capture, ...) ( \
 		[capture](auto&&... args) \
-			noexcept(__VA_ARGS__(vsm_forward(args)...)) \
+			noexcept(noexcept(__VA_ARGS__(vsm_forward(args)...))) \
 			-> decltype(__VA_ARGS__(vsm_forward(args)...)) \
 		{ return __VA_ARGS__(vsm_forward(args)...); } \
 	)
@@ -17,7 +17,7 @@
 
 #define vsm_detail_bind(capture, function, ...) ( \
 		[capture](auto&&... args) \
-			noexcept(function(__VA_ARGS__, vsm_forward(args)...)) \
+			noexcept(noexcept(function(__VA_ARGS__, vsm_forward(args)...))) \
 			-> decltype(function(__VA_ARGS__, vsm_forward(args)...)) \
 		{ return function(__VA_ARGS__, vsm_forward(args)...); } \
 	)
