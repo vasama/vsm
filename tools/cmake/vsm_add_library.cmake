@@ -109,7 +109,7 @@ function(vsm_detail_configure target public_type private_type)
 		)
 
 		get_target_property(install_headers ${target} vsm_detail_install_headers)
-		if(${install_headers} STREQUAL "install_headers-NOTFOUND")
+		if("${install_headers}" STREQUAL "install_headers-NOTFOUND")
 			set_property(TARGET ${target} PROPERTY vsm_detail_install_headers "")
 			install(TARGETS ${target} FILE_SET HEADERS)
 		endif()
