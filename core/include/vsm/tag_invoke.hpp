@@ -11,11 +11,13 @@ void tag_invoke();
 
 struct cpo
 {
+	template<typename Tag, typename... Args>
+		requires requires { tag_invoke(vsm_declval(Tag), vsm_declval(Args&&)...); }
 	vsm_static_operator constexpr decltype(auto)
-		operator()(auto const tag, auto&&... args) vsm_static_operator_const
-		requires requires { tag_invoke(tag, vsm_forward(args)...); }
+		operator()(Tag, Args&&... args) vsm_static_operator_const
+		noexcept(noexcept(tag_invoke(Tag(), vsm_forward(args)...)))
 	{
-		return tag_invoke(tag, vsm_forward(args)...);
+		return tag_invoke(Tag(), vsm_forward(args)...);
 	}
 };
 
