@@ -5,11 +5,11 @@
 
 namespace vsm {
 namespace detail {
-namespace tag_invoke_1 {
+namespace _tag_invoke {
 
 void tag_invoke();
 
-struct cpo
+struct tag_invoke_t
 {
 	template<typename Tag, typename... Args>
 		requires requires { tag_invoke(vsm_declval(Tag), vsm_declval(Args&&)...); }
@@ -21,23 +21,33 @@ struct cpo
 	}
 };
 
-} // namespace tag_invoke_1
-namespace tag_invoke_2 {
+} // namespace _tag_invoke
+namespace _tag_invoke_cpo {
 
-inline constexpr tag_invoke_1::cpo tag_invoke = {};
+inline constexpr _tag_invoke::tag_invoke_t tag_invoke = {};
 
-} // namespace tag_invoke_2
+} // namespace _tag_invoke_cpo
 } // namespace detail
 
-using namespace detail::tag_invoke_2;
-
-template<typename>
-struct tag {};
+using namespace detail::_tag_invoke_cpo;
 
 template<typename T, typename... Args>
 concept tag_invocable = requires(T const& tag, Args&&... args)
 {
 	tag_invoke(tag, vsm_forward(args)...);
 };
+
+template<typename T, typename... Args>
+concept nothrow_tag_invocable = tag_invocable<T, Args...> && requires(T const& tag, Args&&... args)
+{
+	{ tag_invoke(tag, vsm_forward(args)...) } noexcept;
+};
+
+template<typename T, typename... Args>
+using tag_invoke_result_t = decltype(tag_invoke(vsm_declval(T), vsm_decval(Args)...));
+
+
+template<typename>
+struct tag {};
 
 } // namespace vsm

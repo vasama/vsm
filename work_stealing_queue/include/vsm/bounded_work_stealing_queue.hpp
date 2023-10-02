@@ -27,6 +27,19 @@ public:
 	template<typename T>
 	size_t push_some(std::span<T> const queue, std::span<T const> const data)
 	{
+		size_t const tail = m_tail.load(std::memory_order_relaxed);
+		size_t const head = m_head.load(std::memory_order_relaxed);
+
+		// If the queue is full.
+		if ((head & mask) == tail && head > tail)
+		{
+			return 0;
+		}
+
+		// Insert work at the head.
+		queue[head & mask] = value;
+
+		
 	}
 
 	template<typename T>

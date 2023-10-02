@@ -22,8 +22,8 @@ struct base : link_container
 {
 	atomic<hook*> m_produce_head = nullptr;
 
-	void push_one(hook* node);
-	void push_all(hook* head, hook* tail);
+	bool push_one(hook* node);
+	bool push_all(hook* head, hook* tail);
 	hook_pair pop_all();
 };
 
@@ -32,20 +32,27 @@ struct base : link_container
 template<std::derived_from<mpsc_queue_link> T>
 class mpsc_queue : detail::mpsc_queue_::base
 {
+	using base = detail::mpsc_queue_::base;
+
 public:
-	using base::base;
+	mpsc_queue() = default;
 
-	mpsc_queue& operator=(mpsc_queue&&) & = default;
+	mpsc_queue(mpsc_queue const&) = delete;
+	mpsc_queue& operator=(mpsc_queue const&) = delete;
 
 
+	/// @brief Push an element at the end of the queue.
+	/// @returns True if the queue was previously empty.
 	/// @pre @p element is not null.
-	void push(T* const element)
+	bool push_back(T* const element)
 	{
 		vsm_assert(element != nullptr);
 		base::push_one(vsm_detail_forward_list_hook(element));
 	}
 
-	void push_list(forward_list<T>&& list);
+	/// @brief Splice a list of elements at the end of the queue.
+	/// @returns True if the queue was previously empty.
+	bool splice_back(forward_list<T>&& list);
 
 	[[nodiscard]] forward_list<T> pop_all()
 	{

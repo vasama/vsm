@@ -18,12 +18,12 @@ static hook* reverse_list(hook* head)
 }
 
 
-void base::push_one(hook* const node)
+bool base::push_one(hook* const node)
 {
-	push_all(node, node);
+	return push_all(node, node);
 }
 
-void base::push_all(hook* const head, hook* const tail)
+bool base::push_all(hook* const head, hook* const tail)
 {
 	hook* expected = m_produce_head.load(std::memory_order_acquire);
 
@@ -34,6 +34,8 @@ void base::push_all(hook* const head, hook* const tail)
 	while (!m_produce_head.compare_exchange_weak(
 		expected, head,
 		std::memory_order_release, std::memory_order_acquire));
+
+	return expected == nullptr;
 }
 
 hook_pair base::pop_all()
@@ -44,7 +46,9 @@ hook_pair base::pop_all()
 	}
 
 	hook* head = m_produce_head.exchange(nullptr, std::memory_order_acq_rel);
-	vsm_assert(head != nullptr); // Only the consumer can make the head null.
+	
+	// Only the consumer can make the head null and the consumer is externally synchronized.
+	vsm_assert(head != nullptr);
 
 	return { reverse_list(head), head };
 }
