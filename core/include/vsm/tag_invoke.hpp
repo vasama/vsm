@@ -44,7 +44,7 @@ concept nothrow_tag_invocable = tag_invocable<T, Args...> && requires(T const& t
 };
 
 template<typename T, typename... Args>
-using tag_invoke_result_t = decltype(tag_invoke(vsm_declval(T), vsm_decval(Args)...));
+using tag_invoke_result_t = decltype(tag_invoke(vsm_declval(T), vsm_declval(Args)...));
 
 
 template<typename>
