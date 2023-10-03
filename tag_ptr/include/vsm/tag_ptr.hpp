@@ -10,11 +10,10 @@
 #include <cstdint>
 
 namespace vsm {
+namespace detail {
 
 template<typename T, typename Tag, Tag Max>
-class incomplete_tag_ptr;
-
-namespace detail {
+class tag_ptr;
 
 template<typename T>
 concept intptr = std::integral<T> && (sizeof(T) == sizeof(uintptr_t));
@@ -63,7 +62,7 @@ consteval bool tag_ptr_check_tag(Tag const max)
 }
 
 template<typename In, typename InTag, InTag InMax, typename Out, typename OutTag, OutTag OutMax>
-auto static_cast_constraint(incomplete_tag_ptr<In, InTag, InMax>, incomplete_tag_ptr<Out, OutTag, OutMax>**) -> incomplete_tag_ptr<Out, OutTag, OutMax>
+auto static_cast_constraint(tag_ptr<In, InTag, InMax>, tag_ptr<Out, OutTag, OutMax>**) -> tag_ptr<Out, OutTag, OutMax>
 	requires
 		requires (In* in, InTag in_tag)
 		{
@@ -73,41 +72,41 @@ auto static_cast_constraint(incomplete_tag_ptr<In, InTag, InMax>, incomplete_tag
 		&& (static_cast<OutTag>(InMax) <= OutMax);
 
 template<typename In, typename Tag, Tag Max, typename Out>
-auto const_cast_constraint(incomplete_tag_ptr<In, Tag, Max>, incomplete_tag_ptr<Out, Tag, Max>**) -> incomplete_tag_ptr<Out, Tag, Max>
+auto const_cast_constraint(tag_ptr<In, Tag, Max>, tag_ptr<Out, Tag, Max>**) -> tag_ptr<Out, Tag, Max>
 	requires requires (In* in) { const_cast<Out*>(in); };
 
 template<typename T, typename Tag, Tag Max, intptr Integer>
-auto reinterpret_cast_constraint_ptr(incomplete_tag_ptr<T, Tag, Max>, Integer**) -> Integer;
+auto reinterpret_cast_constraint_ptr(tag_ptr<T, Tag, Max>, Integer**) -> Integer;
 
 template<typename In, typename Tag, Tag Max, typename Out>
-auto reinterpret_cast_constraint_ptr(incomplete_tag_ptr<In, Tag, Max>, incomplete_tag_ptr<Out, Tag, Max>**) -> incomplete_tag_ptr<Out, Tag, Max>
+auto reinterpret_cast_constraint_ptr(tag_ptr<In, Tag, Max>, tag_ptr<Out, Tag, Max>**) -> tag_ptr<Out, Tag, Max>
 	requires requires (In* in) { reinterpret_cast<Out*>(in); };
 
 template<typename T, typename Tag, Tag Max, intptr Integer>
-auto reinterpret_cast_constraint_int(Integer**, incomplete_tag_ptr<T, Tag, Max>**) -> incomplete_tag_ptr<T, Tag, Max>;
+auto reinterpret_cast_constraint_int(Integer**, tag_ptr<T, Tag, Max>**) -> tag_ptr<T, Tag, Max>;
 
 template<typename In, typename Tag, Tag Max, typename Out>
-auto dynamic_cast_constraint(incomplete_tag_ptr<In, Tag, Max>, incomplete_tag_ptr<Out, Tag, Max>**) -> incomplete_tag_ptr<Out, Tag, Max>
+auto dynamic_cast_constraint(tag_ptr<In, Tag, Max>, tag_ptr<Out, Tag, Max>**) -> tag_ptr<Out, Tag, Max>
 	requires requires (In* in) { dynamic_cast<Out*>(in); };
 
 } // namespace detail
 
 template<typename Out, typename In, typename InTag, InTag InMax>
-auto static_pointer_cast(incomplete_tag_ptr<In, InTag, InMax> const ptr)
+auto static_pointer_cast(detail::tag_ptr<In, InTag, InMax> const ptr)
 	-> decltype(detail::static_cast_constraint(ptr, static_cast<Out**>(0)))
 {
 	return Out(static_cast<typename Out::element_type*>(ptr.ptr()), ptr.tag());
 }
 
 template<typename Out, typename In, typename InTag, InTag InMax>
-auto const_pointer_cast(incomplete_tag_ptr<In, InTag, InMax> const ptr)
+auto const_pointer_cast(detail::tag_ptr<In, InTag, InMax> const ptr)
 	-> decltype(detail::const_cast_constraint(ptr, static_cast<Out**>(0)))
 {
 	return Out(ptr.m_value);
 }
 
 template<typename Out, typename In, typename InTag, InTag InMax>
-auto reinterpret_pointer_cast(incomplete_tag_ptr<In, InTag, InMax> const ptr)
+auto reinterpret_pointer_cast(detail::tag_ptr<In, InTag, InMax> const ptr)
 	-> decltype(detail::reinterpret_cast_constraint_ptr(ptr, static_cast<Out**>(0)))
 {
 	return Out(ptr.m_value);
@@ -121,15 +120,14 @@ auto reinterpret_pointer_cast(In const in)
 }
 
 template<typename Out, typename In, typename InTag, InTag InMax>
-auto dynamic_pointer_cast(incomplete_tag_ptr<In, InTag, InMax> const ptr)
+auto dynamic_pointer_cast(detail::tag_ptr<In, InTag, InMax> const ptr)
 	-> decltype(detail::dynamic_cast_constraint(ptr, static_cast<Out**>(0)))
 {
 	return Out(dynamic_cast<typename Out::element_type*>(ptr.ptr()), ptr.tag());
 }
 
-
 template<typename T, typename Tag, Tag Max>
-class incomplete_tag_ptr
+class detail::tag_ptr
 {
 	// Laundering through integral_constant allows the Visual Studio debugger to see the value.
 	static constexpr uintptr_t tag_mask = std::integral_constant<uintptr_t,
@@ -147,33 +145,33 @@ private:
 	uintptr_t m_value;
 
 public:
-	incomplete_tag_ptr() = default;
+	tag_ptr() = default;
 
-	constexpr incomplete_tag_ptr(decltype(nullptr))
+	constexpr tag_ptr(decltype(nullptr))
 		: m_value(0)
 	{
 	}
 
-	incomplete_tag_ptr(T* const ptr)
+	tag_ptr(T* const ptr)
 		: m_value(reinterpret_cast<uintptr_t>(ptr))
 	{
 	}
 
-	incomplete_tag_ptr(T* const ptr, Tag const tag)
+	tag_ptr(T* const ptr, Tag const tag)
 		: m_value(reinterpret_cast<uintptr_t>(ptr) | static_cast<uintptr_t>(tag))
 	{
 		vsm_assert(static_cast<uintptr_t>(tag) <= tag_mask);
 	}
 
 	template<typename OtherT, typename OtherTag, OtherTag OtherMax>
-	incomplete_tag_ptr(incomplete_tag_ptr<OtherT, OtherTag, OtherMax> const& other)
+	tag_ptr(tag_ptr<OtherT, OtherTag, OtherMax> const& other)
 		requires std::is_convertible_v<OtherT*, T*> && std::is_convertible_v<OtherTag, Tag> && (static_cast<Tag>(OtherMax) <= Max)
 		: m_value(other.m_value)
 	{
 	}
 
-	incomplete_tag_ptr(incomplete_tag_ptr const&) = default;
-	incomplete_tag_ptr& operator=(incomplete_tag_ptr const&) & = default;
+	tag_ptr(tag_ptr const&) = default;
+	tag_ptr& operator=(tag_ptr const&) & = default;
 
 
 	T* ptr() const
@@ -231,34 +229,37 @@ public:
 	}
 
 
-	friend bool operator==(incomplete_tag_ptr const&, incomplete_tag_ptr const&) = default;
+	friend bool operator==(tag_ptr const&, tag_ptr const&) = default;
 
-	friend constexpr bool operator==(incomplete_tag_ptr const& ptr, decltype(nullptr))
+	friend constexpr bool operator==(tag_ptr const& ptr, decltype(nullptr))
 	{
 		return (ptr.m_value & ptr_mask) == 0;
 	}
 
 private:
-	explicit incomplete_tag_ptr(uintptr_t const value)
+	explicit tag_ptr(uintptr_t const value)
 		: m_value(value)
 	{
 	}
 
 	template<typename OtherT, typename OtherTag, OtherTag OtherMax>
-	friend class incomplete_tag_ptr;
+	friend class tag_ptr;
 
 	template<typename Out, typename In, typename InTag, InTag InMax>
-	friend auto const_pointer_cast(incomplete_tag_ptr<In, InTag, InMax> const ptr)
+	friend auto vsm::const_pointer_cast(detail::tag_ptr<In, InTag, InMax> const ptr)
 		-> decltype(detail::const_cast_constraint(ptr, static_cast<Out**>(0)));
 
 	template<typename Out, typename In, typename InTag, InTag InMax>
-	friend auto reinterpret_pointer_cast(incomplete_tag_ptr<In, InTag, InMax> const ptr)
+	friend auto vsm::reinterpret_pointer_cast(detail::tag_ptr<In, InTag, InMax> const ptr)
 		-> decltype(detail::reinterpret_cast_constraint_ptr(ptr, static_cast<Out**>(0)));
 
 	template<typename Out, typename In>
-	friend auto reinterpret_pointer_cast(In const in)
+	friend auto vsm::reinterpret_pointer_cast(In const in)
 		-> decltype(detail::reinterpret_cast_constraint_int(static_cast<In**>(0), static_cast<Out**>(0)));
 };
+
+template<typename T, typename Tag, Tag Max>
+using incomplete_tag_ptr = detail::tag_ptr<T, Tag, Max>;
 
 /// @brief A pointer with a secondary tag value stored in the alignment bits.
 /// @tparam T Type of the object pointed to by the pointer.
@@ -267,7 +268,7 @@ private:
 /// The default maximum is based on the alignment of @tparam T.
 template<typename T, typename Tag, Tag Max = detail::tag_ptr_max_tag<T, Tag>()>
 	requires (detail::tag_ptr_check_tag<T>(Max))
-using tag_ptr = incomplete_tag_ptr<T, Tag, Max>;
+using tag_ptr = detail::tag_ptr<T, Tag, Max>;
 
 template<typename T>
 consteval bool check_incomplete_tag_ptr()
@@ -278,9 +279,9 @@ consteval bool check_incomplete_tag_ptr()
 } // namespace vsm
 
 template<typename T, typename Tag, Tag Max>
-struct std::pointer_traits<vsm::incomplete_tag_ptr<T, Tag, Max>>
+struct std::pointer_traits<vsm::tag_ptr<T, Tag, Max>>
 {
-	using pointer = vsm::incomplete_tag_ptr<T, Tag, Max>;
+	using pointer = vsm::tag_ptr<T, Tag, Max>;
 	using element_type = T;
 	using difference_type = ptrdiff_t;
 

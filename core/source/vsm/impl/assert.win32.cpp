@@ -8,6 +8,9 @@
 #include <Windows.h>
 
 extern "C"
+void __cdecl _assert(char const* message, char const* filename, unsigned line);
+
+extern "C"
 bool vsm_assert_fail_default(char const* const file, int const line, char const* const expr)
 {
 	if (IsDebuggerPresent())
@@ -15,32 +18,7 @@ bool vsm_assert_fail_default(char const* const file, int const line, char const*
 		return true;
 	}
 
-	char buffer[1024];
-	snprintf(buffer, sizeof(buffer),
-		"File: %s\r\n\r\n"
-		"Line: %d\r\n\r\n"
-		"Expression: (%s)",
-		file, line, expr);
-
-	while (true)
-	{
-		switch (MessageBoxA(NULL, buffer, "Assertion failure.",
-			MB_ABORTRETRYIGNORE | MB_ICONERROR | MB_SYSTEMMODAL | MB_SETFOREGROUND))
-		{
-		case IDABORT:
-			std::abort();
-
-		case IDRETRY:
-			if (IsDebuggerPresent())
-			{
-				return true;
-			}
-			continue;
-
-		case IDIGNORE:
-			return false;
-		}
-	}
+	_assert(expr, file, static_cast<unsigned>(line));
 }
 
 extern "C"

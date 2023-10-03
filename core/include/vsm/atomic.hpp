@@ -20,7 +20,7 @@ namespace vsm {
 /// All atomic operations are guaranteed to be lock free.
 /// All atomic operations require explicit memory order specification.
 /// The standard atomic operator overloads are not provided.
-/// @tparam T Value type referred to by the atomic object.
+/// @tparam T Value type referred to by the atomic_ref.
 template<typename T>
 class atomic_ref : vsm_detail_atomic_ref_base(T)
 {
@@ -103,13 +103,19 @@ public:
 	static constexpr bool is_always_lock_free = true;
 
 
-	atomic() = default;
+	atomic()
+		: m_storage{}
+	{
+	}
 
 	template<std::convertible_to<T> U = T>
 	atomic(U&& value) noexcept
 		: m_storage(vsm_forward(value))
 	{
 	}
+
+	atomic(atomic const&) = delete;
+	atomic& operator=(atomic const&) = delete;
 
 
 	[[nodiscard]] constexpr bool is_lock_free() const noexcept

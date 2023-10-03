@@ -14,3 +14,7 @@
 /// @brief Macro implementation of std::as_const.
 #define vsm_as_const(...) \
 	const_cast<::std::remove_reference_t<decltype(__VA_ARGS__)> const&>(__VA_ARGS__)
+
+/// @brief Macro implementation of std::declval.
+#define vsm_declval(...) \
+	(static_cast<::std::add_rvalue_reference_t<__VA_ARGS__>(*)()>(0)())

@@ -39,7 +39,7 @@ vsm_add_library(vsm_core
 	ADDITIONAL_SOURCES
 
 	TEST_SOURCES
-		source/vsm/impl/utility.test.cpp
+		source/vsm/test/utility.cpp
 
 	TEST_DEPENDENCIES
 		vsm::test_tools

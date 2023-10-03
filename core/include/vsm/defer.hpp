@@ -33,11 +33,10 @@ deferral(Lambda&&) -> deferral<std::remove_reference_t<Lambda>>;
 } // namespace detail
 
 /// @brief Creates a deferral object which invokes the specified invocable upon destruction.
-/// @param lambda Invocable object to be invoked upon destruction of the returned object.
-template<std::invocable Lambda>
-[[nodiscard]] auto make_deferral(Lambda&& lambda)
+/// @param invocable Invocable object to be invoked upon destruction of the returned object.
+[[nodiscard]] auto make_deferral(std::invocable auto&& invocable)
 {
-	return detail::deferral(vsm_forward(lambda));
+	return detail::deferral(vsm_forward(invocable));
 }
 
 } // namespace vsm

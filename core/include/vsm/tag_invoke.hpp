@@ -5,7 +5,7 @@
 
 namespace vsm {
 namespace detail {
-namespace _tag_invoke {
+namespace _tag_invoke_t {
 
 void tag_invoke();
 
@@ -21,15 +21,15 @@ struct tag_invoke_t
 	}
 };
 
+} // namespace _tag_invoke_t
+namespace _tag_invoke {
+
+inline constexpr _tag_invoke_t::tag_invoke_t tag_invoke = {};
+
 } // namespace _tag_invoke
-namespace _tag_invoke_cpo {
-
-inline constexpr _tag_invoke::tag_invoke_t tag_invoke = {};
-
-} // namespace _tag_invoke_cpo
 } // namespace detail
 
-using namespace detail::_tag_invoke_cpo;
+using namespace detail::_tag_invoke;
 
 template<typename T, typename... Args>
 concept tag_invocable = requires(T const& tag, Args&&... args)
