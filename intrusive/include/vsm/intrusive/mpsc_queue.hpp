@@ -47,7 +47,7 @@ public:
 	bool push_back(T* const element)
 	{
 		vsm_assert(element != nullptr);
-		base::push_one(vsm_detail_forward_list_hook(element));
+		return base::push_one(vsm_detail_forward_list_hook(element));
 	}
 
 	/// @brief Splice a list of elements at the end of the queue.
