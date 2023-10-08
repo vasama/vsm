@@ -88,8 +88,6 @@ struct resource_type<1>
 
 } // namespace detail
 
-//TODO: 
-
 template<typename Resource = void, typename Owner, typename... Args>
 auto out_resource(Owner& owner, Args&&... args)
 {
