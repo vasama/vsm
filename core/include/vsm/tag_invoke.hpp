@@ -47,7 +47,10 @@ template<typename T, typename... Args>
 using tag_invoke_result_t = decltype(tag_invoke(std::declval<T>(), std::declval<Args>()...));
 
 
-template<typename>
-struct tag {};
+template<typename T>
+struct tag
+{
+	using type = T;
+};
 
 } // namespace vsm

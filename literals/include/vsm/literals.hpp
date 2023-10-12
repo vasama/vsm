@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vsm/assert.h>
+
 #include <cstddef>
 
 namespace vsm {
@@ -69,35 +71,17 @@ struct basic_literal_parser
 	template<std::unsigned_integral Integer>
 	[[nodiscard]] constexpr bool consume_integer(Integer& out_value, int const radix = 10)
 	{
-		switch (radix)
-		{
-		case +2: return _consume_integer<+2, _parse_bin_digit>(out_value);
-		case +8: return _consume_integer<+8, _parse_oct_digit>(out_value);
-		case 10: return _consume_integer<10, _parse_dec_digit>(out_value);
-		case 16: return _consume_integer<16, _parse_hex_digit>(out_value);
-		default: return false;
-		}
+		vsm_assert(2 <= radix && radix <= 36);
+
+		return radix < 10
+			? _consume_integer<_parse_digit_numeric>(out_value, radix)
+			: _consume_integer<_parse_digit_alpha_numeric>(out_value, radix);
 	}
 
 private:
-	[[nodiscard]] static constexpr int _parse_bin_digit(Char const character)
+	[[nodiscard]] static constexpr int _parse_digit_numeric(Char const character, int const radix)
 	{
-		if (character == Char('0'))
-		{
-			return 0;
-		}
-
-		if (character == Char('1'))
-		{
-			return 1;
-		}
-
-		return static_cast<int>(-1);
-	}
-
-	[[nodiscard]] static constexpr int _parse_oct_digit(Char const character)
-	{
-		if (Char('0') <= character && character <= Char('7'))
+		if (Char('0') <= character && character < Char('0') + radix)
 		{
 			return character - Char('0');
 		}
@@ -105,61 +89,65 @@ private:
 		return static_cast<int>(-1);
 	}
 
-	[[nodiscard]] static constexpr int _parse_dec_digit(Char const character)
+	[[nodiscard]] static constexpr int _parse_digit_alpha_numeric(Char const character, int const radix)
 	{
-		if (Char('0') <= character && character <= Char('9'))
+		if (Char('0') <= character && character < Char('9'))
 		{
 			return character - Char('0');
+		}
+
+		if (Char('a') <= character && character < Char('a') + radix)
+		{
+			return character - Char('a') + 10;
+		}
+
+		if (Char('A') <= character && character < Char('A') + radix)
+		{
+			return character - Char('A') + 10;
 		}
 
 		return static_cast<int>(-1);
 	}
 
-	[[nodiscard]] static constexpr int _parse_hex_digit(Char const character)
+	template<auto ParseDigit, std::unsigned_integral Integer>
+	[[nodiscard]] constexpr bool _consume_integer(Integer& out_value, int const radix)
 	{
-		if (Char('0') <= character && character <= Char('9'))
-		{
-			return character - Char('0');
-		}
+		constexpr Integer max = std::numeric_limits<Integer>::max();
+		Integer const max_mul = max / radix;
 
-		if (Char('a') <= character && character <= Char('f'))
-		{
-			return character - Char('a');
-		}
-
-		if (Char('A') <= character && character <= Char('F'))
-		{
-			return character - Char('A');
-		}
-
-		return static_cast<int>(-1);
-	}
-
-	template<int Radix, auto ParseDigit, std::unsigned_integral Integer>
-	[[nodiscard]] constexpr bool _consume_integer(Integer& out_value)
-	{
-		Char const* const beg_pos = beg;
+		Char const* beg = this->beg;
 
 		Integer value = 0;
 		for (; beg != end; ++beg)
 		{
-			int const digit = ParseDigit(*beg);
+			int const digit = ParseDigit(*beg, radix);
 
 			if (digit < 0)
 			{
 				break;
 			}
 
-			value *= static_cast<Integer>(Radix);
+			if (value > max_mul)
+			{
+				return false;
+			}
+			value *= static_cast<Integer>(radix);
+
+			if (value > max - digit)
+			{
+				return false;
+			}
 			value += digit;
 		}
 
-		if (beg_pos == beg)
+		if (beg == this->beg)
 		{
 			return false;
 		}
 
+		this->beg = beg;
 		out_value = value;
+
 		return true;
 	}
 };

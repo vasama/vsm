@@ -31,7 +31,7 @@ struct arithmetic_category<T>
 };
 
 template<typename L, typename R>
-concept same_arithmetic_category = arithmetic_category<L>::value == arithmetic_category<R>::value;
+inline constexpr bool is_same_arithmetic_category = arithmetic_category<L>::value == arithmetic_category<R>::value;
 
 } // namespace detail
 
@@ -41,14 +41,14 @@ inline constexpr T most_significant_bit = ~(static_cast<T>(-1) >> 1);
 
 template<arithmetic L, arithmetic R>
 constexpr auto min(L const l, R const r) -> decltype(l + r)
-	requires detail::same_arithmetic_category<L, R>
+	requires detail::is_same_arithmetic_category<L, R>
 {
 	return l <= r ? l : r;
 }
 
 template<arithmetic L, arithmetic R>
 constexpr auto max(L const l, R const r) -> decltype(l + r)
-	requires detail::same_arithmetic_category<L, R>
+	requires detail::is_same_arithmetic_category<L, R>
 {
 	return l >= r ? l : r;
 }
@@ -56,8 +56,8 @@ constexpr auto max(L const l, R const r) -> decltype(l + r)
 template<arithmetic T, arithmetic Min, arithmetic Max>
 constexpr auto clamp(T const x, Min const min, Max const max) -> decltype (x + (min + max))
 	requires
-		detail::same_arithmetic_category<T, Min> &&
-		detail::same_arithmetic_category<T, Max>
+		detail::is_same_arithmetic_category<T, Min> &&
+		detail::is_same_arithmetic_category<T, Max>
 {
 	using type = decltype(x + (min + max));
 	vsm_assert_slow(min < max);
