@@ -91,7 +91,7 @@ private:
 
 	[[nodiscard]] static constexpr int _parse_digit_alpha_numeric(Char const character, int const radix)
 	{
-		if (Char('0') <= character && character < Char('9'))
+		if (Char('0') <= character && character <= Char('9'))
 		{
 			return character - Char('0');
 		}

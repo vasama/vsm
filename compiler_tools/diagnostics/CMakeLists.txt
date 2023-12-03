@@ -1,10 +1,8 @@
-cmake_minimum_required(VERSION 3.23.0)
+cmake_minimum_required(VERSION 3.23)
 
 project(vsm_compilers_diagnostics)
 
-vsm_add_library(vsm_compilers_diagnostics
-	EXPORT_ALIAS vsm::compilers::diagnostics
-
+vsm_add_library(vsm::compilers::diagnostics
 	HEADERS
 		include/vsm/compilers/diagnostics.hpp
 

@@ -19,6 +19,8 @@ bool vsm_assert_fail_default(char const* const file, int const line, char const*
 	}
 
 	_assert(expr, file, static_cast<unsigned>(line));
+
+	return false;
 }
 
 extern "C"

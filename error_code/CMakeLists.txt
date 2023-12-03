@@ -2,9 +2,7 @@ cmake_minimum_required(VERSION 3.23)
 
 project(vsm_error_code)
 
-vsm_add_library(vsm_error_code
-	EXPORT_ALIAS vsm::error_code
-
+vsm_add_library(vsm::error_code
 	HEADERS
 		include/vsm/error_code.hpp
 		include/vsm/std_error_code.hpp

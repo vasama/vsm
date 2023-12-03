@@ -12,33 +12,30 @@ static bool invariant(base const& self)
 	hook const* hare = self.m_root.next;
 	hook const* tortoise = hare;
 
-	hook const* const tail = self.m_tail;
-
-	if (hare == nullptr)
-	{
-		return tail == nullptr;
-	}
-
 	while (true)
 	{
-		if ((hare = hare->next) == nullptr)
+		if (hare->next == &self.m_root)
 		{
-			return true;
+			break;
 		}
+		hare = hare->next;
 
-		if ((hare = hare->next) == nullptr)
+		if (hare->next == &self.m_root)
 		{
-			return true;
+			break;
 		}
+		hare = hare->next;
 
 		tortoise = tortoise->next;
-		vsm_assert(tortoise != nullptr);
+		vsm_assert(tortoise != &self.m_root);
 
 		if (tortoise == hare)
 		{
 			return false;
 		}
 	}
+
+	return hare == self.m_tail;
 }
 
 void base::push_front(hook* const head, hook* const tail)
@@ -108,6 +105,6 @@ hook* base::pop_front()
 
 void base::clear()
 {
-	m_root.loop();
+	m_root.next = &m_root;
 	m_tail = &m_root;
 }

@@ -5,9 +5,7 @@ project(vsm_intrusive_ptr)
 vsm_find_sibling(vsm-core)
 vsm_find_sibling(vsm-test_tools)
 
-vsm_add_library(vsm_intrusive_ptr
-	EXPORT_ALIAS vsm::intrusive_ptr
-
+vsm_add_library(vsm::intrusive_ptr
 	HEADERS
 		include/vsm/atomic_intrusive_ptr.hpp
 		include/vsm/intrusive_ptr.hpp

@@ -5,20 +5,11 @@
 #include <vsm/utility.hpp>
 
 #include <memory>
+#include <optional>
 #include <type_traits>
 
-#define vsm_value_categories(X) \
-	X(&) \
-	X(const&) \
-	X(&&) \
-	X(const&&) \
-
-#define vsm_move_copy_value_categories(X) \
-	X(&&) \
-	X(const&) \
-
 namespace vsm {
-namespace detail::optional_ {
+namespace detail::_optional {
 
 enum class bool_flag {};
 
@@ -46,11 +37,10 @@ struct storage
 
 	constexpr bool has_value() const noexcept
 	{
-		return m_value
+		return m_value;
 	}
 
 	constexpr T& emplace(auto&&... args)
-		noexcept(noexcept(T(vsm_forward(args)...)))
 	{
 		m_value = T(vsm_forward(args)...);
 		vsm_assert(m_value != Sentinel);
@@ -82,12 +72,10 @@ struct storage<T, bool_flag{}>
 	{
 	}
 
-	constexpr storage(storage&&) = default
-		requires std::is_trivially_move_constructible_v<T>;
-
+	constexpr storage(storage&& other) = default;
 	constexpr storage(storage&& other)
 		noexcept(std::is_nothrow_move_constructible_v<T>)
-		requires (std::is_move_constructible_v<T> && !std::is_trivially_movable_v<T>)
+		requires (std::is_move_constructible_v<T> && !std::is_trivially_copyable_v<T>)
 		: storage()
 	{
 		if (other.m_engaged)
@@ -97,9 +85,7 @@ struct storage<T, bool_flag{}>
 		}
 	}
 
-	constexpr storage(storage const&) = default
-		requires std::is_trivially_copy_constructible_v<T>;
-
+	constexpr storage(storage const& other) = default;
 	constexpr storage(storage const& other)
 		noexcept(std::is_nothrow_copy_constructible_v<T>)
 		requires (std::is_copy_constructible_v<T> && !std::is_trivially_copyable_v<T>)
@@ -112,6 +98,7 @@ struct storage<T, bool_flag{}>
 		}
 	}
 
+	constexpr ~storage() = default;
 	constexpr ~storage()
 		requires (!std::is_trivially_destructible_v<T>)
 	{
@@ -127,7 +114,6 @@ struct storage<T, bool_flag{}>
 	}
 
 	constexpr T& emplace(auto&&... args)
-		noexcept(noexcept(T(vsm_forward(args)...)))
 	{
 		if (m_engaged)
 		{
@@ -152,15 +138,8 @@ struct storage<T, bool_flag{}>
 };
 
 
-template<typename T, typename U>
-concept assignment_concept =
-	std::constructible_from<U, T> &&
-	std::assignable_from<U&, T>;
-
-template<typename T, typename U>
-inline constexpr bool assignment_noexcept =
-	noexcept(T(std::declval<U>())) &&
-	noexcept(std::declval<T&>() = std::declval<U>());
+template<typename LHS, typename RHS>
+concept _assignable_from = std::constructible_from<LHS, RHS> && std::assignable_from<LHS&, RHS>;
 
 template<auto T>
 inline constexpr bool is_bool_flag = std::is_same_v<decltype(T), bool_flag>;
@@ -173,6 +152,18 @@ std::false_type detect_optional(auto const&);
 template<typename T, auto S>
 std::true_type detect_optional(optional<T, S> const&);
 
+void _optional_concept(auto const&);
+
+template<typename T, auto S>
+char _optional_concept(optional<T, S> const&);
+
+template<typename T>
+concept optional_concept = requires { sizeof(_optional_concept(vsm_declval(std::remove_cvref_t<T>))); };
+
+template<optional_concept Optional>
+using value_cvref_t = copy_cvref_t<Optional, typename std::remove_cvref_t<Optional>::value_type>;
+
+
 template<typename T, auto Sentinel>
 class optional : storage<T, Sentinel>
 {
@@ -184,78 +175,58 @@ public:
 	using value_type = T;
 
 
-	optional() = default;
+	// [optional.ctor]
 
-	optional(optional&&) = default;
-	optional(optional const&) = default;
+	optional() = default;
 
 	constexpr optional(std::nullopt_t) noexcept
 	{
 	}
 
+	optional(optional&&) = default;
+	optional(optional const&) = default;
+
+	template<typename... Args>
+		requires std::constructible_from<T, Args&&...>
+	explicit constexpr optional(std::in_place_t, Args&&... args)
+		: base(std::in_place, vsm_forward(args)...)
+	{
+	}
+
 	template<constructible_to<T> U = T>
 	explicit(!std::is_convertible_v<U&&, T>)
-	constexpr optional(U&& value)
+		constexpr optional(U&& value)
 		noexcept(noexcept(T(vsm_forward(value))))
 		: base(std::in_place, vsm_forward(value))
 	{
 	}
 
-#if 0
-	template<constructible_to<T> U, auto S>
-		requires sentinel_conversion<Sentinel, S>
-	explicit(!std::is_convertible_v<U&&, T>)
-	constexpr optional(optional<U, S>&& other)
-		noexcept(noexcept(T(std::declval<U&&>())))
+	template<optional_concept U>
+		requires std::constructible_from<T, value_cvref_t<U>>
+	explicit(!std::convertible_to<T, value_cvref_t<U>>)
+	constexpr optional(U&& other)
 	{
 		if (other.has_value())
 		{
-			base::emplace(vsm_move(other.m_value));
+			base::emplace(static_cast<value_cvref_t<U>&&>(other.m_value));
 		}
 	}
 
-	template<constructible_to<T> U, auto S>
-		requires sentinel_conversion<Sentinel, S>
-	explicit(!std::is_convertible_v<U const&, T>)
-	constexpr optional(optional<U, S> const& other)
-		noexcept(noexcept(T(std::declval<U const&>())))
-	{
-		if (other.has_value())
-		{
-			base::emplace(other.m_value);
-		}
-	}
-#endif
 
-	template<typename Args>
-		requires std::constructible_from<T, Args&&...>
-	explicit constexpr optional(std::in_place_t, Args&&... args)
-		noexcept(noexcept(T(vsm_forward(args)...)))
-		: base(std::in_place, vsm_forward(args)...)
-	{
-	}
+	// [optional.assign]
 
-	template<typename Args>
-		requires std::constructible_from<T, Args&&...>
-	explicit constexpr optional(std::in_place_type_t<T>, Args&&... args)
-		noexcept(noexcept(T(vsm_forward(args)...)))
-		: base(std::in_place, vsm_forward(args)...)
-	{
-	}
-
-
-	optional& operator=(optional&&) = default;
-	optional& operator=(optional const&) = default;
-
-	constexpr optional& operator=(std::nullopt_t) noexcept
+	constexpr optional& operator=(std::nullopt_t) & noexcept
 	{
 		base::reset();
 		return *this;
 	}
 
-	template<assignment_concept<T> U = T>
-	constexpr optional& operator=(U&& value)
-		noexcept(assignment_noexcept<T, U&&>)
+	optional& operator=(optional&&) & = default;
+	optional& operator=(optional const&) & = default;
+
+	template<typename U = T>
+		requires _assignable_from<T, U>
+	constexpr optional& operator=(U&& value) &
 	{
 		if (base::has_value())
 		{
@@ -268,19 +239,17 @@ public:
 		return *this;
 	}
 
-#if 0
-	template<assignment_concept<T> U, auto S>
-		requires sentinel_conversion<Sentinel, S>
-	constexpr optional& operator=(optional<U, S>&& other)
-		noexcept(assignment_noexcept<T, U&&>)
+	template<optional_concept U>
+		requires _assignable_from<T, value_cvref_t<U>>
+	constexpr optional& operator=(U&& other) &
 	{
 		if (base::has_value() == other.has_value())
 		{
-			base::m_value = vsm_move(other.m_value);
+			base::m_value = static_cast<value_cvref_t<U>&&>(other.m_value);
 		}
 		else if (other.has_value())
 		{
-			base::emplace(vsm_move(other.m_value));
+			base::emplace(static_cast<value_cvref_t<U>&&>(other.m_value));
 		}
 		else
 		{
@@ -289,153 +258,96 @@ public:
 		return *this;
 	}
 
-	template<assignment_concept<T> U, auto S>
-		requires sentinel_conversion<Sentinel, S>
-	constexpr optional& operator=(optional<U, S> const& other)
-		noexcept(assignment_noexcept<T, U const&>)
-	{
-		if (base::has_value() == other.has_value())
-		{
-			base::m_value = other.m_value;
-		}
-		else if (other.has_value())
-		{
-			base::emplace(other.m_value);
-		}
-		else
-		{
-			base::reset();
-		}
-		return *this;
-	}
-#endif
-
-	using base::has_value;
 	using base::emplace;
-	using base::reset;
 
-#define vsm_x_entry(category) \
-	template<constructible_to<T> U, auto S> \
-		requires sentinel_conversion<Sentinel, S> \
-	explicit(!std::is_convertible_v<U category, T>) \
-	constexpr optional(optional<U, S> category other) \
-		noexcept(noexcept(T(std::declval<U category>()))) \
-	{ \
-		if (other.has_value()) \
-		{ \
-			base::emplace(static_cast<U category>(other.m_value)); \
-		} \
-	} \
-	\
-	template<assignment_concept<T> U, auto S> \
-		requires sentinel_conversion<Sentinel, S> \
-	constexpr optional& operator=(optional<U, S> category other) \
-		noexcept(assignment_noexcept<T, U category>) \
-	{ \
-		if (base::has_value() == other.has_value()) \
-		{ \
-			base::m_value = static_cast<U category>(other.m_value); \
-		} \
-		else if (other.has_value()) \
-		{ \
-			base::emplace(static_cast<U category>(other.m_value)); \
-		} \
-		else \
-		{ \
-			base::reset(); \
-		} \
-		return *this; \
-	} \
-	\
-	[[nodiscard]] constexpr T value_or(std::convertible_to<T> auto&& default_value) category \
-	{ \
-		return base::has_value() \
-			? static_cast<T category>(base::m_value) \
-			: T(vsm_forward(default_value)); \
-	} \
-	\
-	template<typename Callable>
-	[[nodiscard]] constexpr optional or_else(Callable&& callable) category \
-	{ \
-		using result_type = std::remove_cvref_t<std::invoke_result_t<Callable&&, T category>>; \
-		static_assert(std::is_same_v<result_type, optional>); \
-		return base::has_value() \
-			? static_cast<T category>(base::m_value) \
-			: std::invoke(vsm_forward(callable)); \
-	} \
 
-	vsm_move_copy_value_categories(vsm_x_entry)
-#undef vsm_x_entry
+	// [optional.observe]
 
-#define vsm_x_entry(category) \
-	[[nodiscard]] constexpr T category value() category noexcept \
-	{ \
-		vsm_assert(base::has_value()); \
-		return static_cast<T category>(base::m_value); \
-	} \
-	\
-	[[nodiscard]] constexpr T category operator*() category noexcept \
-	{ \
-		vsm_assert(base::has_value()); \
-		return static_cast<T category>(base::m_value); \
-	} \
-	\
-	template<typename Callable> \
-	[[nodiscard]] constexpr auto and_then(Callable&& callable) category \
-		noexcept(std::invoke(vsm_forward(callable), std::declval<T category>())) \
-	{ \
-		using result_type = std::remove_cvref_t<std::invoke_result_t<Callable&&, T category>>; \
-		static_assert(decltype(detect_optional(std::declval<result_type const&>()))::value); \
-		return base::has_value() \
-			? std::invoke(vsm_forward(callable), static_cast<T category>(base::m_value)) \
-			: result_type(); \
-	} \
-	\
-	template<typename Callable> \
-	[[nodiscard]] constexpr auto transform(Callable&& callable) category \
-		noexcept(std::invoke(vsm_forward(callable), std::declval<T category>())) \
-	{ \
-		using result_type = std::remove_cvref_t<std::invoke_result_t<Callable&&, T category>>; \
-		return base::has_value() \
-			? optional<result_type>(std::invoke(vsm_forward(callable), static_cast<T category>(base::m_value))) \
-			: optional<result_type>(); \
-	} \
-
-	vsm_value_categories(vsm_x_entry)
-#undef vsm_x_entry
-
-	[[nodiscard]] constexpr T* operator->() noexcept
+	template<typename U>
+	[[nodiscard]] constexpr remove_ref_t<copy_cvref_t<U, T>>* operator->(this U&& self)
 	{
 		vsm_assert(base::has_value());
 		return &base::m_value;
 	}
 
-	[[nodiscard]] constexpr T const* operator->() const noexcept
+	template<typename U>
+	[[nodiscard]] constexpr copy_cvref_t<U, T>&& operator*(this U&& self)
 	{
 		vsm_assert(base::has_value());
-		return &base::m_value;
+		return static_cast<copy_cvref_t<U, T>&&>(base::m_value);
 	}
 
-	[[nodiscard]] explicit constexpr bool() const noexcept
+	[[nodiscard]] explicit constexpr operator bool() const noexcept
 	{
 		return base::has_value();
 	}
+
+	using base::has_value;
+
+	template<typename U>
+	[[nodiscard]] constexpr copy_cvref_t<U, T>&& value(this U&& self)
+	{
+		vsm_assert(base::has_value());
+		return static_cast<copy_cvref_t<U, T>&&>(base::m_value);
+	}
+
+	template<typename U>
+	[[nodiscard]] constexpr T value_or(this U&& self, std::convertible_to<T> auto&& default_value)
+	{
+		return base::has_value()
+			? static_cast<copy_cvref_t<U>&&>(base::m_value)
+			: T(vsm_forward(default_value));
+	}
+
+
+	// [optional.monadic]
+
+	template<typename U, typename Callable>
+	[[nodiscard]] constexpr auto and_then(this U&& self, Callable&& callable)
+	{
+		using result_type = std::remove_cvref_t<std::invoke_result_t<Callable&&, copy_cvref_t<U, T>>>;
+		static_assert(optional_concept<result_type>);
+		return base::has_value()
+			? std::invoke(vsm_forward(callable), static_cast<copy_cvref_t<U, T>&&>(base::m_value))
+			: result_type();
+	}
+
+	template<typename U, typename Callable>
+	[[nodiscard]] constexpr auto transform(this U&& self, Callable&& callable)
+	{
+		using result_type = std::decay_t<std::invoke_result_t<Callable&&, copy_cvref_t<U, T>>>;
+		return base::has_value()
+			? optional<result_type>(std::invoke(vsm_forward(callable), static_cast<copy_cvref_t<U, T>&&>(base::m_value)))
+			: optional<result_type>();
+	}
+
+	template<typename U, typename Callable>
+	[[nodiscard]] constexpr optional or_else(this U&& self, Callable&& callable)
+	{
+		static_assert(std::is_same_v<
+			optional,
+			std::remove_cvref_t<std::invoke_result_t<Callable&&, copy_cvref_t<U, T>>>>);
+
+		return base::has_value()
+			? static_cast<copy_cvref_t<U, T>&&>(base::m_value)
+			: std::invoke(vsm_forward(callable));
+	}
+
+
+	// [optional.mod]
+
+	using base::reset;
 
 private:
 	template<typename, auto>
 	friend class optional;
 };
 
-#if 0
 template<typename T>
-optional(T&&) -> optional<std::remove_cvref_t<T>>;
+optional(T&&) -> optional<std::decay_t<T>>;
 
-template<typename T>
-optional(std::in_place_type_t<T>, auto&&...) -> optional<T>;
-#endif
+} // namespace detail::_optional
 
-} // namespace detail::optional_
-
-using detail::optional_::optional;
+using detail::_optional::optional;
 
 } // namespace vsm

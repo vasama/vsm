@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 3.23.0)
+cmake_minimum_required(VERSION 3.23)
 
 project(vsm_literals)
 
-vsm_add_library2(vsm::literals
+vsm_add_library(vsm::literals
 	HEADERS
 		include/vsm/literals.hpp
 

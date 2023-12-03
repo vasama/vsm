@@ -4,9 +4,7 @@ project(vsm_algorithm)
 
 vsm_find_sibling(vsm-core)
 
-vsm_add_library(vsm_algorithm
-	EXPORT_ALIAS vsm::algorithm
-
+vsm_add_library(vsm::algorithm
 	HEADERS
 		include/vsm/algorithm/remove_unstable.hpp
 

@@ -6,9 +6,7 @@ vsm_find_sibling(vsm-core)
 vsm_find_sibling(vsm-container_core)
 vsm_find_sibling(vsm-tag_ptr)
 
-vsm_add_library(vsm_intrusive
-	EXPORT_ALIAS vsm::intrusive
-
+vsm_add_library(vsm::intrusive
 	HEADERS
 		include/vsm/intrusive/avl_tree.hpp
 		include/vsm/intrusive/forward_list.hpp

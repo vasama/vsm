@@ -1,8 +1,8 @@
 #pragma once
 
+#include <vsm/concepts.hpp>
 #include <vsm/detail/expected.hpp>
 #include <vsm/preprocessor.h>
-#include <vsm/type_traits.hpp>
 
 #include <system_error>
 
@@ -38,6 +38,30 @@ result<void, E> discard_value(result<T, E> const& result)
 		? vsm::result<void, E>{}
 		: vsm::result<void, E>(result_error, result.error());
 }
+
+
+template<typename T>
+class success
+{
+	T m_value;
+
+public:
+	template<std::convertible_to<T> U>
+	explicit success(U&& value)
+		: m_value(static_cast<U&&>(value))
+	{
+	}
+
+	template<typename U, typename E, typename Self>
+		requires std::convertible_to<vsm::copy_cvref_t<Self, U>, U>
+	operator expected<U, E>(this Self&& self)
+	{
+		return expected<U, E>(result_value, static_cast<Self&&>(self).m_value);
+	}
+};
+
+template<typename T>
+success(T) -> success<T>;
 
 
 /// @brief Evaluate an expression and test the result.

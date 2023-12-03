@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.23)
 project(vsm_root)
 
 include(tools/cmake/vsm.cmake)
-include(tools/cmake/vsm_aggregate_test.cmake)
+vsm_add_aggregate_test(vsm_test)
 
 add_subdirectory(algorithm)
 add_subdirectory(allocator)

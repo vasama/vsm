@@ -14,6 +14,9 @@ concept not_same_as = !std::same_as<T, U>;
 template<typename T, typename... Ts>
 concept any_of = is_any_of_v<T, Ts...>;
 
+template<typename T, typename... Ts>
+concept none_of = is_none_of_v<T, Ts...>;
+
 
 /* value category */
 
@@ -58,6 +61,9 @@ concept character = std::integral<T> && any_of<T, char, wchar_t, char8_t, char16
 
 template<typename T>
 concept inheritable = is_inheritable_v<T>;
+
+template<typename T, typename U>
+concept inherited_from = not_same_as<T, U> && std::derived_from<T, U>;
 
 template<typename T, template<typename...> typename Template>
 concept instance_of = is_instance_of_v<T, Template>;

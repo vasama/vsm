@@ -2,9 +2,7 @@ cmake_minimum_required(VERSION 3.23)
 
 project(vsm_hash)
 
-vsm_add_library(vsm_hash
-	EXPORT_ALIAS vsm::hash
-
+vsm_add_library(vsm::hash
 	HEADERS
 		include/vsm/default_hash.hpp
 		include/vsm/hash.hpp

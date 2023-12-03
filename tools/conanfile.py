@@ -49,8 +49,11 @@ class base:
 		tc.variables["CMAKE_PROJECT_TOP_LEVEL_INCLUDES"] = f"{tools_path}/cmake/vsm.cmake"
 		tc.generate()
 
+	def requirements(self):
+		self.requires("vsm_cmake/0.1")
+
 	def build_requirements(self):
-		self.test_requires("catch2/[^3.3]")
+		self.test_requires("catch2/[^3.4]")
 
 	def layout(self):
 		cmake_layout(self)
@@ -67,15 +70,8 @@ class base:
 #			self.folders.generators = "build/conan"
 
 	def build(self):
-		# Path of this file during the user package build.
-		#tools_path = self.python_requires["vsm_tools"].path
-
 		cmake = CMake(self)
 		cmake.configure()
-		#cmake.configure({
-		#	# ./cmake/vsm.cmake is pre-included in all user builds.
-		#	"CMAKE_PROJECT_TOP_LEVEL_INCLUDES": f"{tools_path}/cmake/vsm.cmake"
-		#})
 		cmake.build()
 
 	def package(self):

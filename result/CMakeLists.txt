@@ -5,9 +5,7 @@ project(vsm_result)
 vsm_find_sibling(vsm-core)
 vsm_find_sibling(vsm-test_tools)
 
-vsm_add_library(vsm_result
-	EXPORT_ALIAS vsm::result
-
+vsm_add_library(vsm::result
 	HEADERS
 		include/vsm/result.hpp
 

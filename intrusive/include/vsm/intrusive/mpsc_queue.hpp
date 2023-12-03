@@ -20,11 +20,12 @@ struct hook_pair
 
 struct base : link_container
 {
-	atomic<hook*> m_produce_head = nullptr;
+	atomic<hook_pair> m_atom = hook_pair{ nullptr, nullptr };
 
 	bool push_one(hook* node);
 	bool push_all(hook* head, hook* tail);
-	hook_pair pop_all();
+	hook_pair pop_all_lifo();
+	hook_pair pop_all_fifo();
 };
 
 } // namespace detail::mpsc_queue_
@@ -56,7 +57,13 @@ public:
 
 	[[nodiscard]] forward_list<T> pop_all()
 	{
-		auto const pair = base::pop_all();
+		auto const pair = base::pop_all_fifo();
+		return forward_list<T>(pair.head, pair.tail);
+	}
+
+	[[nodiscard]] forward_list<T> pop_all_reversed()
+	{
+		auto const pair = base::pop_all_lifo();
 		return forward_list<T>(pair.head, pair.tail);
 	}
 };

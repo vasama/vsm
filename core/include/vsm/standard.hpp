@@ -1,5 +1,8 @@
 #pragma once
 
+#include <vsm/platform.h>
+
+
 /* C++20 [[no_unique_address]] */
 
 #if __has_cpp_attribute(no_unique_address)
@@ -9,6 +12,20 @@
 #else
 #	define vsm_no_unique_address
 #endif
+
+
+/* C++23 lambda attributes */
+
+#if vsm_compiler_msvc
+#	if _MSC_VER > 1938
+#		pragma warning Check for MSVC lambda attribute support
+#	endif
+#	define vsm_lambda_attribute(...)
+#else
+#	define vsm_lambda_attribute(...) __VA_ARGS__
+#endif
+
+#define vsm_lambda_nodiscard vsm_lambda_attribute( [[nodiscard]] )
 
 
 /* C++23 if consteval */

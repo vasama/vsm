@@ -6,7 +6,7 @@
 #include <cstdint>
 
 namespace vsm {
-namespace detail::type_traits_ {
+namespace detail::_type_traits {
 
 /* type comparison */
 
@@ -157,12 +157,12 @@ struct integer_of_size<8>
 	using unsigned_type = uint64_t;
 };
 
-} // namespace detail::type_traits_
+} // namespace detail::_type_traits
 
 /* type comparison */
 
 template<typename... Ts>
-inline constexpr bool all_same_v = detail::type_traits_::all_same<(sizeof...(Ts) > 1)>::template X<Ts...>;
+inline constexpr bool all_same_v = detail::_type_traits::all_same<(sizeof...(Ts) > 1)>::template X<Ts...>;
 
 template<typename... Ts>
 using all_same = std::bool_constant<all_same_v<Ts...>>;
@@ -170,14 +170,20 @@ using all_same = std::bool_constant<all_same_v<Ts...>>;
 template<typename T, typename... Ts>
 inline constexpr bool is_any_of_v = (std::is_same_v<T, Ts> || ...);
 
-template<typename... Ts>
-using is_any_of = std::bool_constant<is_any_of_v<Ts...>>;
+template<typename T, typename... Ts>
+using is_any_of = std::bool_constant<is_any_of_v<T, Ts...>>;
+
+template<typename T, typename... Ts>
+inline constexpr bool is_none_of_v = (!std::is_same_v<T, Ts> && ...);
+
+template<typename T, typename... Ts>
+using is_none_of = std::bool_constant<is_none_of_v<T, Ts...>>;
 
 
 /* conditional */
 
 template<bool Condition, typename True, typename False>
-using select_t = typename detail::type_traits_::select<Condition>::template type_template<True, False>;
+using select_t = typename detail::_type_traits::select<Condition>::template type_template<True, False>;
 
 
 /* value category removal */
@@ -195,13 +201,13 @@ using remove_ptr_t = std::remove_pointer_t<T>;
 /* value category copy */
 
 template<typename T, typename U>
-using copy_cv_t = typename detail::type_traits_::copy<T>::template cv<U>;
+using copy_cv_t = typename detail::_type_traits::copy<T>::template cv<U>;
 
 template<typename T, typename U>
-using copy_ref_t = typename detail::type_traits_::copy<T>::template ref<U>;
+using copy_ref_t = typename detail::_type_traits::copy<T>::template ref<U>;
 
 template<typename T, typename U>
-using copy_cvref_t = typename detail::type_traits_::copy<T>::template cvref<U>;
+using copy_cvref_t = typename detail::_type_traits::copy<T>::template cvref<U>;
 
 
 /* type properties */
@@ -213,16 +219,16 @@ template<typename T>
 using is_inheritable = std::bool_constant<is_inheritable_v<T>>;
 
 template<typename T, template<typename...> typename Template>
-inline constexpr bool is_instance_of_v = detail::type_traits_::is_instance_of<Template, T>::value;
+inline constexpr bool is_instance_of_v = detail::_type_traits::is_instance_of<Template, T>::value;
 
 template<typename T, template<typename...> typename Template>
-using is_instance_of = detail::type_traits_::is_instance_of<Template, T>;
+using is_instance_of = detail::_type_traits::is_instance_of<Template, T>;
 
 
 template<size_t Size>
-using signed_integer_of_size = typename detail::type_traits_::integer_of_size<Size>::signed_type;
+using signed_integer_of_size = typename detail::_type_traits::integer_of_size<Size>::signed_type;
 
 template<size_t Size>
-using unsigned_integer_of_size = typename detail::type_traits_::integer_of_size<Size>::unsigned_type;
+using unsigned_integer_of_size = typename detail::_type_traits::integer_of_size<Size>::unsigned_type;
 
 } // namespace vsm

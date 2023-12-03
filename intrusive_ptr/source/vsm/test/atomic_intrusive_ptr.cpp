@@ -4,6 +4,8 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <thread>
+
 using namespace vsm;
 
 namespace {

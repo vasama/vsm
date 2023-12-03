@@ -25,30 +25,43 @@ bool base::push_one(hook* const node)
 
 bool base::push_all(hook* const head, hook* const tail)
 {
-	hook* expected = m_produce_head.load(std::memory_order_acquire);
+	hook_pair atom = m_atom.load(std::memory_order_acquire);
 
 	do
 	{
-		tail->next = expected;
+		tail->next = atom.head;
 	}
-	while (!m_produce_head.compare_exchange_weak(
-		expected, head,
+	while (!m_atom.compare_exchange_weak(
+		atom, hook_pair{ head, atom.tail != nullptr ? atom.tail : tail },
 		std::memory_order_release, std::memory_order_acquire));
 
-	return expected == nullptr;
+	return atom.head == nullptr;
 }
 
-hook_pair base::pop_all()
+hook_pair base::pop_all_lifo()
 {
-	if (m_produce_head.load(std::memory_order_acquire) == nullptr)
+	hook_pair pair = m_atom.load(std::memory_order_acquire);
+
+	if (pair.head == nullptr)
 	{
 		return {};
 	}
 
-	hook* head = m_produce_head.exchange(nullptr, std::memory_order_acq_rel);
-	
-	// Only the consumer can make the head null and the consumer is externally synchronized.
-	vsm_assert(head != nullptr);
+	pair = m_atom.exchange(hook_pair{}, std::memory_order_acq_rel);
 
-	return { reverse_list(head), head };
+	// Only the consumer can make the head null
+	// and the consumer is externally synchronized.
+	vsm_assert(pair.head != nullptr);
+
+	return pair;
+}
+
+hook_pair base::pop_all_fifo()
+{
+	hook_pair const pair = pop_all_lifo();
+
+	hook* const new_head = reverse_list(pair.head);
+	vsm_assert(new_head == pair.tail);
+
+	return { new_head, pair.head };
 }

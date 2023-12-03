@@ -5,9 +5,7 @@ project(vsm_async)
 vsm_find_sibling(vsm-core)
 vsm_find_sibling(vsm-intrusive)
 
-vsm_add_library(vsm_async
-	EXPORT_ALIAS vsm::async
-
+vsm_add_library(vsm::async
 	HEADERS
 		include/vsm/async/timer.hpp
 

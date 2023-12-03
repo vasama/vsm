@@ -1,12 +1,10 @@
-cmake_minimum_required(VERSION 3.23.0)
+cmake_minimum_required(VERSION 3.23)
 
 project(vsm_lex_generator)
 
 vsm_find_sibling(vsm-core)
 
-vsm_add_library(vsm_lex_generator
-	EXPORT_ALIAS vsm::lex_generator
-
+vsm_add_library(vsm::lex_generator
 	HEADERS
 		include/vsm/lex_generator.hpp
 

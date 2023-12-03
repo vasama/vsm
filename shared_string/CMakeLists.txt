@@ -6,9 +6,7 @@ vsm_find_sibling(vsm-core)
 vsm_find_sibling(vsm-allocator)
 vsm_find_sibling(vsm-vector)
 
-vsm_add_library(vsm_shared_string
-	EXPORT_ALIAS vsm::shared_string
-
+vsm_add_library(vsm::shared_string
 	HEADERS
 		include/vsm/shared_string.hpp
 

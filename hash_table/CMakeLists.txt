@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.23.0)
+cmake_minimum_required(VERSION 3.23)
 
 project(vsm_hash_table)
 
@@ -8,9 +8,7 @@ vsm_find_sibling(vsm-core)
 vsm_find_sibling(vsm-hash)
 vsm_find_sibling(vsm-math)
 
-vsm_add_library(vsm_hash_table
-	EXPORT_ALIAS vsm::hash_table
-
+vsm_add_library(vsm::hash_table
 	HEADERS
 		include/vsm/detail/swiss_table.hpp
 		include/vsm/hash_map.hpp

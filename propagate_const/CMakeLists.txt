@@ -5,9 +5,7 @@ project(vsm_propagate_const)
 vsm_find_sibling(vsm-core)
 vsm_find_sibling(vsm-test_tools)
 
-vsm_add_library(vsm_propagate_const
-	EXPORT_ALIAS vsm::propagate_const
-
+vsm_add_library(vsm::propagate_const
 	HEADERS
 		include/vsm/propagate_const.hpp
 

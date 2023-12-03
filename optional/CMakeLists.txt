@@ -4,7 +4,7 @@ project(vsm_optional)
 
 vsm_find_sibling(vsm-core)
 
-vsm_add_library2(vsm::optional
+vsm_add_library(vsm::optional
 	HEADERS
 		include/vsm/optional.hpp
 

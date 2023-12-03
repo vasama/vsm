@@ -52,7 +52,7 @@ static void swap_nodes(hook* const parent, hook* const child)
 	hook** const grandparent = parent->parent;
 	grandparent[grandparent[0] != parent] = child;
 
-	// Attach parent to granchildren.
+	// Attach parent to grandchildren.
 	for (hook* const grandchild : child->children)
 	{
 		if (grandchild != nullptr)

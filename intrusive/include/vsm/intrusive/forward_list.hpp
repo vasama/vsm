@@ -19,11 +19,6 @@ namespace detail::forward_list_ {
 struct hook : link_base
 {
 	hook* next;
-
-	constexpr void loop() noexcept
-	{
-		next = this;
-	}
 };
 
 struct base : link_container
@@ -34,8 +29,24 @@ struct base : link_container
 
 	constexpr base() noexcept
 	{
-		m_root.loop();
+		m_root.next = &m_root;
 		m_tail = &m_root;
+	}
+
+	explicit base(hook* const head, hook* const tail) noexcept
+	{
+		vsm_assert((head != nullptr) == (tail != nullptr));
+
+		if (head != nullptr)
+		{
+			m_root.next = head;
+			m_tail = tail;
+		}
+		else
+		{
+			m_root.next = &m_root;
+			m_tail = &m_root;
+		}
 	}
 
 	void push_front(hook* head, hook* tail);

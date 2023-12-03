@@ -4,7 +4,7 @@ project(vsm_function)
 
 vsm_find_sibling(vsm-core)
 
-vsm_add_library2(vsm::function
+vsm_add_library(vsm::function
 	HEADERS
 		include/vsm/function_view.hpp
 

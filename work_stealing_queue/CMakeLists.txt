@@ -1,13 +1,11 @@
-cmake_minimum_required(VERSION 3.23.0)
+cmake_minimum_required(VERSION 3.23)
 
 project(vsm_work_stealing_queue)
 
 vsm_find_sibling(vsm-core)
 vsm_find_sibling(vsm-intrusive_ptr)
 
-vsm_add_library(vsm_work_stealing_queue
-	EXPORT_ALIAS vsm::work_stealing_queue
-
+vsm_add_library(vsm::work_stealing_queue
 	HEADERS
 		include/vsm/bounded_work_stealing_queue.hpp
 		include/vsm/work_stealing_queue.hpp
