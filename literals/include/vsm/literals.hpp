@@ -2,6 +2,8 @@
 
 #include <vsm/assert.h>
 
+#include <limits>
+
 #include <cstddef>
 
 namespace vsm {
@@ -10,7 +12,8 @@ template<typename Char, size_t Size>
 struct basic_literal_string
 {
 	static constexpr size_t size = Size;
-	Char data[Size];
+
+	Char data[Size] = {};
 
 	consteval basic_literal_string(Char const(&string)[Size + 1])
 	{

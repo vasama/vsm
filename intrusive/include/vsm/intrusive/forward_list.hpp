@@ -91,7 +91,7 @@ public:
 	}
 	
 	
-	iterator& operator++() const
+	iterator& operator++()
 	{
 		m_node = m_node->next;
 		return *this;

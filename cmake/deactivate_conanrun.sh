@@ -1,1 +1,0 @@
-. "D:\Code\vsm\cmake\deactivate_conanrunenv.sh"

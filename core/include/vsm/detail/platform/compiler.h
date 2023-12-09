@@ -1,3 +1,15 @@
+#ifndef vsm_gnu_diagnostic
+#	define vsm_gnu_diagnostic(...)
+#endif
+
+#ifndef vsm_clang_diagnostic
+#	define vsm_clang_diagnostic(...)
+#endif
+
+#ifndef vsm_gcc_diagnostic
+#	define vsm_gcc_diagnostic(...)
+#endif
+
 #ifndef vsm_msvc_warning
 #	define vsm_msvc_warning(...)
 #endif

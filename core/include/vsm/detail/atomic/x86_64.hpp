@@ -23,9 +23,20 @@ namespace vsm::detail {
 template<typename T>
 vsm_always_inline bool cmpxchg16(T& object, T& expected, T const& desired)
 {
-	T const old_expected = expected;
-	expected = __sync_val_compare_and_swap(&object, expected, desired);
-	return old_expected == expected;
+	// Read the bits of the expected value.
+	__uint128_t const old_expected = __builtin_bit_cast(__uint128_t, expected);
+
+	// Compare-exchange the bits at object, returning previous bits.
+	__uint128_t const old_object = __sync_val_compare_and_swap(
+		reinterpret_cast<__uint128_t*>(&object),
+		old_expected,
+		__builtin_bit_cast(__uint128_t, desired));
+
+	// Update the bits of the user's expected value.
+	expected = __builtin_bit_cast(T, old_object);
+
+	// The compare-exchange succeeded if the bits match.
+	return old_object == old_expected;
 }
 #endif
 

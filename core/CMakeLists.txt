@@ -34,7 +34,8 @@ vsm_add_library(vsm::core
 		include/vsm/detail/atomic_x86_64.hpp
 		include/vsm/detail/categories.hpp
 
-	ADDITIONAL_SOURCES
+	SOURCES
+		source/vsm/impl/assert.cpp
 
 	TEST_SOURCES
 		source/vsm/test/utility.cpp
@@ -45,10 +46,10 @@ vsm_add_library(vsm::core
 vsm_configure(vsm::core
 	PLATFORM Windows
 	SOURCES
-		source/vsm/impl/assert.win32.cpp
+		source/vsm/impl/win32/assert.cpp
 )
 vsm_configure(vsm::core
 	PLATFORM Linux
 	SOURCES
-		source/vsm/impl/assert.linux.cpp
+		source/vsm/impl/linux/assert.cpp
 )

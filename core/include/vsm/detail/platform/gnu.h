@@ -1,3 +1,6 @@
+#define vsm_detail_gnu_diagnostic(compiler, ...) \
+	_Pragma(vsm_pp_str(compiler diagnostic __VA_ARGS__))
+
 #define vsm_always_inline __attribute__((always_inline))
 #define vsm_never_inline __attribute__((noinline))
 

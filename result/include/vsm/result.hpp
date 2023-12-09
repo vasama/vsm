@@ -6,6 +6,10 @@
 #include <vsm/standard.hpp>
 #include <vsm/tag_invoke.hpp>
 
+#ifndef __cpp_explicit_this_parameter
+#	include <vsm/detail/categories.hpp>
+#endif
+
 #include <system_error>
 
 namespace vsm {
@@ -95,12 +99,25 @@ public:
 	{
 	}
 
+#if __cpp_explicit_this_parameter
 	template<typename U, typename E, typename Self>
-		requires std::convertible_to<vsm::copy_cvref_t<Self, U>, U>
+		requires std::convertible_to<vsm::copy_cvref_t<Self, T>, U>
 	operator expected<U, E>(this Self&& self)
 	{
 		return expected<U, E>(result_value, static_cast<Self&&>(self).m_value);
 	}
+#else
+#	define vsm_detail_x(C) \
+	template<typename U, typename E> \
+		requires std::convertible_to<T C, U> \
+	operator expected<U, E>() C \
+	{ \
+		return expected<U, E>(result_value, static_cast<T C>(m_value)); \
+	} \
+
+	vsm_detail_reference_categories(vsm_detail_x)
+#	undef vsm_detail_x
+#endif
 };
 
 template<typename T>
@@ -228,7 +245,6 @@ success(T) -> success<T>;
 
 #define vsm_detail_try_result_1(return, spec, ...) \
 	vsm_detail_try_result_2(return, vsm_detail_try_h(spec), vsm_detail_try_v(spec), __VA_ARGS__)
-
 
 /* vsm_try */
 

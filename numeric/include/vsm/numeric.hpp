@@ -93,8 +93,8 @@ To truncate(From const from)
 	return static_cast<To>(from);
 }
 
-template<std::integral To, std::integral From>
-vsm::result<To, std::errc> try_truncate(From const from)
+template<std::integral To, typename Error, std::integral From>
+vsm::result<To, Error> try_truncate(From const from, Error const& error = std::errc::value_too_large)
 {
 	if constexpr (
 		std::numeric_limits<To>::min() > std::numeric_limits<From>::min() ||
@@ -102,7 +102,7 @@ vsm::result<To, std::errc> try_truncate(From const from)
 	{
 		if ((static_cast<From>(static_cast<To>(from)) != from))
 		{
-			return vsm::unexpected(std::errc::value_too_large);
+			return vsm::unexpected(error);
 		}
 	}
 	return static_cast<To>(from);

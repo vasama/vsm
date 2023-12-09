@@ -23,12 +23,6 @@ bool vsm_assert_fail_default(char const* const file, int const line, char const*
 	return false;
 }
 
-extern "C"
-bool vsm_detail_assert_fail(char const* const file, int const line, char const* const expr)
-{
-	return vsm_assert_fail(file, line, expr);
-}
-
 
 #if vsm_arch_x86_32
 #	define vsm_detail_mangle(name) vsm_pp_cat(_, name)

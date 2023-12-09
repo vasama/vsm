@@ -22,20 +22,20 @@ struct intrusive_ptr_acquire_tag {};
 struct intrusive_ptr_acquire_cpo
 {
 	template<typename T>
-	vsm_static_operator void operator()(T* const ptr, size_t const count) vsm_static_operator_const
+	void vsm_static_operator_invoke(T* const ptr, size_t const count)
 		requires tag_invocable<intrusive_ptr_acquire_cpo, T*, size_t>
 	{
-		tag_invoke(*this, ptr, count);
+		tag_invoke(intrusive_ptr_acquire_cpo(), ptr, count);
 	}
 };
 
 struct intrusive_ptr_release_cpo
 {
 	template<typename T>
-	vsm_static_operator void operator()(T* const ptr, size_t const count) vsm_static_operator_const
+	void vsm_static_operator_invoke(T* const ptr, size_t const count)
 		requires tag_invocable<intrusive_ptr_release_cpo, T*, size_t>
 	{
-		tag_invoke(*this, ptr, count);
+		tag_invoke(intrusive_ptr_release_cpo(), ptr, count);
 	}
 };
 
@@ -48,10 +48,10 @@ struct intrusive_ptr_delete_cpo
 	}
 
 	template<typename T>
-	vsm_static_operator void operator()(T* const ptr) vsm_static_operator_const
+	void vsm_static_operator_invoke(T* const ptr)
 		requires tag_invocable<intrusive_ptr_delete_cpo, T*>
 	{
-		tag_invoke(*this, ptr);
+		tag_invoke(intrusive_ptr_delete_cpo(), ptr);
 	}
 };
 

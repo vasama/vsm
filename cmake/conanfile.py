@@ -1,5 +1,6 @@
 from conan import ConanFile
 from conan.tools.files import copy
+from conan.tools.cmake import cmake_layout
 from os.path import join
 
 class package(ConanFile):
@@ -7,6 +8,9 @@ class package(ConanFile):
 
 	name = "vsm_cmake"
 	version = "0.1"
+
+	def layout(self):
+		cmake_layout(self)
 
 	def package(self):
 		copy(

@@ -207,9 +207,12 @@ public:
 	}
 
 
-	T& operator*() const
+	std::add_lvalue_reference_t<T> operator*() const
 	{
-		return *reinterpret_cast<T*>(m_value & ptr_mask);
+		if constexpr (!std::is_void_v<T>)
+		{
+			return *reinterpret_cast<T*>(m_value & ptr_mask);
+		}
 	}
 
 	T* operator->() const
@@ -217,9 +220,12 @@ public:
 		return reinterpret_cast<T*>(m_value & ptr_mask);
 	}
 
-	T& operator[](ptrdiff_t const index) const
+	std::add_lvalue_reference_t<T> operator[](ptrdiff_t const index) const
 	{
-		return reinterpret_cast<T*>(m_value & ptr_mask)[index];
+		if constexpr (!std::is_void_v<T>)
+		{
+			return reinterpret_cast<T*>(m_value & ptr_mask)[index];
+		}
 	}
 
 

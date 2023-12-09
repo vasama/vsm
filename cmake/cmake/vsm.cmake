@@ -2,12 +2,16 @@ find_package(Catch2 REQUIRED)
 
 add_library(vsm_cmake_options INTERFACE)
 
-if(MSVC)
+if(${CMAKE_CXX_COMPILER_FRONTEND_VARIANT} STREQUAL "MSVC")
 	target_compile_options(vsm_cmake_options INTERFACE
 		/permissive-
 		/Zc:preprocessor
 		/Zc:__cplusplus
+
 		/W4
+		#TODO: Enable warnings as errors
+		#/WX
+
 		# Disable C4324: Structure was padded due to alignment specifier
 		/wd4324
 	)
@@ -22,6 +26,16 @@ if(MSVC)
 	target_link_options(vsm_cmake_options INTERFACE
 		# Disable LNK4099: PDB not found
 		/IGNORE:4099
+	)
+endif()
+
+if(${CMAKE_CXX_COMPILER_FRONTEND_VARIANT} STREQUAL "GNU")
+	target_compile_options(vsm_cmake_options INTERFACE
+		-Wall
+		-Wextra
+		-Wpedantic
+		#TODO: Enable warnings as errors
+		#-Werror
 	)
 endif()
 
