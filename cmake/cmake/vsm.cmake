@@ -4,6 +4,7 @@ add_library(vsm_cmake_options INTERFACE)
 
 if(MSVC)
 	target_compile_options(vsm_cmake_options INTERFACE
+		/permissive-
 		/Zc:preprocessor
 		/Zc:__cplusplus
 		/W4

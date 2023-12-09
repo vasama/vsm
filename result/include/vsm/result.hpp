@@ -3,6 +3,8 @@
 #include <vsm/concepts.hpp>
 #include <vsm/detail/expected.hpp>
 #include <vsm/preprocessor.h>
+#include <vsm/standard.hpp>
+#include <vsm/tag_invoke.hpp>
 
 #include <system_error>
 
@@ -10,6 +12,47 @@ namespace vsm {
 
 using detail::expected_namespace::expected;
 using detail::expected_namespace::unexpected;
+
+struct has_error_t
+{
+	template<typename T, typename E>
+	friend bool tag_invoke(has_error_t, expected<T, E> const& e)
+	{
+		return !e;
+	}
+
+	template<typename R>
+	bool vsm_static_operator_invoke(R const& r)
+		requires tag_invocable<has_error_t, R const&>
+	{
+		return tag_invoke(has_error_t(), r);
+	}
+};
+inline constexpr has_error_t has_error = {};
+
+struct propagate_error_t
+{
+	template<typename T, typename E>
+	friend unexpected<E> tag_invoke(propagate_error_t, expected<T, E>&& e)
+	{
+		return unexpected<E>(static_cast<expected<T, E>&&>(e).error());
+	}
+
+	template<typename T, typename E>
+	friend unexpected<E> tag_invoke(propagate_error_t, expected<T, E> const& e)
+	{
+		return unexpected<E>(e.error());
+	}
+
+	template<typename R>
+	auto vsm_static_operator_invoke(R&& r)
+		-> tag_invoke_result_t<propagate_error_t, R>
+		requires tag_invocable<propagate_error_t, R>
+	{
+		return tag_invoke(propagate_error_t(), vsm_forward(r));
+	}
+};
+inline constexpr propagate_error_t propagate_error = {};
 
 template<typename T, typename E = std::error_code>
 using result = detail::expected_namespace::expected<T, E>;
@@ -170,14 +213,11 @@ success(T) -> success<T>;
 #define vsm_detail_try_r \
 	vsm_pp_cat(vsm_detail_try_r, __COUNTER__)
 
-#define vsm_detail_try_unlikely
-
 #define vsm_detail_try_intro(return, hspec, result, ...) \
 	hspec result = (__VA_ARGS__); \
-	if (!result) \
+	if (::vsm::has_error(result)) \
 	{ \
-		vsm_detail_try_unlikely \
-		return ::vsm::unexpected(static_cast<decltype(result)&&>(result).error()); \
+		return ::vsm::propagate_error(static_cast<decltype(result)&&>(result)); \
 	}
 
 /* vsm_try_result */
