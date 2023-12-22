@@ -2,7 +2,12 @@ find_package(Catch2 REQUIRED)
 
 add_library(vsm_cmake_options INTERFACE)
 
-if(${CMAKE_CXX_COMPILER_FRONTEND_VARIANT} STREQUAL "MSVC")
+set(vsm_compiler_frontend ${CMAKE_CXX_COMPILER_ID})
+if(DEFINED CMAKE_CXX_COMPILER_FRONTEND_VARIANT)
+	set(vsm_compiler_frontend ${CMAKE_CXX_COMPILER_FRONTEND_VARIANT})
+endif()
+
+if("${vsm_compiler_frontend}" STREQUAL "MSVC")
 	target_compile_options(vsm_cmake_options INTERFACE
 		/permissive-
 		/Zc:preprocessor
@@ -29,7 +34,7 @@ if(${CMAKE_CXX_COMPILER_FRONTEND_VARIANT} STREQUAL "MSVC")
 	)
 endif()
 
-if(${CMAKE_CXX_COMPILER_FRONTEND_VARIANT} STREQUAL "GNU")
+if("${vsm_compiler_frontend}" STREQUAL "GNU")
 	target_compile_options(vsm_cmake_options INTERFACE
 		-Wall
 		-Wextra

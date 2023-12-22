@@ -18,18 +18,6 @@
 #	error unsupported compiler
 #endif
 
-#ifndef vsm_compiler_clang
-#	define vsm_compiler_clang 0
-#endif
-
-#ifndef vsm_compiler_msvc
-#	define vsm_compiler_msvc 0
-#endif
-
-#ifndef vsm_compiler_gcc
-#	define vsm_compiler_gcc 0
-#endif
-
 #include <vsm/detail/platform/compiler.h>
 
 
@@ -63,10 +51,6 @@
 #	error unsupported cpu architecture
 #endif
 
-#ifndef vsm_arch_x86
-#	define vsm_arch_x86 0
-#endif
-
 #include <vsm/detail/platform/arch.h>
 
 
@@ -80,14 +64,6 @@
 #	include <vsm/detail/platform/linux.h>
 #else
 #	error unsupported operating system
-#endif
-
-#ifndef vsm_os_win32
-#	define vsm_os_win32 0
-#endif
-
-#ifndef vsm_os_linux
-#	define vsm_os_linux 0
 #endif
 
 #include <vsm/detail/platform/os.h>

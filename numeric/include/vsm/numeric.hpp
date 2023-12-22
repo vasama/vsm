@@ -93,7 +93,7 @@ To truncate(From const from)
 	return static_cast<To>(from);
 }
 
-template<std::integral To, typename Error, std::integral From>
+template<std::integral To, std::integral From, typename Error = std::errc>
 vsm::result<To, Error> try_truncate(From const from, Error const& error = std::errc::value_too_large)
 {
 	if constexpr (

@@ -1,14 +1,11 @@
 #pragma once
 
 #include <vsm/concepts.hpp>
+#include <vsm/detail/categories.hpp>
 #include <vsm/detail/expected.hpp>
 #include <vsm/preprocessor.h>
 #include <vsm/standard.hpp>
 #include <vsm/tag_invoke.hpp>
-
-#ifndef __cpp_explicit_this_parameter
-#	include <vsm/detail/categories.hpp>
-#endif
 
 #include <system_error>
 

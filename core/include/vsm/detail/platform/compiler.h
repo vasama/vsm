@@ -1,3 +1,15 @@
+#ifndef vsm_compiler_clang
+#	define vsm_compiler_clang 0
+#endif
+
+#ifndef vsm_compiler_msvc
+#	define vsm_compiler_msvc 0
+#endif
+
+#ifndef vsm_compiler_gcc
+#	define vsm_compiler_gcc 0
+#endif
+
 #ifndef vsm_gnu_diagnostic
 #	define vsm_gnu_diagnostic(...)
 #endif

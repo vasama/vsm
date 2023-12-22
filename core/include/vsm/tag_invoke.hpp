@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vsm/platform.h>
 #include <vsm/standard.hpp>
 #include <vsm/utility.hpp>
 
@@ -28,7 +29,7 @@ struct tag_invoke_t
 {
 	template<typename T, typename... Args>
 		requires tag_invocable<T, Args...>
-	constexpr auto vsm_static_operator_invoke(T tag, Args&&... args)
+	constexpr vsm_always_inline auto vsm_static_operator_invoke(T tag, Args&&... args)
 		noexcept(nothrow_tag_invocable<T, Args...>)
 		-> tag_invoke_result_t<T, Args...>
 	{
