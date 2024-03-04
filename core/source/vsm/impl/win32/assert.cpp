@@ -1,6 +1,7 @@
 #include <vsm/assert.h>
 
 #include <vsm/preprocessor.h>
+#include <vsm/weak.h>
 
 #include <cstdio>
 #include <cstdlib>
@@ -11,7 +12,7 @@ extern "C"
 void __cdecl _assert(char const* message, char const* filename, unsigned line);
 
 extern "C"
-bool vsm_assert_fail_default(char const* const file, int const line, char const* const expr)
+bool vsm_weak(vsm_assert_fail)(char const* const file, int const line, char const* const expr)
 {
 	if (IsDebuggerPresent())
 	{
@@ -23,11 +24,8 @@ bool vsm_assert_fail_default(char const* const file, int const line, char const*
 	return false;
 }
 
-
-#if vsm_arch_x86_32
-#	define vsm_detail_mangle(name) vsm_pp_cat(_, name)
-#else
-#	define vsm_detail_mangle(name) name
-#endif
-
-__pragma(comment(linker, vsm_pp_str(/ALTERNATENAME:vsm_detail_mangle(vsm_assert_fail)=vsm_detail_mangle(vsm_assert_fail_default))))
+extern "C"
+bool vsm_detail_assert_fail(char const* const file, int const line, char const* const expr)
+{
+	return vsm_assert_fail(file, line, expr);
+}

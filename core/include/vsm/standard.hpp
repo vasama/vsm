@@ -17,8 +17,8 @@
 /* C++23 lambda attributes */
 
 #if vsm_compiler_msvc
-#	if _MSC_VER > 1938
-#		pragma warning Check for MSVC lambda attribute support
+#	if _MSC_VER > 1939
+#		error Check for MSVC lambda attribute support
 #	endif
 #	define vsm_lambda_attribute(...)
 #else

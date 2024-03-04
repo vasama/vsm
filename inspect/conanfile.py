@@ -4,11 +4,5 @@ class package(ConanFile):
 	python_requires = "vsm_tools/0.1"
 	python_requires_extend = "vsm_tools.base"
 
-	vsm_name = "vsm::vector"
+	vsm_name = "vsm::inspect"
 	version = "0.1"
-
-	requires = (
-		"vsm_algorithm/0.1",
-		"vsm_allocator/0.1",
-		"vsm_core/0.1",
-	)

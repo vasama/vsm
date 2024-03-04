@@ -3,6 +3,7 @@ function(vsm_add_aggregate_test target)
 		message(SEND_ERROR "aggregate test target already defined")
 	else()
 		add_executable(${target})
+		target_link_libraries(${target} PRIVATE vsm_cmake_options)
 		set(vsm_aggregate_test_target ${target} PARENT_SCOPE)
 
 		set_property(

@@ -9,9 +9,6 @@ class package(ConanFile):
 	name = "vsm_cmake"
 	version = "0.1"
 
-	def layout(self):
-		cmake_layout(self)
-
 	def package(self):
 		copy(
 			self,

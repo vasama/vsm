@@ -14,7 +14,7 @@ vsm_add_library(vsm::propagate_const
 
 	TEST_SOURCES
 		source/vsm/test/propagate_const.cpp
-		
+
 	TEST_DEPENDENCIES
 		vsm::test_tools
 )

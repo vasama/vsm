@@ -14,11 +14,16 @@ if("${vsm_compiler_frontend}" STREQUAL "MSVC")
 		/Zc:__cplusplus
 
 		/W4
-		#TODO: Enable warnings as errors
-		#/WX
+		/WX
+
+		# Disable C4200: Flexible array member
+		/wd4200
 
 		# Disable C4324: Structure was padded due to alignment specifier
 		/wd4324
+
+		# Disable C4459: Declaration hides global declaration
+		/wd4459
 	)
 
 	target_compile_definitions(vsm_cmake_options INTERFACE
@@ -42,6 +47,18 @@ if("${vsm_compiler_frontend}" STREQUAL "GNU")
 		#TODO: Enable warnings as errors
 		#-Werror
 	)
+
+	if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+		target_compile_options(vsm_cmake_options INTERFACE
+			-Wmissing-declarations
+		)
+	endif()
+
+	if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+		target_compile_options(vsm_cmake_options INTERFACE
+			-Wmissing-prototypes
+		)
+	endif()
 endif()
 
 include(vsm_add_library)

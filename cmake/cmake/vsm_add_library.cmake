@@ -1,4 +1,4 @@
-function(vsm_detail_configure target public_type private_type)
+function(vsm_detail_configure target public_type)
 	if(DEFINED OPT_HEADERS)
 		target_sources(${target}
 			${public_type}
@@ -92,13 +92,13 @@ function(vsm_add_library name)
 	endif()
 
 	target_include_directories(${target} ${public_type} include)
-	if(${public_type} STREQUAL PUBLIC)
+
+	if(${private_type} STREQUAL PRIVATE)
 		target_include_directories(${target} PRIVATE source)
+		target_link_libraries(${target} PRIVATE vsm_cmake_options)
 	endif()
 
-	target_link_libraries(${target} PRIVATE vsm_cmake_options)
-
-	vsm_detail_configure(${target} ${public_type} ${private_type})
+	vsm_detail_configure(${target} ${public_type})
 endfunction()
 
 function(vsm_configure name)
@@ -132,5 +132,5 @@ function(vsm_configure name)
 		set(private_type INTERFACE)
 	endif()
 
-	vsm_detail_configure(${target} ${public_type} ${private_type})
+	vsm_detail_configure(${target} ${public_type})
 endfunction()

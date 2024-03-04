@@ -19,6 +19,7 @@ vsm_add_library(vsm::core
 		include/vsm/type_traits.hpp
 		include/vsm/utility.hpp
 
+		include/vsm/detail/atomic/x86_64.hpp
 		include/vsm/detail/platform/arch.h
 		include/vsm/detail/platform/clang.h
 		include/vsm/detail/platform/compiler.h
@@ -31,11 +32,9 @@ vsm_add_library(vsm::core
 		include/vsm/detail/platform/x86.h
 		include/vsm/detail/platform/x86_32.h
 		include/vsm/detail/platform/x86_64.h
-		include/vsm/detail/atomic_x86_64.hpp
 		include/vsm/detail/categories.hpp
 
-	SOURCES
-		source/vsm/impl/assert.cpp
+	ADDITIONAL_SOURCES
 
 	TEST_SOURCES
 		source/vsm/test/utility.cpp

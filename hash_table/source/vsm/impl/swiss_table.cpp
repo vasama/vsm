@@ -79,10 +79,10 @@ void* swiss_table::insert_impl(core& table, size_t const element_size, size_t co
 		{
 			return { nullptr };
 		}
-		
+
 		ctrls = get_ctrls(table.slots, element_size, table.capacity);
 		slot_index = find_free_slot(ctrls, table.capacity, hash);
-		vsm_assert(ctrls[slot_index] == slot_ctrl);
+		vsm_assert(slot_ctrl == ctrl_end || slot_ctrl == ctrls[slot_index]);
 	}
 
 	table.free -= static_cast<size_t>(slot_ctrl != ctrl_tomb);
