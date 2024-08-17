@@ -9,12 +9,15 @@ namespace vsm {
 class new_allocator
 {
 public:
-	allocation allocate(size_t const size)
+	static constexpr bool is_always_equal = true;
+	static constexpr bool is_propagatable = true;
+
+	[[nodiscard]] allocation allocate(size_t const size) const
 	{
 		return { operator new(size), size };
 	}
-	
-	void deallocate(allocation const allocation)
+
+	void deallocate(allocation const allocation) const
 	{
 		operator delete(allocation.buffer, allocation.size);
 	}

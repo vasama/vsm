@@ -1,11 +1,13 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.24)
 
 project(vsm_intrusive_ptr)
 
 vsm_find_sibling(vsm-core)
 vsm_find_sibling(vsm-test_tools)
 
-vsm_add_library(vsm::intrusive_ptr
+vsm_add_library(
+	vsm::intrusive_ptr
+
 	HEADERS
 		include/vsm/atomic_intrusive_ptr.hpp
 		include/vsm/intrusive_ptr.hpp

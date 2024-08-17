@@ -176,7 +176,7 @@ public:
 private:
 	struct key_selector
 	{
-		decltype(auto) vsm_static_operator_invoke(Timer const& timer)
+		vsm_static_operator decltype(auto) operator()(Timer const& timer) vsm_static_operator_const
 		{
 			return timer.get_time_point();
 		}

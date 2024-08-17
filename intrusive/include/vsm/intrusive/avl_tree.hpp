@@ -3,83 +3,146 @@
 #include <vsm/intrusive/link.hpp>
 #include <vsm/intrusive/list.hpp>
 
+#include <vsm/concepts.hpp>
 #include <vsm/insert_result.hpp>
 #include <vsm/key_selector.hpp>
 #include <vsm/standard.hpp>
 #include <vsm/tag_ptr.hpp>
 #include <vsm/utility.hpp>
 
-#include <concepts>
 #include <type_traits>
 #include <utility>
 
 namespace vsm::intrusive {
-
-using avl_tree_link = link<3>;
-
-namespace detail::avl_tree_ {
-
-#define vsm_detail_avl_hook(element, ...) \
-	(reinterpret_cast<hook __VA_ARGS__*>(static_cast<avl_tree_link __VA_ARGS__*>(element)))
-
-#define vsm_detail_avl_elem(hook, ...) \
-	(static_cast<T __VA_ARGS__*>(reinterpret_cast<avl_tree_link __VA_ARGS__*>(hook)))
+namespace detail {
 
 #define vsm_detail_avl_hook_from_children(children) \
-	static_cast<hook*>(reinterpret_cast<hook_data*>(children))
+	reinterpret_cast<hook*>(children)
 
-
-template<typename T>
-using ptr = incomplete_tag_ptr<T, bool, 1>;
-
-struct hook;
-
-struct hook_data
+struct _avl
 {
-	// Child pointers with tag==1 indicating +1 subtree height on that side.
-	ptr<hook> children[2];
+	template<typename T>
+	using ptr = incomplete_tag_ptr<T, bool, 1>;
 
-	// Pointer to hook::children[0] of a parent hook or to base::m_root.
-	ptr<hook>* parent;
-};
+	struct hook
+	{
+		// Child pointers with tag==1 indicating +1 subtree height on that side.
+		ptr<hook> children[2];
 
-struct hook : link_base, hook_data {};
+		// Pointer to hook::children[0] of a parent hook or to _avl::m_root.
+		ptr<hook>* parent;
+	};
 
-struct base : link_container
-{
-	ptr<hook> m_root = {};
-	size_t m_size = {};
+	template<typename T, typename Tag>
+	class iterator
+	{
+		ptr<hook>* m_children;
+
+	public:
+		using difference_type = ptrdiff_t;
+		using value_type = T;
+		using pointer = T*;
+		using reference = T&;
 
 
-	base() = default;
+		iterator() = default;
 
-	base(base&& other) noexcept
-		: link_container(static_cast<link_container&&>(other))
-		, m_root(other.m_root)
+		explicit iterator(ptr<hook>* const children)
+			: m_children(children)
+		{
+		}
+
+		explicit iterator(T* const element)
+			: m_children(detail::links::get_hook<hook, Tag>(element)->children)
+		{
+		}
+
+		template<cv_convertible_to<T> U>
+		iterator(iterator<U, Tag> const& other)
+			: m_children(other.m_children)
+		{
+		}
+
+
+		[[nodiscard]] T& operator*() const
+		{
+			static_assert(check<T, Tag, hook>);
+			return *links::get_elem<T, Tag>(vsm_detail_avl_hook_from_children(m_children));
+		}
+
+		[[nodiscard]] T* operator->() const
+		{
+			static_assert(check<T, Tag, hook>);
+			return links::get_elem<T, Tag>(vsm_detail_avl_hook_from_children(m_children));
+		}
+
+
+		iterator& operator++() &
+		{
+			m_children = iterator_advance(m_children, 0);
+			return *this;
+		}
+
+		[[nodiscard]] iterator operator++(int) &
+		{
+			iterator result = *this;
+			m_children = iterator_advance(m_children, 0);
+			return result;
+		}
+
+		iterator& operator--() &
+		{
+			m_children = iterator_advance(m_children, 1);
+			return *this;
+		}
+
+		[[nodiscard]] iterator operator--(int) &
+		{
+			iterator result = *this;
+			m_children = iterator_advance(m_children, 1);
+			return result;
+		}
+
+
+		[[nodiscard]] bool operator==(iterator const&) const = default;
+
+	private:
+		friend _avl;
+
+		template<typename, typename>
+		friend class iterator;
+	};
+
+
+	ptr<hook> m_root = nullptr;
+	size_t m_size = 0;
+
+	_avl() = default;
+
+	_avl(_avl&& other) noexcept
+		: m_root(other.m_root)
 		, m_size(other.m_size)
 	{
-		other.m_root = {};
-		other.m_size = {};
+		other.m_root = nullptr;
+		other.m_size = 0;
 	}
 
-	base& operator=(base&& other) & noexcept
+	_avl& operator=(_avl&& other) & noexcept
 	{
-		if (!m_root.is_zero())
+		if (m_root != nullptr)
 		{
 			clear();
 		}
 
-		static_cast<link_container&>(*this) = static_cast<link_container&&>(other);
-
 		m_root = other.m_root;
 		m_size = other.m_size;
-		other.m_root = {};
-		other.m_size = {};
+		other.m_root = nullptr;
+		other.m_size = 0;
 
 		return *this;
 	}
 
-	~base()
+	~_avl()
 	{
 		if (!m_root.is_zero())
 		{
@@ -91,108 +154,63 @@ struct base : link_container
 	struct find_result
 	{
 		hook* node;
-		ptr<const ptr<hook>> parent;
+		ptr<ptr<hook> const> parent;
 	};
 
+	ptr<hook> const* lower_bound(ptr<ptr<hook> const> parent_and_side) const;
 	void insert(hook* node, ptr<ptr<hook>> parent_and_side);
 	void remove(hook* node);
+	void replace(hook* existing_node, hook* new_node);
 	void clear();
-	list_::hook* flatten();
+	_list::hook* flatten();
 
-	friend void swap(base& lhs, base& rhs) noexcept
+	friend void swap(_avl& lhs, _avl& rhs) noexcept
 	{
 		using std::swap;
-		swap(
-			static_cast<link_container&>(lhs),
-			static_cast<link_container&>(rhs));
 		swap(lhs.m_root, rhs.m_root);
 		swap(lhs.m_size, rhs.m_size);
 	}
+
+
+	template<typename T, typename Tag>
+	static ptr<hook>* get_iterator_ptr(iterator<T, Tag> const& it)
+	{
+		return it.m_children;
+	}
+
+	static ptr<hook>* iterator_begin(ptr<hook>* root);
+	static ptr<hook>* iterator_advance(ptr<hook>* children, bool l);
 };
 
-ptr<hook>* iterator_begin(ptr<hook>* root);
-ptr<hook>* iterator_advance(ptr<hook>* children, bool l);
+} // namespace detail
 
+template<typename Tag>
+using basic_avl_tree_link = basic_link<3, Tag>;
 
-template<typename T>
-class iterator
-{
-	ptr<hook>* m_children;
+using avl_tree_link = basic_avl_tree_link<void>;
 
-public:
-	using difference_type = ptrdiff_t;
-	using value_type = T;
-	using pointer = T*;
-	using reference = T&;
-
-
-	iterator() = default;
-
-	iterator(ptr<hook>* const children)
-		: m_children(children)
-	{
-	}
-
-
-	[[nodiscard]] T& operator*() const
-	{
-		return *vsm_detail_avl_elem(vsm_detail_avl_hook_from_children(m_children));
-	}
-
-	[[nodiscard]] T* operator->() const
-	{
-		return vsm_detail_avl_elem(vsm_detail_avl_hook_from_children(m_children));
-	}
-
-
-	iterator& operator++() &
-	{
-		m_children = iterator_advance(m_children, 0);
-		return *this;
-	}
-
-	[[nodiscard]] iterator operator++(int) &
-	{
-		iterator result = *this;
-		m_children = iterator_advance(m_children, 0);
-		return result;
-	}
-
-	iterator& operator--() &
-	{
-		m_children = iterator_advance(m_children, 1);
-		return *this;
-	}
-
-	[[nodiscard]] iterator operator--(int) &
-	{
-		iterator result = *this;
-		m_children = iterator_advance(m_children, 1);
-		return result;
-	}
-
-
-	[[nodiscard]] bool operator==(iterator const&) const = default;
-};
-
-
-template<std::derived_from<avl_tree_link> T,
-	key_selector<T> KeySelector = identity_key_selector,
+template<
+	typename T,
+	key_selector<detail::element_t<T>> KeySelector = identity_key_selector,
 	typename Comparator = std::compare_three_way>
-class avl_tree : base
+class avl_tree : detail::_avl
 {
-	using key_type = decltype(std::declval<KeySelector const&>()(std::declval<T const&>()));
+public:
+	using element_type = detail::element_t<T>;
+	using tag_type = detail::tag_t<T>;
 
+	using key_type = decltype(std::declval<KeySelector const&>()(std::declval<element_type const&>()));
+
+private:
 	vsm_no_unique_address KeySelector m_key_selector;
 	vsm_no_unique_address Comparator m_comparator;
 
 public:
-	using element_type = T;
 
-	using       iterator = avl_tree_::iterator<      T>;
-	using const_iterator = avl_tree_::iterator<const T>;
+	using       iterator = _avl::iterator<      element_type, tag_type>;
+	using const_iterator = _avl::iterator<const element_type, tag_type>;
 
-	using insert_result = vsm::insert_result<T>;
+	using insert_result = vsm::insert_result<element_type>;
 
 
 	avl_tree() = default;
@@ -232,93 +250,201 @@ public:
 	/// @brief Find element by homogeneous key.
 	/// @param key Lookup key.
 	/// @return Pointer to element, or null if not found.
-	[[nodiscard]] T* find(key_type const& key)
-		noexcept(noexcept(find_internal(key)))
+	[[nodiscard]] element_type* find(key_type const& key)
 	{
-		return vsm_detail_avl_elem(find_internal(key).node);
+		static_assert(detail::check<element_type, tag_type, hook>);
+		hook* const hook = _find(key).node;
+
+		return hook == nullptr
+			? nullptr
+			: get_elem(hook);
 	}
 
 	/// @brief Find element by homogeneous key.
 	/// @param key Lookup key.
 	/// @return Pointer to element, or null if not found.
-	[[nodiscard]] T const* find(const key_type& key) const
-		noexcept(noexcept(find_internal(key)))
+	[[nodiscard]] element_type const* find(key_type const& key) const
 	{
-		return vsm_detail_avl_elem(find_internal(key).node);
+		static_assert(detail::check<element_type, tag_type, hook>);
+		hook const* const hook = _find(key).node;
+
+		return hook == nullptr
+			? nullptr
+			: get_elem(hook);
 	}
 
 	/// @brief Find element by heterogeneous key.
 	/// @param key Lookup key.
 	/// @return Pointer to element or null.
 	template<typename Key>
-	[[nodiscard]] T* find_equivalent(Key const& key)
-		noexcept(noexcept(find_internal(key)))
+	[[nodiscard]] element_type* find_equivalent(Key const& key)
 		requires (requires (key_type const& tree_key) { m_comparator(key, tree_key); })
 	{
-		return vsm_detail_avl_elem(find_internal(key).node);
+		static_assert(detail::check<element_type, tag_type, hook>);
+		hook* const hook = _find(key).node;
+
+		return hook == nullptr
+			? nullptr
+			: get_elem(hook);
 	}
 
 	/// @brief Find element by heterogeneous key.
 	/// @param key Lookup key.
 	/// @return Pointer to element or null.
 	template<typename Key>
-	[[nodiscard]] T const* find_equivalent(Key const& key) const
-		noexcept(noexcept(find_internal(key)))
+	[[nodiscard]] element_type const* find_equivalent(Key const& key) const
 		requires (requires (key_type const& tree_key) { m_comparator(key, tree_key); })
 	{
-		return vsm_detail_avl_elem(find_internal(key).node);
+		static_assert(detail::check<element_type, tag_type, hook>);
+		hook const* const hook = _find(key).node;
+
+		return hook == nullptr
+			? nullptr
+			: get_elem(hook);
+	}
+
+
+	[[nodiscard]] iterator lower_bound(key_type const& key)
+	{
+		return iterator(const_cast<ptr<hook>*>(_lower_bound(key)));
+	}
+
+	[[nodiscard]] const_iterator lower_bound(key_type const& key) const
+	{
+		return const_iterator(_lower_bound(key));
+	}
+
+	template<typename Key = key_type>
+	[[nodiscard]] iterator equivalent_lower_bound(Key const& key)
+	{
+		return iterator(const_cast<ptr<hook>*>(_lower_bound(key)));
+	}
+
+	template<typename Key = key_type>
+	[[nodiscard]] const_iterator equivalent_lower_bound(Key const& key) const
+	{
+		return const_iterator(_lower_bound(key));
 	}
 
 
 	/// @brief Insert new element into the tree.
 	/// @param element Element to be inserted.
-	/// @pre @p element is not part of any container.
-	insert_result insert(T* const element)
+	/// @pre @p element is not part of any intrusive container.
+	insert_result insert(element_type* const element)
 	{
-		auto const r = find_internal(m_key_selector(*element));
+		static_assert(detail::check<element_type, tag_type, hook>);
+		auto const r = _find(vsm_as_const(m_key_selector)(*element));
+
 		if (r.node != nullptr)
 		{
-			return { vsm_detail_avl_elem(r.node), false };
+			return { get_elem(r.node), false };
 		}
-		base::insert(vsm_detail_avl_hook(element), const_pointer_cast<ptr<ptr<hook>>>(r.parent));
+
+		_avl::insert(
+			detail::links::construct<hook, tag_type>(element),
+			const_pointer_cast<ptr<ptr<hook>>>(r.parent));
+
 		return { element, true };
 	}
+
+#if 0
+	/// @brief Insert the new element into the tree as close as possible to the position just
+	///        before @p hint.
+	/// @param element Element to be inserted.
+	/// @pre @p element is not part of any intrusive container.
+	insert_result insert_hint(const_iterator const hint, element_type* const element)
+	{
+		static_assert(detail::check<element_type, tag_type, hook>);
+		auto const r = _find_from(
+			vsm_as_const(m_key_selector)(*element),
+			std::to_address(hint));
+
+		if (r.node != nullptr)
+		{
+			return { get_elem(r.node), false };
+		}
+
+		_avl::insert(
+			detail::links::construct<hook, tag_type>(element),
+			const_pointer_cast<ptr<ptr<hook>>>(r.parent));
+
+		return { element, true };
+	}
+#endif
 
 	/// @brief Remove an element from the tree.
 	/// @param element Element to be removed.
 	/// @pre @p element is part of this tree.
-	void remove(T* const element)
+	void remove(element_type* const element)
 	{
-		base::remove(vsm_detail_avl_hook(element));
+		static_assert(detail::check<element_type, tag_type, hook>);
+		_avl::remove(get_hook(element));
+	}
+
+	/// @brief Replace an element with a new equivalent element.
+	/// @param existing_element The element to be removed.
+	/// @param new_element The element to be inserted.
+	/// @pre @p existing_element is part of this tree.
+	/// @pre @p new_element is not part of any intrusive container.
+	/// @pre The selected keys of @p existing_element and @p new_element are equivalent.
+	void replace(element_type* const existing_element, element_type* const new_element)
+	{
+		static_assert(detail::check<element_type, tag_type, hook>);
+
+		vsm_assert(
+			vsm_as_const(m_key_selector)(*existing_element) ==
+			vsm_as_const(m_key_selector)(*new_element));
+
+		_avl::replace(get_hook(existing_element), get_hook(new_element));
+	}
+
+	/// @brief Replace an element with a new equivalent element.
+	/// @param position The position of the element to be removed.
+	/// @param new_element The element to be inserted.
+	/// @pre @p position is an iterator referring to an element in this tree.
+	/// @pre @p new_element is not part of any intrusive container.
+	/// @pre The selected keys of @p position and @p new_element are equivalent.
+	void replace(const_iterator const position, element_type* const new_element)
+	{
+		static_assert(detail::check<element_type, tag_type, hook>);
+
+		vsm_assert(position != end());
+		vsm_assert(
+			vsm_as_const(m_key_selector)(*position) ==
+			vsm_as_const(m_key_selector)(*new_element));
+
+		_avl::replace(
+			reinterpret_cast<hook*>(_avl::get_iterator_ptr(position)),
+			get_hook(new_element));
 	}
 
 	/// @brief Remove all elements from the tree.
-	using base::clear;
+	using _avl::clear;
 
 	/// @brief Flatten the tree into a linked list using an in-order traversal.
 	[[nodiscard]] list<T> flatten()
 	{
 		size_t const size = this->size();
-		return list<T>(static_cast<link_container&&>(*this), base::flatten(), size);
+		return list<T>(_avl::flatten(), size);
 	}
 
 
 	/// @brief Create an iterator referring to an element.
-	/// @pram element Element to which the resulting iterator shall refer.
+	/// @param element Element to which the resulting iterator shall refer.
 	/// @pre @p element is part of this tree.
-	[[nodiscard]] iterator make_iterator(T* const element)
+	[[nodiscard]] iterator make_iterator(element_type* const element)
 	{
-		vsm_intrusive_link_check(*this, *element);
-		return iterator(vsm_detail_avl_hook(element));
+		static_assert(detail::check<element_type, tag_type, hook>);
+		return iterator(get_hook(element));
 	}
 
 	/// @brief Create an iterator referring to an element.
-	/// @pram element Element to which the resulting iterator shall refer.
+	/// @param element Element to which the resulting iterator shall refer.
 	/// @pre @p element is part of this tree.
-	[[nodiscard]] const_iterator make_iterator(T const* const element) const
+	[[nodiscard]] const_iterator make_iterator(element_type const* const element) const
 	{
-		vsm_intrusive_link_check(*this, *element);
-		return const_iterator(vsm_detail_avl_hook(element, const));
+		static_assert(detail::check<element_type, tag_type, hook>);
+		return const_iterator(get_hook(element));
 	}
 
 
@@ -346,39 +472,67 @@ public:
 	friend void swap(avl_tree& lhs, avl_tree& rhs) noexcept
 	{
 		using std::swap;
-		swap(static_cast<base&>(lhs), static_cast<base&>(rhs));
+		swap(static_cast<_avl&>(lhs), static_cast<_avl&>(rhs));
 		swap(lhs.m_key_selector, rhs.m_key_selector);
 		swap(lhs.m_comparator, rhs.m_comparator);
 	}
 
 private:
-	template<typename Key>
-	find_result find_internal(Key const& key) const
-		noexcept(noexcept(m_comparator(key, std::declval<key_type const&>())))
+	[[nodiscard]] static auto* get_hook(auto* const element)
 	{
+		return detail::links::get_hook<hook, tag_type>(element);
+	}
+
+	[[nodiscard]] static auto* get_elem(auto* const hook)
+	{
+		return detail::links::get_elem<element_type, tag_type>(hook);
+	}
+
+	template<typename Key>
+	ptr<hook> const* _lower_bound(Key const& key) const
+	{
+		auto const r = _find(key);
+
+		return r.node != nullptr
+			? r.node->children
+			: _avl::lower_bound(r.parent);
+	}
+
+	template<typename Key>
+	find_result _find(Key const& key) const
+	{
+		// The "current" node at each iteration is the "left" (given by l) child of parent.
+
+		// The parent pointer itself never becomes null. Initially it points to the container root.
 		ptr<hook> const* parent = &m_root;
+
+		// The container root only has a left child. Therefore l must initially be 0.
 		bool l = 0;
 
 		while (!parent[l].is_zero())
 		{
 			hook* const child = parent[l].ptr();
 
-			auto const ordering = m_comparator(key, m_key_selector(*vsm_detail_avl_elem(child)));
+			auto const ordering = m_comparator(
+				key,
+				m_key_selector(*get_elem(child)));
+
 			if (ordering == 0)
 			{
 				return { child, { parent, l } };
 			}
 
 			parent = child->children;
-			l = ordering > 0;
+
+			// Of the two potential children of the "current" node, which we should look at in the
+			// next iteration, depends on the ordering of the search key K_s and the key of the
+			// "current" node K_n. If K_s < K_n, then it is the left child at index 0. The boolean
+			// result of the comparison, if the condition is true, is 1 and must be negated.
+			l = !(ordering < 0);
 		}
 
 		return find_result{ nullptr, { parent, l } };
 	}
 };
-
-} // namespace detail::avl_tree_
-
-using detail::avl_tree_::avl_tree;
 
 } // namespace vsm::intrusive

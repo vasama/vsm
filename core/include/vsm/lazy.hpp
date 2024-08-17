@@ -1,7 +1,6 @@
 #pragma once
 
 #include <vsm/concepts.hpp>
-#include <vsm/lift.hpp>
 #include <vsm/utility.hpp>
 
 namespace vsm {

@@ -7,4 +7,7 @@ class package(ConanFile):
 	vsm_name = "vsm::function"
 	version = "0.1"
 
-	requires = "vsm_core/0.1"
+	requires = (
+		"vsm_allocator/0.1",
+		"vsm_core/0.1",
+	)

@@ -25,10 +25,20 @@ public:
 
 	~out_resource_type()
 	{
-		std::apply([&](auto&&... args)
+		if (m_resource != Owner::sentinel)
 		{
-			m_owner.reset(vsm_move(m_resource), vsm_forward(args)...);
-		}, vsm_move(m_args));
+			std::apply([&](auto&&... args)
+			{
+				if constexpr (requires { m_owner.reset(vsm_move(m_resource), vsm_forward(args)...); })
+				{
+					m_owner.reset(vsm_move(m_resource), vsm_forward(args)...);
+				}
+				else
+				{
+					m_owner = Owner(vsm_move(m_resource), vsm_forward(args)...);
+				}
+			}, vsm_move(m_args));
+		}
 	}
 
 	operator Resource*() const noexcept

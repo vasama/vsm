@@ -29,10 +29,10 @@ template<typename T>
 using ptr = tag_ptr<T, bool>;
 
 vsm_dependent_context
-(
+{
 	static_assert(requires { typename ptr<s<2>>; });
 	static_assert(not requires { typename ptr<vsm_dep_t(s<1>)>; });
-);
+};
 
 TEST_CASE("tag_ptr", "[tag_ptr]")
 {

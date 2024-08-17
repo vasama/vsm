@@ -29,7 +29,8 @@ struct tag_invoke_t
 {
 	template<typename T, typename... Args>
 		requires tag_invocable<T, Args...>
-	constexpr vsm_always_inline auto vsm_static_operator_invoke(T tag, Args&&... args)
+	vsm_always_inline constexpr vsm_static_operator auto
+	operator()(T tag, Args&&... args) vsm_static_operator_const
 		noexcept(nothrow_tag_invocable<T, Args...>)
 		-> tag_invoke_result_t<T, Args...>
 	{

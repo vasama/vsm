@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vsm/concepts.hpp>
-#include <vsm/detail/function.hpp>
+#include <vsm/detail/function_view.hpp>
 #include <vsm/utility.hpp>
 
 namespace vsm {
@@ -122,13 +122,13 @@ public:
 	function_view_impl& operator=(function_view_impl const&) & noexcept = default;
 	
 	template<no_cvref_of<function_view_impl> T>
-		requires (
-			!std::is_pointer_v<T>
-			&& !std::is_base_of_v<nontype_base_t, T>
-		)
+		requires
+			(!std::is_pointer_v<T>)
+			&& (!std::is_base_of_v<nontype_base_t, T>)
 	function_view_impl& operator=(T) = delete;
 
 
+	//TODO: && signature should only be && invocable
 	vsm_detail_function_ptr_constexpr R operator()(std::convertible_to<Ps> auto&&... args) const noexcept(N)
 	{
 		return m_invoke(m_context, vsm_forward(args)...);

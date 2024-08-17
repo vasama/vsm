@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.24)
 
 project(vsm_core)
 
@@ -10,4 +10,5 @@ vsm_add_library(vsm::numeric
 
 	HEADER_DEPENDENCIES
 		vsm::core
+		vsm::result
 )

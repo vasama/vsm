@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vsm/assert.h>
+#include <vsm/standard.hpp>
 #include <vsm/utility.hpp>
 
 #include <concepts>
@@ -136,7 +137,7 @@ class unique_resource : public unique_resource_storage<Resource, Sentinel>
 	static_assert(std::is_nothrow_move_constructible_v<Deleter>);
 	static_assert(std::is_nothrow_move_assignable_v<Deleter>);
 
-	[[no_unique_address]] Deleter m_deleter;
+	vsm_no_unique_address Deleter m_deleter;
 
 public:
 	using resource_type = Resource;

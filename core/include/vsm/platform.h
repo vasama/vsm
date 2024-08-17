@@ -67,3 +67,19 @@
 #endif
 
 #include <vsm/detail/platform/os.h>
+
+
+#include <version>
+
+#if defined(_MSVC_STL_UPDATE)
+#	define vsm_stdlib msstl
+#	define vsm_stdlib_msstl 1
+#elif defined(__GLIBCXX__)
+#	define vsm_stdlib libstdcxx
+#	define vsm_stdlib_libstdcxx 1
+#elif defined(_LIBCPP_VERSION)
+#	define vsm_stdlib libcxx
+#	define vsm_stdlib_libcxx 1
+#else
+#	error unsupported standard library
+#endif

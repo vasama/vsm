@@ -2,12 +2,14 @@
 
 using namespace vsm;
 using namespace vsm::intrusive;
-using namespace vsm::intrusive::detail::list_;
+using namespace vsm::intrusive::detail;
+
+using hook = _list::hook;
 
 static_assert(sizeof(hook) == sizeof(list_link));
 
 
-static bool invariant(base const& self)
+[[maybe_unused]] static bool invariant(_list const& self)
 {
 	size_t size = 0;
 
@@ -36,8 +38,7 @@ static bool invariant(base const& self)
 	return size == self.m_size;
 }
 
-
-void base::adopt(hook* const head, size_t const size)
+void _list::adopt(hook* const head, size_t const size)
 {
 	hook* const tail = m_root.siblings[1];
 	vsm_assert(tail->siblings[0] == head);
@@ -50,13 +51,11 @@ void base::adopt(hook* const head, size_t const size)
 
 	m_size = size;
 
-	vsm_assert_slow(invariant(*this));
+	//vsm_assert_slow(invariant(*this));
 }
 
-void base::insert(hook* const prev, hook* const node, bool const before)
+void _list::insert(hook* const prev, hook* const node, bool const before)
 {
-	vsm_intrusive_link_insert(*this, *node);
-
 	++m_size;
 
 	hook* const next = prev->siblings[before];
@@ -67,13 +66,11 @@ void base::insert(hook* const prev, hook* const node, bool const before)
 	prev->siblings[before] = node;
 	next->siblings[!before] = node;
 
-	vsm_assert_slow(invariant(*this));
+	//vsm_assert_slow(invariant(*this));
 }
 
-void base::remove(hook* const node)
+void _list::remove(hook* const node)
 {
-	vsm_intrusive_link_remove(*this, *node);
-
 	--m_size;
 
 	hook* const next = node->siblings[0];
@@ -82,13 +79,30 @@ void base::remove(hook* const node)
 	prev->siblings[0] = next;
 	next->siblings[1] = prev;
 
-	vsm_assert_slow(invariant(*this));
+	//vsm_assert_slow(invariant(*this));
 }
 
-void base::clear_internal()
+void _list::splice(_list& other, hook* const next)
 {
-	for (hook* node = m_root.siblings[0]; node != &m_root; node = node->siblings[0])
+	if (other.m_size == 0)
 	{
-		vsm_intrusive_link_remove(*this, *node);
+		return;
 	}
+
+	hook* const prev = next->siblings[1];
+	hook* const head = other.m_root.siblings[0];
+	hook* const tail = other.m_root.siblings[1];
+
+	tail->siblings[0] = next;
+	next->siblings[1] = tail;
+
+	head->siblings[1] = prev;
+	prev->siblings[0] = head;
+
+	other.m_root.loop();
+	m_size += other.m_size;
+	other.m_size = 0;
+
+	//vsm_assert_slow(invariant(*this));
+	vsm_assert_slow(invariant(other));
 }

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.24)
 
 project(vsm_intrusive)
 
@@ -6,7 +6,9 @@ vsm_find_sibling(vsm-core)
 vsm_find_sibling(vsm-container_core)
 vsm_find_sibling(vsm-tag_ptr)
 
-vsm_add_library(vsm::intrusive
+vsm_add_library(
+	vsm::intrusive
+
 	HEADERS
 		include/vsm/intrusive/avl_tree.hpp
 		include/vsm/intrusive/forward_list.hpp
@@ -23,6 +25,7 @@ vsm_add_library(vsm::intrusive
 		source/vsm/intrusive/impl/heap.cpp
 		source/vsm/intrusive/impl/list.cpp
 		source/vsm/intrusive/impl/mpsc_queue.cpp
+		source/vsm/intrusive/impl/rb_tree.cpp
 		source/vsm/intrusive/impl/wb_tree.cpp
 
 	HEADER_DEPENDENCIES
@@ -36,5 +39,6 @@ vsm_add_library(vsm::intrusive
 		source/vsm/intrusive/test/heap.cpp
 		source/vsm/intrusive/test/list.cpp
 		source/vsm/intrusive/test/mpsc_queue.cpp
+		source/vsm/intrusive/test/rb_tree.cpp
 		source/vsm/intrusive/test/wb_tree.cpp
 )

@@ -1,8 +1,10 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.24)
 
 project(vsm_math)
 
-vsm_add_library(vsm::math
+vsm_add_library(
+	vsm::math
+
 	HEADERS
 		include/vsm/math.hpp
 

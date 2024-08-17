@@ -5,6 +5,9 @@ namespace vsm {
 template<typename Key, typename Value>
 struct key_value_pair
 {
+	using key_type = Key;
+	using value_type = Value;
+
 	Key key;
 	Value value;
 };

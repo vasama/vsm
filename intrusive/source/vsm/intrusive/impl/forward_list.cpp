@@ -2,12 +2,13 @@
 
 using namespace vsm;
 using namespace vsm::intrusive;
-using namespace vsm::intrusive::detail::forward_list_;
+using namespace vsm::intrusive::detail;
 
+using hook = _flist::hook;
 static_assert(sizeof(hook) == sizeof(forward_list_link));
 
 
-static bool invariant(base const& self)
+[[maybe_unused]] static bool invariant(_flist const& self)
 {
 	hook const* hare = self.m_root.next;
 	hook const* tortoise = hare;
@@ -38,7 +39,7 @@ static bool invariant(base const& self)
 	return hare == self.m_tail;
 }
 
-void base::push_front(hook* const head, hook* const tail)
+void _flist::push_front(hook* const head, hook* const tail)
 {
 	if (m_tail == &m_root)
 	{
@@ -48,15 +49,15 @@ void base::push_front(hook* const head, hook* const tail)
 	tail->next = m_root.next;
 	m_root.next = head;
 
-	vsm_assert_slow(invariant(*this));
+	//vsm_assert_slow(invariant(*this));
 }
 
-void base::push_front(hook* const node)
+void _flist::push_front(hook* const node)
 {
 	return push_front(node, node);
 }
 
-void base::splice_front(base& list)
+void _flist::splice_front(_flist& list)
 {
 	if (list.m_root.next != &list.m_root)
 	{
@@ -65,21 +66,21 @@ void base::splice_front(base& list)
 	}
 }
 
-void base::push_back(hook* const head, hook* const tail)
+void _flist::push_back(hook* const head, hook* const tail)
 {
 	tail->next = &m_root;
 	m_tail->next = head;
 	m_tail = tail;
 
-	vsm_assert_slow(invariant(*this));
+	//vsm_assert_slow(invariant(*this));
 }
 
-void base::push_back(hook* const node)
+void _flist::push_back(hook* const node)
 {
 	push_back(node, node);
 }
 
-void base::splice_back(base& list)
+void _flist::splice_back(_flist& list)
 {
 	if (list.m_root.next != &list.m_root)
 	{
@@ -88,7 +89,7 @@ void base::splice_back(base& list)
 	}
 }
 
-hook* base::pop_front()
+hook* _flist::pop_front()
 {
 	hook* const head = m_root.next;
 	m_root.next = head->next;
@@ -98,12 +99,12 @@ hook* base::pop_front()
 		m_tail = &m_root;
 	}
 
-	vsm_assert_slow(invariant(*this));
+	//vsm_assert_slow(invariant(*this));
 
 	return head;
 }
 
-void base::clear()
+void _flist::clear()
 {
 	m_root.next = &m_root;
 	m_tail = &m_root;

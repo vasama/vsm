@@ -8,7 +8,7 @@
 namespace vsm {
 namespace detail {
 
-class mpsc_queue_control
+class _mpsc_queue
 {
 	atomic<size_t> m_size = 0;
 	atomic<size_t> m_head = 0;
@@ -67,7 +67,7 @@ public:
 template<typename T>
 class bounded_mpsc_queue
 {
-	detail::mpsc_queue_control m_control;
+	detail::_mpsc_queue m_control;
 };
 
 } // namespace vsm

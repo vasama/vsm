@@ -1,0 +1,26 @@
+cmake_minimum_required(VERSION 3.24)
+
+project(vsm_mpsc_queue)
+
+vsm_find_sibling(vsm-allocator)
+vsm_find_sibling(vsm-core)
+vsm_find_sibling(vsm-math)
+vsm_find_sibling(vsm-intrusive_ptr)
+
+vsm_add_library(
+	vsm::mpsc_queue
+
+	HEADERS
+		include/vsm/bounded_mpsc_queue.hpp
+		include/vsm/mpsc_queue.hpp
+
+	TEST_SOURCES
+		source/vsm/test/bounded_mpsc_queue.cpp
+		source/vsm/test/mpsc_queue.cpp
+
+	HEADER_DEPENDENCIES
+		vsm::allocator
+		vsm::core
+		vsm::math
+		vsm::intrusive_ptr
+)

@@ -22,6 +22,10 @@ struct key_selector
 
 using tree_type = avl_tree<element, key_selector>;
 
+static_assert(std::bidirectional_iterator<tree_type::iterator>);
+static_assert(std::bidirectional_iterator<tree_type::const_iterator>);
+static_assert(std::ranges::bidirectional_range<tree_type>);
+
 struct two_trees
 {
 	std::list<element> list;

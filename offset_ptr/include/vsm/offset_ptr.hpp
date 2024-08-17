@@ -3,29 +3,34 @@
 #include <vsm/assert.h>
 #include <vsm/concepts.hpp>
 
+#include <memory>
 #include <limits>
 
 #include <cstdint>
 
 namespace vsm {
+namespace detail {
 
-template<typename T, std::integral Offset = uintptr_t>
+template<typename P>
+struct prop_cv_traits;
+
+} // namespace detail
+
+template<typename T, std::integral Offset = ptrdiff_t>
 class offset_ptr
 {
-	using offset_type = vsm::select_t<sizeof(Offset) >= sizeof(uintptr_t), uintptr_t, Offset>;
-
-	offset_type m_offset;
+	Offset m_offset;
 
 public:
 	offset_ptr() = default;
 
-	offset_ptr(decltype(nullptr))
+	offset_ptr(decltype(nullptr)) noexcept
 		: m_offset(0)
 	{
 	}
 
-	offset_ptr(T* const that)
-		: m_offset(get_offset(that))
+	offset_ptr(T* const ptr)
+		: m_offset(get_offset(ptr))
 	{
 	}
 
@@ -40,7 +45,7 @@ public:
 	{
 	}
 
-	offset_ptr& operator=(decltype(nullptr)) &
+	offset_ptr& operator=(decltype(nullptr)) & noexcept
 	{
 		m_offset = 0;
 		return *this;
@@ -49,6 +54,7 @@ public:
 	offset_ptr& operator=(T* const that) &
 	{
 		m_offset = get_offset(that);
+		return *this;
 	}
 
 	offset_ptr& operator=(offset_ptr const& other) &
@@ -58,41 +64,109 @@ public:
 	}
 
 	template<typename OtherT, typename OtherOffset>
-	offset_ptr& operator(offset_ptr<OtherT, OtherOffset> const& other)
+	offset_ptr& operator=(offset_ptr<OtherT, OtherOffset> const& other)
 	{
 		m_offset = get_offset(other.get());
 		return *this;
 	}
 
 
-	T* get() const
+	[[nodiscard]] T* get() const noexcept
 	{
-		return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(this) + static_cast<uintptr_t>(m_offset));
+		if (m_offset == 0)
+		{
+			return nullptr;
+		}
+
+		return reinterpret_cast<T*>(
+			reinterpret_cast<uintptr_t>(this) + static_cast<uintptr_t>(m_offset));
 	}
 
-	T& operator*() const
+	[[nodiscard]] T& operator*() const
 	{
-		return *reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(this) + static_cast<uintptr_t>(m_offset));
+		vsm_assert(m_offset != 0);
+
+		return *reinterpret_cast<T*>(
+			reinterpret_cast<uintptr_t>(this) + static_cast<uintptr_t>(m_offset));
 	}
 
-	T* operator->() const
+	[[nodiscard]] T* operator->() const
 	{
-		return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(this) + static_cast<uintptr_t>(m_offset));
+		vsm_assert(m_offset != 0);
+
+		return reinterpret_cast<T*>(
+			reinterpret_cast<uintptr_t>(this) + static_cast<uintptr_t>(m_offset));
+	}
+
+	[[nodiscard]] T& operator[](ptrdiff_t const offset) const
+	{
+		vsm_assert(m_offset != 0);
+		return reinterpret_cast<T*>(
+			reinterpret_cast<uintptr_t>(this) + static_cast<uintptr_t>(m_offset))[offset];
 	}
 
 
-	explicit operator bool() const
+	offset_ptr& operator+=(ptrdiff_t const offset) &
+	{
+		vsm_assert(m_offset != 0);
+		m_offset = get_offset(get() + offset);
+		return *this;
+	}
+
+	offset_ptr& operator-=(ptrdiff_t const offset) &
+	{
+		vsm_assert(m_offset != 0);
+		m_offset = get_offset(get() - offset);
+		return *this;
+	}
+
+	[[nodiscard]] friend T* operator+(offset_ptr const& ptr, ptrdiff_t const offset)
+	{
+		vsm_assert(m_offset != 0);
+		return ptr.get() + offset;
+	}
+
+	[[nodiscard]] friend T* operator+(ptrdiff_t const offset, offset_ptr const& ptr)
+	{
+		vsm_assert(m_offset != 0);
+		return ptr.get() + offset;
+	}
+
+	[[nodiscard]] friend T* operator-(offset_ptr const& ptr, ptrdiff_t const offset)
+	{
+		vsm_assert(m_offset != 0);
+		return ptr.get() - offset;
+	}
+
+	[[nodiscard]] friend T* operator-(ptrdiff_t const offset, offset_ptr const& ptr)
+	{
+		vsm_assert(m_offset != 0);
+		return ptr.get() - offset;
+	}
+
+	[[nodiscard]] friend ptrdiff_t operator-(offset_ptr const& lhs, offset_ptr const& rhs);
+	[[nodiscard]] friend ptrdiff_t operator-(offset_ptr const& lhs, T* const rhs);
+	[[nodiscard]] friend ptrdiff_t operator-(T* const lhs, offset_ptr const& rhs);
+
+	[[nodiscard]] explicit operator bool() const
 	{
 		return m_offset != 0;
 	}
 
-	friend auto operator<=>(offset_ptr const& lhs, offset_ptr const& rhs)
+	[[nodiscard]] friend bool operator==(offset_ptr const& lhs, offset_ptr const& rhs) = default;
+
+	[[nodiscard]] friend bool operator==(offset_ptr const& ptr, decltype(nullptr))
+	{
+		return ptr.m_offset == 0;
+	}
+
+	[[nodiscard]] friend auto operator<=>(offset_ptr const& lhs, offset_ptr const& rhs)
 	{
 		return lhs.get() <=> rhs.get();
 	}
 
 private:
-	offset_type get_offset(T* const that) const
+	[[nodiscard]] Offset get_offset(T* const that) const
 	{
 		if (that == nullptr)
 		{
@@ -103,13 +177,42 @@ private:
 			reinterpret_cast<uintptr_t>(that) -
 			reinterpret_cast<uintptr_t>(this));
 
-		if constexpr (!std::is_same_v<offset_type, uintptr_t>)
+		using offset_limits = std::numeric_limits<Offset>;
+		using intptr_limits = std::numeric_limits<intptr_t>;
+
+		if constexpr (std::is_unsigned_v<Offset>)
 		{
-			vsm_assert(offset >= std::numeric_limits<offset_type>::min());
-			vsm_assert(offset <= std::numeric_limits<offset_type>::max());
+			vsm_assert_slow(offset >= 0);
+		}
+		else if constexpr (intptr_limits::min() < offset_limits::min())
+		{
+			vsm_assert_slow(offset >= offset_limits::min());
 		}
 
-		return static_cast<offset_type>(offset);
+		if constexpr (offset_limits::max() < intptr_limits::max())
+		{
+			vsm_assert_slow(offset <= offset_limits::max());
+		}
+
+		return static_cast<Offset>(offset);
+	}
+};
+
+template<typename T, std::integral Offset>
+struct detail::prop_cv_traits<offset_ptr<T, Offset>>
+{
+	using get_type = T*;
+	using get_const_type = T const*;
+	using difference_type = ptrdiff_t;
+
+	static get_type get(offset_ptr<T, Offset> const& ptr)
+	{
+		return ptr.get();
+	}
+
+	static get_const_type get_const(offset_ptr<T, Offset> const& ptr)
+	{
+		return ptr.get();
 	}
 };
 

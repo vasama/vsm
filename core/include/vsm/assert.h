@@ -17,8 +17,21 @@ extern "C" {
 /// @return Returns true if the program should raise a debuggable interrupt at the callsite.
 bool vsm_assert_fail(char const* file, int line, char const* expr);
 
-
 bool vsm_detail_assert_fail(char const* file, int line, char const* expr);
+
+#if __cplusplus
+extern "C++" template<typename T>
+	requires requires (T const& t) { t ? 0 : 0; }
+vsm_always_inline bool vsm_detail_assert_bool(T const& value)
+{
+	return static_cast<bool>(value);
+}
+#else
+vsm_always_inline inline bool vsm_detail_assert_bool(bool const value)
+{
+	return value;
+}
+#endif
 
 #define vsm_detail_assert_fail_(...) ( \
 		vsm_detail_assert_fail(__FILE__, __LINE__, #__VA_ARGS__) \
@@ -27,7 +40,7 @@ bool vsm_detail_assert_fail(char const* file, int line, char const* expr);
 	)
 
 #define vsm_detail_assert(...) ( \
-		(__VA_ARGS__) \
+		vsm_detail_assert_bool(__VA_ARGS__) \
 			? (void)0 \
 			: vsm_detail_assert_fail_(__VA_ARGS__) \
 	)

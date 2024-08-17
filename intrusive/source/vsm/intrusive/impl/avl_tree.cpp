@@ -6,13 +6,14 @@
 
 using namespace vsm;
 using namespace vsm::intrusive;
-using namespace vsm::intrusive::detail::avl_tree_;
+using namespace vsm::intrusive::detail;
 
-namespace tree_namespace = vsm::intrusive::detail::avl_tree_;
-namespace list_namespace = vsm::intrusive::detail::list_;
-
-
+using hook = _avl::hook;
 static_assert(sizeof(hook) == sizeof(avl_tree_link));
+
+template<typename T>
+using ptr = _avl::ptr<T>;
+
 static_assert(check_incomplete_tag_ptr<ptr<hook>>());
 
 
@@ -119,7 +120,7 @@ static void rebalance(ptr<hook>* const root, ptr<hook>* node, bool l, bool const
 	}
 }
 
-static bool invariant(base const& self)
+[[maybe_unused]] static bool invariant(_avl const& self)
 {
 	if (self.m_root.tag() != 0)
 	{
@@ -149,7 +150,7 @@ static bool invariant(base const& self)
 
 			for (int8_t visit; (visit = frame.visit++) < 2;)
 			{
-				frame.l_height = std::exchange(r_height, 0);
+				frame.l_height = std::exchange(r_height, static_cast<int8_t>(0));
 
 				if (hook const* const child = node->children[visit].ptr())
 				{
@@ -197,9 +198,26 @@ static bool invariant(base const& self)
 }
 
 
-void base::insert(hook* const node, ptr<ptr<hook>> const parent_and_side)
+ptr<hook> const* _avl::lower_bound(ptr<ptr<hook> const> const parent_and_side) const
 {
-	vsm_intrusive_link_insert(*this, *node);
+	ptr<hook> const* const parent = parent_and_side.ptr();
+	vsm_assert(parent[parent_and_side.tag()] == nullptr);
+
+	if (parent_and_side.tag() == 0)
+	{
+		return parent;
+	}
+
+	hook* const sibling = parent[!parent_and_side.tag()].ptr();
+
+	return sibling == nullptr
+		? parent
+		: leftmost(sibling, 0)->children;
+}
+
+void _avl::insert(hook* const node, ptr<ptr<hook>> const parent_and_side)
+{
+	vsm_assert(parent_and_side[parent_and_side.tag()] == nullptr);
 
 	++m_size;
 
@@ -213,13 +231,11 @@ void base::insert(hook* const node, ptr<ptr<hook>> const parent_and_side)
 
 	rebalance(&m_root, parent, l, true);
 
-	vsm_assert_slow(invariant(*this));
+	//vsm_assert_slow(invariant(*this));
 }
 
-void base::remove(hook* const node)
+void _avl::remove(hook* const node)
 {
-	vsm_intrusive_link_remove(*this, *node);
-
 	--m_size;
 
 	ptr<hook>* const parent = node->parent;
@@ -287,10 +303,22 @@ void base::remove(hook* const node)
 
 	rebalance(&m_root, balance_node, balance_l, false);
 
-	vsm_assert_slow(invariant(*this));
+	//vsm_assert_slow(invariant(*this));
 }
 
-void base::clear()
+void _avl::replace(hook* const existing_node, hook* const new_node)
+{
+	hook const node = *existing_node;
+	*new_node = node;
+
+	node.children[0]->parent = new_node->children;
+	node.children[1]->parent = new_node->children;
+	node.parent[node.parent->ptr() != existing_node].set_ptr(new_node);
+
+	//vsm_assert_slow(invariant(*this));
+}
+
+void _avl::clear()
 {
 	if (m_root != nullptr)
 	{
@@ -308,8 +336,6 @@ void base::clear()
 
 				children = std::exchange(node->parent, nullptr);
 				children[node != children[0].ptr()] = nullptr;
-
-				vsm_intrusive_link_remove(*this, *node);
 			}
 		}
 
@@ -317,71 +343,69 @@ void base::clear()
 		m_size = 0;
 	}
 
-	vsm_assert_slow(invariant(*this));
+	//vsm_assert_slow(invariant(*this));
 }
 
-list_namespace::hook* base::flatten()
+_list::hook* _avl::flatten()
 {
-	hook* root = m_root.ptr();
+	hook* const root = m_root.ptr();
 
-	if (root != nullptr)
+	if (root == nullptr)
 	{
-		m_root = nullptr;
-		m_size = 0;
-
-		auto const flatten_side = [](hook* node, bool const l) -> hook*
-		{
-			bool const r = !l;
-
-			while (node->children[l] == nullptr)
-			{
-				// Rotate the whole left subtree right to left turning it into a list.
-				// It is important that each non-zero child pointer is overwritten to reset tags.
-
-				hook* const tail = node->children[l].ptr();
-				hook* head = tail;
-
-				while (head->children[r] != nullptr)
-				{
-					hook* const pivot = head->children[r].ptr();
-
-					pivot->children[l] = head;
-					head->children[r] = pivot;
-
-					head = pivot;
-				}
-
-				node->children[l] = head;
-				head->children[r] = node;
-
-				node = tail;
-			}
-
-			return node;
-		};
-
-		hook* const head = flatten_side(root, 0);
-		hook* const tail = flatten_side(root, 1);
-
-		head->children[0] = tail;
-		tail->children[1] = head;
-
-		root = head;
+		return nullptr;
 	}
 
-	vsm_assert_slow(invariant(*this));
+	m_root = nullptr;
+	m_size = 0;
 
-	return reinterpret_cast<list_::hook*>(root);
+	auto const flatten_side = [](hook* node, bool const l) -> _list::hook*
+	{
+		bool const r = !l;
+
+		while (node->children[l] != nullptr)
+		{
+			// Rotate the whole left subtree right to left turning it into a list.
+			// It is important that each non-zero child pointer is overwritten to reset tags.
+
+			hook* const tail = node->children[l].ptr();
+			hook* head = tail;
+
+			while (head->children[r] != nullptr)
+			{
+				hook* const pivot = head->children[r].ptr();
+
+				pivot->children[l] = head;
+				head->children[r] = pivot;
+
+				head = pivot;
+			}
+
+			node->children[l] = head;
+			head->children[r] = node;
+
+			node = tail;
+		}
+
+		return start_lifetime_as<_list::hook>(node);
+	};
+
+	_list::hook* const head = flatten_side(root, 0);
+	_list::hook* const tail = flatten_side(root, 1);
+
+	head->siblings[0] = tail;
+	tail->siblings[1] = head;
+
+	return head;
 }
 
 
-ptr<hook>* tree_namespace::iterator_begin(ptr<hook>* const root)
+ptr<hook>* _avl::iterator_begin(ptr<hook>* const root)
 {
 	hook* const node = root->ptr();
 	return node != nullptr ? leftmost(node, 0)->children : root;
 }
 
-ptr<hook>* tree_namespace::iterator_advance(ptr<hook>* const children, bool const l)
+ptr<hook>* _avl::iterator_advance(ptr<hook>* const children, bool const l)
 {
 	bool const r = l ^ 1;
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace vsm {
 
 #define vsm_log_level_none              0
@@ -25,11 +27,11 @@ namespace vsm {
 
 enum class log_level : uint8_t
 {
-#define vsm_xentry(level) \
+#define vsm_detail_x(level) \
 	level,
 
-	vsm_log_levels(vsm_xentry)
-#undef vsm_xentry
+	vsm_log_levels(vsm_detail_x)
+#undef vsm_detail_x
 };
 
 } // namespace vsm

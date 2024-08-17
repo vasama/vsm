@@ -1,19 +1,26 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.24)
 
 project(vsm_work_stealing_queue)
 
+vsm_find_sibling(vsm-allocator)
 vsm_find_sibling(vsm-core)
 vsm_find_sibling(vsm-intrusive_ptr)
+vsm_find_sibling(vsm-math)
 
-vsm_add_library(vsm::work_stealing_queue
+vsm_add_library(
+	vsm::work_stealing_queue
+
 	HEADERS
 		include/vsm/bounded_work_stealing_queue.hpp
 		include/vsm/work_stealing_queue.hpp
 
 	HEADER_DEPENDENCIES
+		vsm::allocator
 		vsm::core
 		vsm::intrusive_ptr
+		vsm::math
 
 	TEST_SOURCES
-		source/vsm/impl/work_stealing_queue.test.cpp
+		source/vsm/test/bounded_work_stealing_queue.cpp
+		source/vsm/test/work_stealing_queue.cpp
 )

@@ -20,7 +20,7 @@ class mpsc_queue_consumer<T*, Allocator>
 		using queue_block_ptr = intrusive_ptr<queue_block>;
 
 		atomic<queue_block*> m_next;
-		detail::mpsc_queue_control m_control;
+		detail::_mpsc_queue m_queue;
 		
 		size_t const m_size;
 		T* m_data[];
@@ -61,21 +61,21 @@ class mpsc_queue_consumer<T*, Allocator>
 
 		bool push_one(T* const ptr)
 		{
-			return m_control.try_push(std::span<T>(m_data, m_size), ptr, nullptr);
+			return m_queue.try_push(std::span<T>(m_data, m_size), ptr, nullptr);
 		}
 
 		T* pop_one()
 		{
 			T* ptr;
-			return m_control.try_pop(std::span<T>(m_data, m_size), ptr, nullptr)
+			return m_queue.try_pop(std::span<T>(m_data, m_size), ptr, nullptr)
 				? ptr
 				: nullptr;
 		}
 	};
-
 	using queue_block_ptr = intrusive_ptr<queue_block>;
 
 	queue_block_ptr m_bottom;
+	Allocator m_allocator;
 
 public:
 	explicit mpsc_queue_consumer(size_t const initial_capacity)
@@ -87,17 +87,17 @@ public:
 	mpsc_queue_consumer& operator=(mpsc_queue_consumer&&) = default;
 
 
-	T* pop_one()
+	[[nodiscard]] T* pop_one()
 	{
 		if (T* const ptr = m_bottom->pop_one())
 		{
 			return ptr;
 		}
-		
+
 		return pop_one_slow();
 	}
 
-	mpsc_queue_producer<T, Allocator> get_producer()
+	[[nodiscard]] mpsc_queue_producer<T, Allocator> get_producer()
 	{
 		return mpsc_queue_producer<T, Allocator>(m_bottom, m_allocator);
 	}
@@ -123,11 +123,11 @@ private:
 		}
 	}
 
-	static queue_block* make_block(size_t const size)
+	static queue_block_ptr make_block(size_t const size, auto&&... args)
 	{
 		static constexpr size_t header_size = offsetof(queue_block, m_data);
 		void* const storage = operator new(header_size + size * sizeof(T*));
-		return new (storage) queue_block(size, vsm_forward(args)...);
+		return queue_block_ptr(new (storage) queue_block(size, vsm_forward(args)...));
 	}
 
 	friend class mpsc_queue_producer<T, Allocator>;
@@ -177,6 +177,8 @@ private:
 			}
 		}
 	}
+
+	friend class mpsc_queue_consumer<T, Allocator>;
 };
 
 } // namespace vsm

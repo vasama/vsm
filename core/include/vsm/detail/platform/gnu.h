@@ -1,3 +1,5 @@
+#define vsm_compiler_gnu 1
+
 #define vsm_detail_gnu_diagnostic(compiler, ...) \
 	_Pragma(vsm_pp_str(compiler diagnostic __VA_ARGS__))
 

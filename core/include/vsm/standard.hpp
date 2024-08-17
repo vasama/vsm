@@ -2,6 +2,16 @@
 
 #include <vsm/platform.h>
 
+#include <memory>
+
+/* C++20 std::destroying_delete_t */
+
+#if vsm_compiler_msvc
+#	include <vsm/detail/msvc_delete.hpp>
+#else
+#	define vsm_qualified_delete(p) (::delete(p))
+#endif
+
 
 /* C++20 [[no_unique_address]] */
 
@@ -17,7 +27,7 @@
 /* C++23 lambda attributes */
 
 #if vsm_compiler_msvc
-#	if _MSC_VER > 1939
+#	if _MSC_VER > 1940
 #		error Check for MSVC lambda attribute support
 #	endif
 #	define vsm_lambda_attribute(...)
@@ -38,7 +48,7 @@
 #endif
 
 
-/* C++23 static operator() */
+/* C++23 static operator() and operator[] */
 
 #if __cpp_static_call_operator
 #	define vsm_static_operator static
@@ -47,12 +57,6 @@
 #	define vsm_static_operator
 #	define vsm_static_operator_const const
 #endif
-
-#define vsm_static_operator_invoke(...) \
-	vsm_static_operator operator()(__VA_ARGS__) vsm_static_operator_const
-
-#define vsm_static_operator_square(...) \
-	vsm_static_operator operator[](__VA_ARGS__) vsm_static_operator_const
 
 
 /* C++23 auto cast */
@@ -63,3 +67,15 @@
 #	include <type_traits>
 #	define vsm_decay_copy(...) static_cast<::std::decay_t<decltype(__VA_ARGS__)>>(__VA_ARGS__)
 #endif
+
+
+/* C++23 explicit lifetime management */
+
+namespace vsm {
+#if __cpp_lib_start_lifetime_as
+	using std::start_lifetime_as;
+	using std::start_lifetime_as_array;
+#else
+#	include <vsm/detail/start_lifetime_as.ipp>
+#endif
+} // namespace vsm

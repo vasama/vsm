@@ -4,41 +4,80 @@
 #include <vsm/intrusive/link.hpp>
 
 namespace vsm::intrusive {
+namespace detail {
 
-using forward_list_link = link<1>;
-
-namespace detail::forward_list_ {
-
-#define vsm_detail_forward_list_hook(element) \
-	(reinterpret_cast<detail::forward_list_::hook*>(static_cast<forward_list_link*>(element)))
-
-#define vsm_detail_forward_list_elem(hook) \
-	(static_cast<T*>(reinterpret_cast<forward_list_link*>(hook)))
-
-
-struct hook : link_base
+struct _flist
 {
-	hook* next;
-};
+	struct hook
+	{
+		hook* next;
+	};
 
-struct base : link_container
-{
+	template<typename T, typename Tag>
+	class iterator
+	{
+		hook* m_node;
+
+	public:
+		using difference_type = ptrdiff_t;
+		using value_type = T;
+		using pointer = T*;
+		using reference = T;
+
+
+		iterator() = default;
+
+		explicit iterator(hook* const node)
+			: m_node(node)
+		{
+		}
+
+
+		[[nodiscard]] T& operator*() const
+		{
+			return *links::get_elem<T, Tag>(m_node);
+		}
+
+		[[nodiscard]] T* operator->() const
+		{
+			return links::get_elem<T, Tag>(m_node);
+		}
+	
+	
+		iterator& operator++()
+		{
+			m_node = m_node->next;
+			return *this;
+		}
+
+		[[nodiscard]] iterator operator++(int) &
+		{
+			iterator result = *this;
+			m_node = m_node->next;
+			return result;
+		}
+
+
+		[[nodiscard]] friend bool operator==(iterator const&, iterator const&) = default;
+	};
+
+
 	hook m_root;
 	hook* m_tail;
 
-
-	constexpr base() noexcept
+	constexpr _flist() noexcept
 	{
 		m_root.next = &m_root;
 		m_tail = &m_root;
 	}
 
-	explicit base(hook* const head, hook* const tail) noexcept
+	explicit _flist(hook* const head, hook* const tail)
 	{
 		vsm_assert((head != nullptr) == (tail != nullptr));
 
 		if (head != nullptr)
 		{
+			tail->next = &m_root;
 			m_root.next = head;
 			m_tail = tail;
 		}
@@ -49,77 +88,79 @@ struct base : link_container
 		}
 	}
 
+	_flist(_flist&& other) noexcept
+	{
+		if (other.m_root.next == &other.m_root)
+		{
+			m_root.next = &m_root;
+			m_tail = &m_root;
+		}
+		else
+		{
+			other.m_tail->next = &m_root;
+			m_root.next = other.m_root.next;
+			m_tail = other.m_tail;
+
+			other.m_root.next = &other.m_root;
+			other.m_tail = &other.m_root;
+		}
+	}
+
+	_flist& operator=(_flist&& other) & noexcept
+	{
+		hook* const head = other.m_root.next;
+		hook* const tail = other.m_tail;
+
+		if (head == &other.m_root)
+		{
+			m_root.next = &m_root;
+			m_tail = &m_root;
+		}
+		else
+		{
+			other.m_root.next = &other.m_root;
+			other.m_tail = &other.m_root;
+
+			tail->next = &m_root;
+			m_root.next = head;
+			m_tail = tail;
+		}
+
+		return *this;
+	}
+
+
 	void push_front(hook* head, hook* tail);
 	void push_front(hook* node);
-	void splice_front(base& list);
+	void splice_front(_flist& list);
 	void push_back(hook* head, hook* tail);
 	void push_back(hook* node);
-	void splice_back(base& list);
+	void splice_back(_flist& list);
 	hook* pop_front();
 	void clear();
 };
 
+} // namespace detail
 
-template<std::derived_from<forward_list_link> T>
-class iterator
-{
-	hook* m_node;
+template<typename Tag>
+using basic_forward_list_link = basic_link<1, Tag>;
 
-public:
-	using difference_type = ptrdiff_t;
-	using value_type = T;
-	using pointer = T*;
-	using reference = T;
+using forward_list_link = basic_forward_list_link<void>;
 
-
-	iterator() = default;
-
-	explicit iterator(hook* const node)
-		: m_node(node)
-	{
-	}
-
-
-	[[nodiscard]] T& operator*() const
-	{
-		return *vsm_detail_forward_list_elem(m_node);
-	}
-
-	[[nodiscard]] T* operator->() const
-	{
-		return vsm_detail_forward_list_elem(m_node);
-	}
-	
-	
-	iterator& operator++()
-	{
-		m_node = m_node->next;
-		return *this;
-	}
-
-	[[nodiscard]] iterator operator++(int) &
-	{
-		iterator result = *this;
-		m_node = m_node->next;
-		return result;
-	}
-
-
-	[[nodiscard]] friend bool operator==(iterator const&, iterator const&) = default;
-};
-
-} // namespace detail::forward_list_
-
-template<std::derived_from<forward_list_link> T>
-class forward_list : detail::forward_list_::base
+template<typename T>
+class forward_list : detail::_flist
 {
 public:
-	using       iterator = detail::forward_list_::iterator<      T>;
-	using const_iterator = detail::forward_list_::iterator<const T>;
+	using element_type = detail::element_t<T>;
+	using tag_type = detail::tag_t<T>;
+
+	using       iterator = _flist::iterator<      element_type, tag_type>;
+	using const_iterator = _flist::iterator<const element_type, tag_type>;
 
 
-	using base::base;
+	using _flist::_flist;
 
+	forward_list(forward_list&&) = default;
 	forward_list& operator=(forward_list&&) & = default;
 
 
@@ -132,53 +173,53 @@ public:
 
 	/// @return First element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] T* front()
+	[[nodiscard]] element_type* front()
 	{
 		vsm_assert(m_root.next != &m_root);
-		return vsm_detail_forward_list_elem(m_root.next);
+		return get_elem(m_root.next);
 	}
 
 	/// @return First element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] T const* front() const
+	[[nodiscard]] element_type const* front() const
 	{
 		vsm_assert(m_root.next != &m_root);
-		return vsm_detail_forward_list_elem(m_root.next);
+		return get_elem(m_root.next);
 	}
 
 
 	/// @brief Insert an element at the front of the list.
 	/// @param element Element to be inserted.
 	/// @pre @p element is not part of any container.
-	void push_front(T* const element)
+	void push_front(element_type* const element)
 	{
-		base::push_front(vsm_detail_forward_list_hook(element));
+		_flist::push_front(make_hook(element));
 	}
 
 	void splice_front(forward_list<T>&& other)
 	{
-		base::splice_front(other);
+		_flist::splice_front(other);
 	}
 
 
-	void push_back(T* const element)
+	void push_back(element_type* const element)
 	{
-		base::push_back(vsm_detail_forward_list_hook(element));
+		_flist::push_back(make_hook(element));
 	}
 
 	void splice_back(forward_list<T>&& other)
 	{
-		base::splice_back(other);
+		_flist::splice_back(other);
 	}
 
 
 	/// @brief Remove the first element from the list.
 	/// @return The first element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] T* pop_front()
+	[[nodiscard]] element_type* pop_front()
 	{
 		vsm_assert(m_root.next != &m_root);
-		return vsm_detail_forward_list_elem(base::pop_front());
+		return get_elem(_flist::pop_front());
 	}
 
 
@@ -186,7 +227,7 @@ public:
 	{
 		if (m_root.next != &m_root)
 		{
-			base::clear();
+			_flist::clear();
 		}
 	}
 
@@ -198,7 +239,7 @@ public:
 
 	[[nodiscard]] const_iterator before_begin() const
 	{
-		return const_iterator(const_cast<detail::forward_list_::hook*>(&m_root));
+		return const_iterator(const_cast<hook*>(&m_root));
 	}
 
 	[[nodiscard]] iterator begin()
@@ -218,14 +259,30 @@ public:
 
 	[[nodiscard]] const_iterator end() const
 	{
-		return const_iterator(const_cast<detail::forward_list_::hook*>(&m_root));
+		return const_iterator(const_cast<hook*>(&m_root));
 	}
 
 
 	friend void swap(forward_list& lhs, forward_list& rhs)
 	{
 		using std::swap;
-		swap(static_cast<base&>(lhs), static_cast<base&>(rhs));
+		swap(static_cast<_flist&>(lhs), static_cast<_flist&>(rhs));
+	}
+
+private:
+	[[nodiscard]] static hook* make_hook(element_type* const element)
+	{
+		return detail::links::construct<hook, tag_type>(element);
+	}
+
+	[[nodiscard]] static auto* get_hook(auto* const element)
+	{
+		return detail::links::get_hook<hook, tag_type>(element);
+	}
+
+	[[nodiscard]] static auto* get_elem(auto* const hook)
+	{
+		return detail::links::get_elem<element_type, tag_type>(hook);
 	}
 };
 

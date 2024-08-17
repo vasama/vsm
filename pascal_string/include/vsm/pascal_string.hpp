@@ -1,6 +1,5 @@
 #pragma once
 
-#include <vsm/array.hpp>
 #include <vsm/standard.hpp>
 
 #include <bit>
@@ -9,64 +8,64 @@
 #include <cstdint>
 
 namespace vsm {
-namespace detail::pascal_string_ {
+namespace detail {
 
-using size_type = uint32_t;
-
-template<typename Char>
-inline constexpr size_t size_buffer_size = sizeof(size_type) / sizeof(Char);
+using _pstr_size_t = uint32_t;
 
 template<typename Char>
-using size_buffer = array<Char, size_buffer_size<Char>>;
+inline constexpr size_t _pstr_size_size = sizeof(_pstr_size_t) / sizeof(Char);
 
 template<typename Char>
-constexpr size_type get_size(Char const* const buffer)
+struct _pstr_size_data
 {
-	size_buffer<Char> s;
-	for (size_t i = 0; i < s.size(); ++i)
+	Char data[_pstr_size_size<Char>];
+};
+
+template<typename Char>
+constexpr _pstr_size_t _pstr_size(Char const* const buffer)
+{
+	_pstr_size_data<Char> size;
+	for (size_t i = 0; i < _pstr_size_size<Char>; ++i)
 	{
-		s[i] = buffer[i];
+		size.data[i] = buffer[i];
 	}
-	return std::bit_cast<size_type>(s);
+	return std::bit_cast<_pstr_size_t>(size);
 }
 
 template<typename Char, size_t Size>
-struct static_string
+struct _pstr
 {
 	static_assert(Size > 0);
 
 	using value_type = Char;
 
-	using size_buffer = pascal_string_::size_buffer<Char>;
-	static constexpr size_t data_offset = std::tuple_size_v<size_buffer>;
-	
-	Char buffer alignas(size_type)[data_offset + Size];
+	alignas(_pstr_size_t) Char buffer[_pstr_size_size<Char> + Size];
 
-	consteval static_string() requires (Size == 1)
+	consteval _pstr() requires (Size == 1)
 	{
 		set_size(0);
-		buffer[data_offset] = static_cast<Char>(0);
+		buffer[_pstr_size_size<Char>] = static_cast<Char>(0);
 	}
 
-	consteval static_string(Char const(&string)[Size])
+	consteval _pstr(Char const(&string)[Size])
 	{
 		set_size(Size - 1);
 		set_data(string);
 	}
 
-	consteval void set_size(size_type const size)
+	consteval void set_size(_pstr_size_t const size)
 	{
-		size_buffer const s = std::bit_cast<size_buffer>(size);
+		auto const s = std::bit_cast<_pstr_size_data<Char>>(size);
 
-		for (size_t i = 0; i < s.size(); ++i)
+		for (size_t i = 0; i < _pstr_size_size<Char>; ++i)
 		{
-			buffer[i] = s[i];
+			buffer[i] = s.data[i];
 		}
 	}
 
 	consteval void set_data(Char const* const data)
 	{
-		Char* const s = buffer + data_offset;
+		Char* const s = buffer + _pstr_size_size<Char>;
 
 		for (size_t i = 0; i < Size; ++i)
 		{
@@ -76,76 +75,79 @@ struct static_string
 };
 
 template<typename Char, size_t Size>
-static_string(Char const(&)[Size]) -> static_string<Char, Size>;
+_pstr(Char const(&)[Size]) -> _pstr<Char, Size>;
 
 template<typename Char>
-inline constexpr static_string<Char, 0> empty;
+inline constexpr _pstr<Char, 0> _pstr_empty;
 
-} // namespace detail::pascal_string_
+} // namespace detail
 
 template<typename Char, typename Traits = std::char_traits<Char>>
 class basic_pascal_string
 {
-	using size_type = detail::pascal_string_::size_type;
-	
-	using size_buffer = detail::pascal_string_::size_buffer<Char>;
-	
-	template<size_t Size>
-	using static_string = detail::pascal_string_::static_string<Char, Size>;
-
 	Char const* m_buffer;
 
 public:
+	using size_type = detail::_pstr_size_t;
+	using difference_type = std::make_signed_t<size_type>;
+	using iterator = Char const*;
+	using const_iterator = Char const*;
+
 	constexpr basic_pascal_string()
-		: m_buffer(detail::pascal_string_::empty<Char>.buffer)
+		: m_buffer(detail::_pstr_empty<Char>.buffer)
 	{
 	}
 
 	template<size_t Size>
-	explicit constexpr basic_pascal_string(static_string<Size> const& string)
+	explicit constexpr basic_pascal_string(detail::_pstr<Char, Size> const& string)
 		: m_buffer(string.buffer)
 	{
 	}
 
-	constexpr size_t size() const
+	[[nodiscard]] constexpr size_t size() const
 	{
 		vsm_if_consteval
 		{
-			return detail::pascal_string_::get_size(m_buffer);
+			return detail::_pstr_size(m_buffer);
 		}
 		else
 		{
-			return *reinterpret_cast<size_type const*>(m_buffer);
+			detail::_pstr_size_t size;
+			memcpy(&size, m_buffer, sizeof(size));
+			return size;
 		}
 	}
 
-	constexpr Char const* data() const
+	[[nodiscard]] constexpr Char const* data() const
 	{
-		return m_buffer + detail::pascal_string_::size_buffer_size<Char>;
+		return m_buffer + detail::_pstr_size_size<Char>;
 	}
 
-	constexpr Char const* begin() const
+	[[nodiscard]] constexpr Char const* begin() const
 	{
-		return m_buffer + detail::pascal_string_::size_buffer_size<Char>;
+		return m_buffer + detail::_pstr_size_size<Char>;
 	}
 
-	constexpr Char const* end() const
+	[[nodiscard]] constexpr Char const* end() const
 	{
-		return m_buffer + detail::pascal_string_::size_buffer_size<Char> + size();
-	}
-
-	operator std::basic_string_view<Char, Traits>() const
-	{
-		return std::basic_string_view<Char, Traits>(data(), size());
+		return m_buffer + detail::_pstr_size_size<Char> + size();
 	}
 };
 
-template<detail::pascal_string_::static_string String>
-consteval basic_pascal_string<typename decltype(String)::value_type> operator""_pascal()
+namespace string_literals {
+
+template<detail::_pstr String>
+[[nodiscard]] consteval basic_pascal_string<typename decltype(String)::value_type> operator""_pascal()
 {
 	return basic_pascal_string<typename decltype(String)::value_type>(String);
 }
 
+} // namespace string_literals
+
 using pascal_string = basic_pascal_string<char>;
+using wpascal_string = basic_pascal_string<wchar_t>;
+using u8pascal_string = basic_pascal_string<char8_t>;
+using u16pascal_string = basic_pascal_string<char16_t>;
+using u32pascal_string = basic_pascal_string<char32_t>;
 
 } // namespace vsm

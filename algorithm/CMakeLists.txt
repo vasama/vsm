@@ -1,10 +1,12 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.24)
 
 project(vsm_algorithm)
 
 vsm_find_sibling(vsm-core)
 
-vsm_add_library(vsm::algorithm
+vsm_add_library(
+	vsm::algorithm
+
 	HEADERS
 		include/vsm/algorithm/remove_unstable.hpp
 

@@ -8,32 +8,35 @@ using namespace vsm;
 
 namespace {
 
-struct thing : intrusive_ref_count, test::instance_counter<thing> {};
+struct thing : intrusive_ref_count, test::counted {};
 
 using ptr = intrusive_ptr<thing>;
 
 TEST_CASE("intrusive_ptr::intrusive_ptr()", "[intrusive_ptr]")
 {
+	test::scoped_count instance_count;
 	{
 		ptr p;
 		CHECK(p == nullptr);
 	}
-	CHECK(test::instance_count<thing>() == 0);
+	CHECK(instance_count.empty());
 }
 
 TEST_CASE("intrusive_ptr::intrusive_ptr(T*)", "[intrusive_ptr]")
 {
+	test::scoped_count instance_count;
 	{
 		thing* const raw = new thing;
 
 		ptr p(raw);
 		CHECK(p.get() == raw);
 	}
-	CHECK(test::instance_count<thing>() == 0);
+	CHECK(instance_count.empty());
 }
 
 TEST_CASE("intrusive_ptr::intrusive_ptr(intrusive_ptr&&)", "[intrusive_ptr]")
 {
+	test::scoped_count instance_count;
 	{
 		thing* const raw = new thing;
 
@@ -43,11 +46,12 @@ TEST_CASE("intrusive_ptr::intrusive_ptr(intrusive_ptr&&)", "[intrusive_ptr]")
 		CHECK(src == nullptr);
 		CHECK(p.get() == raw);
 	}
-	CHECK(test::instance_count<thing>() == 0);
+	CHECK(instance_count.empty());
 }
 
 TEST_CASE("intrusive_ptr::intrusive_ptr(intrusive_ptr const&)", "[intrusive_ptr]")
 {
+	test::scoped_count instance_count;
 	{
 		thing* const raw = new thing;
 
@@ -57,11 +61,12 @@ TEST_CASE("intrusive_ptr::intrusive_ptr(intrusive_ptr const&)", "[intrusive_ptr]
 		CHECK(src.get() == raw);
 		CHECK(p.get() == raw);
 	}
-	CHECK(test::instance_count<thing>() == 0);
+	CHECK(instance_count.empty());
 }
 
 TEST_CASE("intrusive_ptr::operator=(intrusive_ptr&&)", "[intrusive_ptr]")
 {
+	test::scoped_count instance_count;
 	{
 		thing* const raw = new thing;
 
@@ -72,11 +77,12 @@ TEST_CASE("intrusive_ptr::operator=(intrusive_ptr&&)", "[intrusive_ptr]")
 		CHECK(src == nullptr);
 		CHECK(p.get() == raw);
 	}
-	CHECK(test::instance_count<thing>() == 0);
+	CHECK(instance_count.empty());
 }
 
 TEST_CASE("intrusive_ptr::operator=(intrusive_ptr const&)", "[intrusive_ptr]")
 {
+	test::scoped_count instance_count;
 	{
 		thing* const raw = new thing;
 
@@ -87,18 +93,19 @@ TEST_CASE("intrusive_ptr::operator=(intrusive_ptr const&)", "[intrusive_ptr]")
 		CHECK(src.get() == raw);
 		CHECK(p.get() == raw);
 	}
-	CHECK(test::instance_count<thing>() == 0);
+	CHECK(instance_count.empty());
 }
 
 TEST_CASE("intrusive_ptr::acquire", "[intrusive_ptr]")
 {
+	test::scoped_count instance_count;
 	{
 		thing* const raw = new thing;
 
 		(void)ptr(raw).release();
 		(void)ptr::acquire(raw);
 	}
-	CHECK(test::instance_count<thing>() == 0);
+	CHECK(instance_count.empty());
 }
 
 } // namespace

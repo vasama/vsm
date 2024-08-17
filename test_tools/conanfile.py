@@ -6,3 +6,7 @@ class package(ConanFile):
 
 	vsm_name = "vsm::test_tools"
 	version = "0.1"
+
+	requires = (
+		"vsm_allocator/0.1"
+	)

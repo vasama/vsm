@@ -2,7 +2,7 @@
 
 #include <vsm/default_hash.hpp>
 #include <vsm/detail/hash_table.hpp>
-#include <vsm/key_selector.hpp>
+#include <vsm/standard/stdexcept.hpp>
 
 #include <vsm/detail/swiss_table.hpp>
 
@@ -11,119 +11,122 @@
 
 namespace vsm {
 
-template<typename T, typename Policies, typename Allocator, size_t Capacity>
-class basic_hash_set : public detail::swiss_table::hash_table<T, T, Policies, Allocator, Capacity>
+template<typename Table>
+class basic_hash_set : public Table
 {
-	using b = detail::swiss_table::hash_table<T, T, Policies, Allocator, Capacity>;
+public:
+	using element_type = typename Table::element_type;
+
+private:
+	using ordered_iterator_or_void = select_t<Table::is_ordered, typename Table::iterator, void>;
 
 public:
-	using element_type = T;
-
-	using insert_result = vsm::insert_result<element_type>;
+	using Table::Table;
 
 
-	using b::b;
+	template<detail::hash_table_key<Table> K>
+	[[nodiscard]] element_type* find_ptr(K const& key)
+	{
+		auto const it = Table::find(key);
+		return it != Table::end() ? &*it : nullptr;
+	}
 
+	template<detail::hash_table_key<Table> K>
+	[[nodiscard]] element_type const* find_ptr(K const& key) const
+	{
+		auto const it = Table::find(key);
+		return it != Table::end() ? &*it : nullptr;
+	}
 
-	using b::find;
+	template<detail::hash_table_key<Table> K>
+	[[nodiscard]] size_t count(K const& key) const
+	{
+		return Table::find(key) != Table::end();
+	}
 
-	template<typename K>
+	template<detail::hash_table_key<Table> K>
 	[[nodiscard]] bool contains(K const& key) const
 	{
-		return b::find(key) != nullptr;
+		return Table::find(key) != Table::end();
 	}
 
 
-	template<typename K>
-	insert_result insert(K&& key)
+	template<detail::hash_table_key<Table> K>
+	typename Table::insert_result insert(K&& key)
 	{
-		insert_result r = b::insert(vsm_as_const(key));
+		typename Table::insert_result r = Table::insert(vsm_as_const(key));
 
 		if (r.inserted)
 		{
-			::new (r.element) element_type(vsm_forward(key));
+			::new (std::to_address(r.iterator)) element_type(vsm_forward(key));
 		}
 
 		return r;
 	}
 
-	template<typename K>
-	insert_result insert_or_assign(K&& key)
+	template<detail::hash_table_key<Table> K>
+	typename Table::insert_result insert_or_assign(K&& key)
 	{
-		insert_result r = b::insert(vsm_as_const(key));
+		typename Table::insert_result r = Table::insert(vsm_as_const(key));
 
 		if (r.inserted)
 		{
-			::new (r.element) element_type(vsm_forward(key));
+			::new (std::to_address(r.iterator)) element_type(vsm_forward(key));
 		}
 		else
 		{
-			*r.element = vsm_forward(key);
+			*r.iterator = vsm_forward(key);
 		}
 
 		return r;
 	}
 
 	template<typename... Args>
-	insert_result emplace(Args&&... args)
+		requires std::constructible_from<value_type, Args...>
+	typename Table::insert_result emplace(Args&&... args)
 	{
 		element_type new_element(vsm_forward(args)...);
 	
-		insert_result r = b::insert(vsm_as_const(new_element));
+		typename Table::insert_result r = Table::insert(vsm_as_const(new_element));
 
 		if (r.inserted)
 		{
-			::new (r.element) element_type(vsm_move(new_element));
+			::new (std::to_address(r.iterator)) element_type(vsm_move(new_element));
 		}
 
 		return r;
 	}
 
 	template<typename... Args>
-	insert_result emplace_or_assign(Args&&... args)
+	typename Table::insert_result emplace_or_assign(Args&&... args)
 	{
 		element_type new_element(vsm_forward(args)...);
-	
-		insert_result r = b::insert(vsm_as_const(new_element));
+
+		typename Table::insert_result r = Table::insert(vsm_as_const(new_element));
 
 		if (r.inserted)
 		{
-			::new (r.element) element_type(vsm_move(new_element));
+			::new (std::to_address(r.iterator)) element_type(vsm_move(new_element));
 		}
 		else
 		{
-			*r.element = vsm_move(new_element);
+			*r.iterator = vsm_move(new_element);
 		}
 
 		return r;
 	}
 
-	template<typename K>
-	bool remove(K const& key)
+
+	template<detail::hash_table_key<Table> K>
+	bool erase(K const& key)
 	{
-		if (element_type* const element = b::remove(key))
-		{
-			element->~element_type();
-			return true;
-		}
-		return false;
+		return Table::erase(key);
+	}
+
+	ordered_iterator_or_void erase(typename Table::const_single_iterator const position)
+	{
+		return Table::erase(position);
 	}
 };
-
-template<
-	typename T,
-	typename KeySelector = default_key_selector,
-	typename Hasher = basic_hasher<default_hash>,
-	typename Comparator = std::equal_to<>,
-	typename Allocator = default_allocator>
-using hash_set = basic_hash_set<T, hash_table_policies<KeySelector, Hasher, Comparator>, Allocator, 0>;
-
-template<
-	typename T, size_t Capacity,
-	typename KeySelector = default_key_selector,
-	typename Hasher = basic_hasher<default_hash>,
-	typename Comparator = std::equal_to<>,
-	typename Allocator = default_allocator>
-using small_hash_set = basic_hash_set<T, hash_table_policies<KeySelector, Hasher, Comparator>, Allocator, Capacity>;
 
 } // namespace vsm

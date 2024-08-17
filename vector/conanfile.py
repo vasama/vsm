@@ -12,3 +12,5 @@ class package(ConanFile):
 		"vsm_allocator/0.1",
 		"vsm_core/0.1",
 	)
+
+	test_requires = "vsm_test_tools/0.1"

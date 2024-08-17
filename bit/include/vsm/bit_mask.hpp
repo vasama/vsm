@@ -1,8 +1,8 @@
 #pragma once
 
 #include <vsm/box.hpp>
-#include <vsm/bit_pointer.hpp>
-#include <vsm/bit_reference.hpp>
+#include <vsm/bit_ptr.hpp>
+#include <vsm/bit_ref.hpp>
 
 #include <cstddef>
 #include <climits>
@@ -121,11 +121,11 @@ private:
 	word_type m_word = 0;
 
 public:
-	using       reference = bit_reference<      word_type>;
-	using const_reference = bit_reference<const word_type>;
+	using       reference = bit_ref<      word_type>;
+	using const_reference = bit_ref<const word_type>;
 
-	using       pointer = bit_pointer<      word_type>;
-	using const_pointer = bit_pointer<const word_type>;
+	using       pointer = bit_ptr<      word_type>;
+	using const_pointer = bit_ptr<const word_type>;
 
 
 	bit_mask() = default;

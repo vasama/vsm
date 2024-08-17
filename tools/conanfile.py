@@ -16,7 +16,6 @@ class package(ConanFile):
 class base:
 	settings = "os", "compiler", "build_type", "arch"
 	exports_sources = "CMakeLists.txt", "include/*", "source/*"
-	#generators = "CMakeToolchain", "CMakeDeps"
 	generators = "CMakeDeps"
 
 	def set_name(self):
@@ -41,19 +40,22 @@ class base:
 #			except TypeError:
 #				raise ConanException("Wrong 'vsm_requires' definition.")
 
+	def build_requirements(self):
+		self.requires(
+			"vsm_cmake/0.1",
+			build=True,
+			visible=False,
+			run=False)
+
+		self.test_requires("catch2/[^3.4]")
+
 	def generate(self):
-		# Path of this file during the user package build.
-		tools_path = self.python_requires["vsm_tools"].path.replace('\\', '/')
+		# Path of the vsm-cmake build dependency during the user package build.
+		cmake_path = self.dependencies.get("vsm_cmake", build=True).package_path.as_posix()
 
 		tc = CMakeToolchain(self)
-		tc.variables["CMAKE_PROJECT_TOP_LEVEL_INCLUDES"] = f"{tools_path}/cmake/vsm.cmake"
+		tc.variables["CMAKE_PROJECT_TOP_LEVEL_INCLUDES"] = f"{cmake_path}/cmake/vsm.cmake"
 		tc.generate()
-
-	def requirements(self):
-		self.requires("vsm_cmake/0.1")
-
-	def build_requirements(self):
-		self.test_requires("catch2/[^3.4]")
 
 	def layout(self):
 		cmake_layout(self)
@@ -80,7 +82,12 @@ class base:
 
 	def package_info(self):
 		self.cpp_info.set_property("cmake_file_name", self.vsm_name.replace("::", "-"))
-		self.cpp_info.set_property("cmake_target_name", self.vsm_name)
+
+		target_name = self.vsm_name
+		if "::" not in target_name:
+			target_name = f"{target_name}::{target_name}"
+
+		self.cpp_info.set_property("cmake_target_name", target_name)
 
 		if (hasattr(self, "vsm_libs")):
 			self.cpp_info.libs.extend(self.vsm_libs)

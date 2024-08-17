@@ -20,7 +20,12 @@ struct key_selector
 	}
 };
 
-using tree = wb_tree<element, key_selector>;
+using tree_type = wb_tree<element, key_selector>;
+
+static_assert(std::bidirectional_iterator<tree_type::iterator>);
+static_assert(std::bidirectional_iterator<tree_type::const_iterator>);
+static_assert(std::ranges::bidirectional_range<tree_type>);
+
 
 struct two_trees
 {
@@ -77,7 +82,7 @@ TEST_CASE("wb_tree::insert", "[intrusive][wb_tree]")
 {
 	elements e;
 
-	tree set;
+	tree_type set;
 
 	SECTION("123")
 	{
@@ -135,13 +140,12 @@ TEST_CASE("wb_tree::insert", "[intrusive][wb_tree]")
 
 TEST_CASE("wb_tree::remove", "[intrusive][wb_tree]")
 {
-	two_trees sets;
+	two_trees trees;
 
 	SECTION("One element tree")
 	{
-		sets.insert(0);
-		REQUIRE(sets.remove(0));
-		REQUIRE(sets.equal());
+		trees.insert(0);
+		REQUIRE(trees.remove(0));
 	}
 
 	SECTION("Perfectly balanced, height 5")
@@ -150,7 +154,7 @@ TEST_CASE("wb_tree::remove", "[intrusive][wb_tree]")
 		{
 			if (GENERATE(false, true))
 			{
-				sets.remove(value);
+				trees.remove(value);
 				return true;
 			}
 			return false;
@@ -178,28 +182,28 @@ TEST_CASE("wb_tree::remove", "[intrusive][wb_tree]")
 		 *   1     3   5     7   9    11   13   15
 		 */
 
-		sets.insert(80);
-		sets.insert(40);
-		sets.insert(120);
-		sets.insert(20);
-		sets.insert(60);
-		sets.insert(100);
-		sets.insert(140);
-		sets.insert(10);
-		sets.insert(30);
-		sets.insert(50);
-		sets.insert(70);
-		sets.insert(90);
-		sets.insert(110);
-		sets.insert(130);
-		sets.insert(150);
+		// Insert values in breadth-first order to produce the described tree:
+		trees.insert(80);
+		trees.insert(40);
+		trees.insert(120);
+		trees.insert(20);
+		trees.insert(60);
+		trees.insert(100);
+		trees.insert(140);
+		trees.insert(10);
+		trees.insert(30);
+		trees.insert(50);
+		trees.insert(70);
+		trees.insert(90);
+		trees.insert(110);
+		trees.insert(130);
+		trees.insert(150);
 
 		int const base = GENERATE(0, 80);
 
 		SECTION("Remove a leaf")
 		{
-			REQUIRE(sets.remove(base + GENERATE(1, 3, 5, 7) * 10));
-			REQUIRE(sets.equal());
+			REQUIRE(trees.remove(base + GENERATE(1, 3, 5, 7) * 10));
 		}
 
 		SECTION("Remove an upper branch")
@@ -210,20 +214,17 @@ TEST_CASE("wb_tree::remove", "[intrusive][wb_tree]")
 			maybe_remove(branch - 10);
 			maybe_remove(branch + 10);
 
-			REQUIRE(sets.remove(branch));
-			REQUIRE(sets.equal());
+			REQUIRE(trees.remove(branch));
 		}
 
 		SECTION("Remove a lower branch")
 		{
 			auto const maybe_remove_upper_branch = [&](int const value) -> bool
 			{
-				if (maybe_remove(value - 10) && maybe_remove(value + 10) && GENERATE(false, true))
-				{
-					sets.remove(value);
-					return true;
-				}
-				return false;
+				bool const removed_l = maybe_remove(value - 10);
+				bool const removed_r = maybe_remove(value + 10);
+
+				return removed_l && removed_r && maybe_remove(value);
 			};
 
 			int const branch = base + 40;
@@ -232,33 +233,33 @@ TEST_CASE("wb_tree::remove", "[intrusive][wb_tree]")
 			maybe_remove_upper_branch(branch - 20);
 			maybe_remove_upper_branch(branch + 20);
 
-			REQUIRE(sets.remove(branch));
-			REQUIRE(sets.equal());
+			REQUIRE(trees.remove(branch));
 		}
 
 		SECTION("Remove the root")
 		{
-			REQUIRE(sets.remove(80));
-			REQUIRE(sets.equal());
+			REQUIRE(trees.remove(80));
 		}
 	}
+
+	REQUIRE(trees.equal());
 }
 
-TEST_CASE("wb_tree mass test.", "[intrusive][wb_tree]")
+TEST_CASE("wb_tree mass test", "[intrusive][wb_tree]")
 {
 	elements e;
 
 	auto&& rng = Catch::sharedRng();
 	std::uniform_int_distribution distribution = {};
 
-	tree tree;
+	tree_type tree;
 	std::set<int> std_tree;
 
 	for (size_t i = 0; i < 10000; ++i)
 	{
 		int const value = distribution(rng);
 		bool const inserted = std_tree.insert(value).second;
-		REQUIRE(tree.insert(e(value)).inserted == inserted);
+		REQUIRE(tree_type.insert(e(value)).inserted == inserted);
 	}
 
 	REQUIRE(std::ranges::equal(std_tree, values(tree)));
@@ -268,7 +269,7 @@ TEST_CASE("wb_tree::clear", "[intrusive][wb_tree]")
 {
 	unique_elements e;
 
-	tree tree;
+	tree_type tree;
 
 	// Insert the same elements twice.
 
@@ -291,7 +292,7 @@ TEST_CASE("wb_tree iteration.", "[intrusive][wb_tree]")
 {
 	elements e;
 
-	tree tree;
+	tree_type tree;
 
 	for (int i : std::views::iota(1, 100) | std::views::reverse)
 	{

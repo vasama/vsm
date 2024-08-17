@@ -1,44 +1,22 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.24)
 
 project(vsm_any)
 
-if(PROJECT_IS_TOP_LEVEL)
-	find_package(vsm-core REQUIRED)
-endif()
+vsm_find_sibling(vsm-core)
 
-add_library(vsm_any INTERFACE)
+vsm_add_library(
+	vsm::any
 
-target_sources(vsm_any
-	INTERFACE
-	FILE_SET HEADERS
-	BASE_DIRS include
-	FILES
-		include/vsm/any_interface.hpp
+	HEADERS
 		include/vsm/any_ref.hpp
-)
 
-target_include_directories(vsm_any
-	INTERFACE
-		include
-)
+		include/vsm/any_ref.hpp
+		include/vsm/any.hpp
 
-target_link_libraries(vsm_any
-	INTERFACE
+	HEADER_DEPENDENCIES
 		vsm::core
-)
 
-install(TARGETS vsm_any FILE_SET HEADERS)
-
-if(NOT PROJECT_IS_TOP_LEVEL)
-	add_library(vsm::any ALIAS vsm_any)
-endif()
-
-
-add_executable(vsm_any
-	source/vsm/impl/any_ref.test.cpp
-)
-target_link_libraries(vsm_any
-	PRIVATE
-		vsm_any
-		Catch2::Catch2WithMain
+	TEST_SOURCES
+		source/vsm/test/any_ref.cpp
+		source/vsm/test/any.cpp
 )

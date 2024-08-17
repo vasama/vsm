@@ -124,7 +124,7 @@ public:
 	{
 	}
 
-	constexpr split_adjacent_range<> vsm_static_operator_invoke()
+	vsm_static_operator constexpr split_adjacent_range<> operator()() vsm_static_operator_const
 	{
 	}
 };
@@ -163,13 +163,14 @@ split_adjacent_view(R&&, Comparator) -> split_adjacent_view<std::ranges::all_t<R
 struct split_adjacent_t
 {
 	template<std::ranges::viewable_range R, typename Comparator>
-	constexpr auto vsm_static_operator_invoke(R&& r, Comparator&& comparator)
+	vsm_static_operator constexpr auto operator()(R&& r, Comparator&& comparator) vsm_static_operator_const
 	{
 		return split_adjacent_view<std::views::all_t<R>, std::decay_t<Comparator>>(vsm_forward(r), vsm_forward(comparator));
 	}
 
 	template<typename Comparator>
-	constexpr split_adjacent_closure<std::decay_t<Comparator>> vsm_static_operator_invoke(Comparator&& comparator)
+	vsm_static_operator constexpr split_adjacent_closure<std::decay_t<Comparator>>
+	operator()(Comparator&& comparator) vsm_static_operator_const
 	{
 		return split_adjacent_closure<std::decay_t<Comparator>>(vsm_forward(comparator));
 	}

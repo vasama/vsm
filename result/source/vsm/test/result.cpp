@@ -11,7 +11,7 @@ using namespace vsm;
 namespace {
 
 template<typename T>
-struct object : test::instance_counter<object<int>>
+struct object : test::counted
 {
 	T value;
 
@@ -38,6 +38,8 @@ TEST_CASE("vsm_try", "[result][try]")
 			: result_type(std::unexpected(error_value));
 	};
 
+	test::scoped_count count;
+
 	auto const r = [&]() -> void_result_type
 	{
 		SECTION("vsm_try_result")
@@ -45,7 +47,7 @@ TEST_CASE("vsm_try", "[result][try]")
 			vsm_try_result(r, make_result(42));
 
 			// The only live instance at this time should be the value held by `r`.
-			CHECK(test::instance_count<object<int>>() == 1);
+			CHECK(count.count() == 1);
 
 			CHECK(r->value == 42);
 		}
@@ -55,7 +57,7 @@ TEST_CASE("vsm_try", "[result][try]")
 			vsm_try(value, make_result(42));
 
 			// The only live instance at this time should be `value`.
-			CHECK(test::instance_count<object<int>>() == 1);
+			CHECK(count.count() == 1);
 
 			CHECK(value.value == 42);
 		}
@@ -69,7 +71,7 @@ TEST_CASE("vsm_try", "[result][try]")
 			static_assert(std::is_same_v<decltype(value), object<int>&&>);
 
 			// The only live instance at this time should be the value held by `r`.
-			CHECK(test::instance_count<object<int>>() == 1);
+			CHECK(count.count() == 1);
 
 			CHECK(value.value == 42);
 			CHECK(&value == &r.value());
@@ -92,7 +94,7 @@ TEST_CASE("vsm_try", "[result][try]")
 			vsm_try_discard(make_result(42));
 
 			// No instances should be live after discarding the result.
-			CHECK(test::instance_count<object<int>>() == 0);
+			CHECK(count.count() == 0);
 		}
 
 		SECTION("vsm_try_bind")
@@ -111,7 +113,7 @@ TEST_CASE("vsm_try", "[result][try]")
 
 			// The only live instance at this time should be
 			// the two to which `first` and `second` are bound.
-			CHECK(test::instance_count<object<int>>() == 2);
+			CHECK(count.count() == 2);
 
 			CHECK(first.value == 42);
 			CHECK(second.value == 9001);
@@ -124,7 +126,7 @@ TEST_CASE("vsm_try", "[result][try]")
 			vsm_try_assign(value, make_result(42));
 
 			// The only live instance at this time should be `value`.
-			CHECK(test::instance_count<object<int>>() == 1);
+			CHECK(count.count() == 1);
 
 			CHECK(value.value == 42);
 		}

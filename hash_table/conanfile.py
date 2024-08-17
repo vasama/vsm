@@ -14,3 +14,9 @@ class package(ConanFile):
 		"vsm_hash/0.1",
 		"vsm_math/0.1",
 	)
+
+	test_requires = (
+		"vsm_test_tools/0.1",
+	)
+
+	vsm_libs = ["vsm_hash_table"]

@@ -7,6 +7,7 @@
 #include <vsm/standard.hpp>
 #include <vsm/tag_invoke.hpp>
 
+#include <iterator>
 #include <system_error>
 
 namespace vsm {
@@ -23,7 +24,7 @@ struct has_error_t
 	}
 
 	template<typename R>
-	bool vsm_static_operator_invoke(R const& r)
+	vsm_static_operator bool operator()(R const& r) vsm_static_operator_const
 		requires tag_invocable<has_error_t, R const&>
 	{
 		return tag_invoke(has_error_t(), r);
@@ -46,7 +47,7 @@ struct propagate_error_t
 	}
 
 	template<typename R>
-	auto vsm_static_operator_invoke(R&& r)
+	vsm_static_operator auto operator()(R&& r) vsm_static_operator_const
 		-> tag_invoke_result_t<propagate_error_t, R>
 		requires tag_invocable<propagate_error_t, R>
 	{
@@ -151,6 +152,22 @@ success(T) -> success<T>;
 	vsm_detail_try_1(co_return, spec, __VA_ARGS__)
 
 
+/// @brief Evaluate an expression and unwrap its non-void result into a new variable.
+///        Returns from the current subroutine if the result contains an error.
+/// @param spec Name and optionally the type of the introduced variable.
+/// @param ... Expression to evaluate.
+#define vsm_try_ptr(spec, ...) \
+	vsm_detail_try_ptr_1(return, spec, __VA_ARGS__)
+
+/// @brief Evaluate an expression and unwrap and dereference its non-void pointer result into a new
+///        reference.
+///        Returns from the current coroutine if the result contains an error.
+/// @param spec Name and optionally the type of the introduced variable.
+/// @param ... Expression to evaluate.
+#define vsm_co_try_ptr(spec, ...) \
+	vsm_detail_try_ptr_1(co_return, spec, __VA_ARGS__)
+
+
 /// @brief Evaluate an expression and unwrap its void result.
 ///        Returns from the current subroutine if the result contains an error.
 /// @param ... Expression to evaluate.
@@ -177,14 +194,16 @@ success(T) -> success<T>;
 	vsm_detail_try_discard_1(co_return, __VA_ARGS__)
 
 
-/// @brief Evaluate an expression and unwrap its non-void result into new variables in a structured binding.
+/// @brief Evaluate an expression and unwrap its non-void result into new variables in a structured
+///        binding.
 ///        Returns from the current subroutine if the result contains an error.
 /// @param spec List of names introduced by the structured binding.
 /// @param ... Expression to evaluate.
 #define vsm_try_bind(spec, ...) \
 	vsm_detail_try_bind_1(return, spec, __VA_ARGS__)
 
-/// @brief Evaluate an expression and unwrap its non-void result into new variables in a structured binding.
+/// @brief Evaluate an expression and unwrap its non-void result into new variables in a structured
+///        binding.
 ///        Returns from the current coroutine if the result contains an error.
 /// @param spec List of names introduced by the structured binding.
 /// @param ... Expression to evaluate.
@@ -192,14 +211,16 @@ success(T) -> success<T>;
 	vsm_detail_try_bind_1(co_return, spec, __VA_ARGS__)
 
 
-/// @brief Evaluate an expression and unwrap its non-void result assigning it to the specified lvalue expression.
+/// @brief Evaluate an expression and unwrap its non-void result assigning it to the specified
+///        lvalue expression.
 ///        Returns from the current subroutine if the result contains an error.
 /// @param left Mutable lvalue expressiont to which the result is assigned.
 /// @param ... Expression to evaluate.
 #define vsm_try_assign(left, ...) \
 	vsm_detail_try_assign_1(return, left, __VA_ARGS__)
 
-/// @brief Evaluate an expression and unwrap its non-void result assigning it to the specified lvalue expression.
+/// @brief Evaluate an expression and unwrap its non-void result assigning it to the specified
+///        lvalue expression.
 ///        Returns from the current coroutine if the result contains an error.
 /// @param left Mutable lvalue expressiont to which the result is assigned.
 /// @param ... Expression to evaluate.
@@ -209,8 +230,11 @@ success(T) -> success<T>;
 
 /* Try-macro implementation details. */
 
+#define vsm_detail_try_value_t(result) \
+	typename ::std::remove_cvref_t<decltype(result)>::value_type
+
 #define vsm_detail_try_is_void(result) \
-	(::std::is_void_v<typename ::std::remove_cvref_t<decltype(result)>::value_type>)
+	(::std::is_void_v<vsm_detail_try_value_t(result)>)
 
 #define vsm_detail_try_s0(_0, ...) \
 	_0
@@ -253,6 +277,20 @@ success(T) -> success<T>;
 
 #define vsm_detail_try_1(return, spec, ...) \
 	vsm_detail_try_2(return, vsm_detail_try_h(spec), vsm_detail_try_v(spec), vsm_detail_try_r, __VA_ARGS__)
+
+/* vsm_try_ptr */
+
+#define vsm_detail_try_is_ptr(result) \
+	(::std::indirectly_readable<vsm_detail_try_value_t(result)>)
+
+#define vsm_detail_try_ptr_2(return, hspec, vspec, result, ...) \
+	vsm_detail_try_intro(return, hspec, result, __VA_ARGS__) \
+	static_assert(vsm_detail_try_is_ptr(result), "try_ptr requires an indirectly readable result."); \
+	auto&& vspec = **(result); \
+	((void)0)
+
+#define vsm_detail_try_ptr_1(return, spec, ...) \
+	vsm_detail_try_ptr_2(return, vsm_detail_try_h(spec), vsm_detail_try_v(spec), vsm_detail_try_r, __VA_ARGS__)
 
 /* vsm_try_void */
 

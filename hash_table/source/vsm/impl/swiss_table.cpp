@@ -2,33 +2,9 @@
 #include <vsm/detail/swiss_table.ipp>
 
 using namespace vsm;
-using namespace vsm::detail::swiss_table;
+
 namespace swiss_table = detail::swiss_table;
-
-void swiss_table::memswap(void* const lhs, void* const rhs, size_t const size)
-{
-	static constexpr size_t block_size = 64;
-
-	std::byte* const l = static_cast<std::byte*>(lhs);
-	std::byte* const r = static_cast<std::byte*>(rhs);
-
-	std::byte buffer[block_size];
-	size_t offset = 0;
-
-	for (size_t const block_end = size - size % block_size; offset < block_end; offset += block_size)
-	{
-		memcpy(buffer, l + offset, block_size);
-		memcpy(l + offset, r + offset, block_size);
-		memcpy(r + offset, buffer, block_size);
-	}
-
-	if (size_t const remaining = size - offset)
-	{
-		memcpy(buffer, l + offset, remaining);
-		memcpy(l + offset, r + offset, remaining);
-		memcpy(r + offset, buffer, remaining);
-	}
-}
+using namespace swiss_table;
 
 ctrl const swiss_table::empty_group[group_size] =
 {
@@ -39,7 +15,10 @@ ctrl const swiss_table::empty_group[group_size] =
 };
 
 
-size_t swiss_table::find_free_slot(ctrl const* const ctrls, size_t const capacity, size_t const hash)
+size_t swiss_table::find_free_slot(
+	ctrl const* const ctrls,
+	size_t const capacity,
+	size_t const hash)
 {
 	probe probe(get_h1(hash), capacity);
 
@@ -58,7 +37,11 @@ size_t swiss_table::find_free_slot(ctrl const* const ctrls, size_t const capacit
 	}
 }
 
-void* swiss_table::insert_slot(core& table, size_t const element_size, size_t const hash, size_t const slot_index)
+static void* insert_slot(
+	_table& table,
+	size_t const element_size,
+	size_t const hash,
+	size_t const slot_index)
 {
 	++table.size;
 	size_t const capacity = table.capacity;
@@ -67,7 +50,11 @@ void* swiss_table::insert_slot(core& table, size_t const element_size, size_t co
 	return table.slots + slot_index * element_size;
 }
 
-void* swiss_table::insert_impl(core& table, size_t const element_size, size_t const hash, resize_callback* const callback)
+void* swiss_table::insert2(
+	_table& table,
+	size_t const element_size,
+	size_t const hash,
+	resize_callback_type* const callback)
 {
 	ctrl* ctrls = get_ctrls(table.slots, element_size, table.capacity);
 	size_t slot_index = find_free_slot(ctrls, table.capacity, hash);
@@ -85,11 +72,12 @@ void* swiss_table::insert_impl(core& table, size_t const element_size, size_t co
 		vsm_assert(slot_ctrl == ctrl_end || slot_ctrl == ctrls[slot_index]);
 	}
 
+	vsm_assert(table.free != 0 || slot_ctrl == ctrl_tomb);
 	table.free -= static_cast<size_t>(slot_ctrl != ctrl_tomb);
 	return insert_slot(table, element_size, hash, slot_index);
 }
 
-void swiss_table::remove_slot(core& table, size_t const element_size, size_t const slot_index)
+void swiss_table::erase_slot(_table& table, size_t const element_size, size_t const slot_index)
 {
 	size_t const capacity = table.capacity;
 	ctrl* const ctrls = get_ctrls(table.slots, element_size, capacity);
@@ -99,7 +87,9 @@ void swiss_table::remove_slot(core& table, size_t const element_size, size_t con
 	uint32_t const left_mask = group(ctrls + left_index).match_empty();
 	uint32_t const slot_mask = group(ctrls + slot_index).match_empty();
 
-	bool const reuse_slot = left_mask != 0 && slot_mask != 0 &&
+	bool const reuse_slot =
+		left_mask != 0 &&
+		slot_mask != 0 &&
 		(std::countr_zero(left_mask) + std::countl_zero(slot_mask)) < group_size;
 
 	set_ctrl(ctrls, capacity, slot_index, reuse_slot ? ctrl_empty : ctrl_tomb);
@@ -110,10 +100,10 @@ void swiss_table::remove_slot(core& table, size_t const element_size, size_t con
 
 static void convert_special_to_empty_and_full_to_tomb(ctrl* const group)
 {
-	__m128i const ctrl = _mm_loadu_si128(reinterpret_cast<const __m128i*>(group));
+	__m128i const ctrl = _mm_loadu_si128(reinterpret_cast<__m128i const*>(group));
 
-	__m128i const msb1 = _mm_set1_epi8(0x80);
-	__m128i const lsb0 = _mm_set1_epi8(0x7F);
+	__m128i const msb1 = _mm_set1_epi8(static_cast<char>(static_cast<uint8_t>(0x80)));
+	__m128i const lsb0 = _mm_set1_epi8(static_cast<char>(static_cast<uint8_t>(0x7E)));
 
 	__m128i const result = _mm_or_si128(_mm_shuffle_epi8(lsb0, ctrl), msb1);
 

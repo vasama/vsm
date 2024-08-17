@@ -102,7 +102,7 @@ template<typename O>
 using any_signature = any_signature_info<decltype(O::invoke<any_signature_parameter>)>;
 
 template<typename T, typename... Os>
-inline any_function_ptr const any_table[] =
+inline any_function_ptr const any_vtable[] =
 {
 	reinterpret_cast<any_function_ptr>(any_signature<Os>::invoke<T, Os>)...
 };

@@ -2,7 +2,10 @@
 
 using namespace vsm;
 using namespace vsm::intrusive;
-using namespace vsm::intrusive::detail::mpsc_queue_;
+using namespace vsm::intrusive::detail;
+
+using hook = _mpscq::hook;
+static_assert(sizeof(hook) == sizeof(mpsc_queue_link));
 
 
 static hook* reverse_list(hook* head)
@@ -17,14 +20,24 @@ static hook* reverse_list(hook* head)
 	return prev;
 }
 
-
-bool base::push_one(hook* const node)
+bool _mpscq::push_one(hook* const node)
 {
 	return push_all(node, node);
 }
 
-bool base::push_all(hook* const head, hook* const tail)
+bool _mpscq::push_all(hook* const head, hook* const tail)
 {
+	auto const update_atom = [&](hook_pair const& atom)
+	{
+		return hook_pair
+		{
+			head,
+			atom.tail == nullptr
+				? tail
+				: atom.tail,
+		};
+	};
+
 	hook_pair atom = m_atom.load(std::memory_order_acquire);
 
 	do
@@ -32,13 +45,15 @@ bool base::push_all(hook* const head, hook* const tail)
 		tail->next = atom.head;
 	}
 	while (!m_atom.compare_exchange_weak(
-		atom, hook_pair{ head, atom.tail != nullptr ? atom.tail : tail },
-		std::memory_order_release, std::memory_order_acquire));
+		atom,
+		update_atom(atom),
+		std::memory_order_release,
+		std::memory_order_acquire));
 
 	return atom.head == nullptr;
 }
 
-hook_pair base::pop_all_lifo()
+_mpscq::hook_pair _mpscq::pop_all_lifo()
 {
 	hook_pair pair = m_atom.load(std::memory_order_acquire);
 
@@ -56,7 +71,7 @@ hook_pair base::pop_all_lifo()
 	return pair;
 }
 
-hook_pair base::pop_all_fifo()
+_mpscq::hook_pair _mpscq::pop_all_fifo()
 {
 	hook_pair const pair = pop_all_lifo();
 

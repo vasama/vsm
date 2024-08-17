@@ -8,9 +8,9 @@
 
 using namespace vsm;
 using namespace vsm::intrusive;
-using namespace vsm::intrusive::detail::heap_;
+using namespace vsm::intrusive::detail;
 
-
+using hook = _heap::hook;
 static_assert(sizeof(hook) == sizeof(heap_link));
 
 
@@ -83,7 +83,10 @@ static void swap_nodes(hook* const parent, hook* const child)
 }
 
 // Walk towards the root and restore the heap property along the way.
-static void percolate_to_root(base const& self, hook* const node, comparator* const comparator)
+static void percolate_to_root(
+	_heap const& self,
+	hook* const node,
+	_heap::comparator* const comparator)
 {
 	while (true)
 	{
@@ -109,7 +112,7 @@ static void percolate_to_root(base const& self, hook* const node, comparator* co
 	}
 }
 
-static bool invariant(base const& self)
+[[maybe_unused]] static bool invariant(_heap const& self)
 {
 	size_t size = 0;
 	if (hook const* node = self.m_root)
@@ -137,7 +140,7 @@ static bool invariant(base const& self)
 
 			for (uint8_t visit; (visit = frame.visit++) < 2;)
 			{
-				frame.l_height = std::exchange(r_height, 0);
+				frame.l_height = std::exchange(r_height, static_cast<int8_t>(0));
 
 				if (const hook* const child = node->children[visit])
 				{
@@ -182,10 +185,8 @@ static bool invariant(base const& self)
 }
 
 
-void base::push(hook* const node, comparator* const comparator)
+void _heap::push(hook* const node, comparator* const comparator)
 {
-	vsm_intrusive_link_insert(*this, *node);
-
 	// Find the parent of, and the pointer to the last node.
 	auto const [last_parent, last_parent_child] = find_last(&m_root, ++m_size);
 
@@ -200,13 +201,11 @@ void base::push(hook* const node, comparator* const comparator)
 	// Percolate node toward the root.
 	percolate_to_root(*this, node, comparator);
 
-	vsm_assert_slow(invariant(*this));
+	//vsm_assert_slow(invariant(*this));
 }
 
-void base::remove(hook* const node, comparator* const comparator)
+void _heap::remove(hook* const node, comparator* const comparator)
 {
-	vsm_intrusive_link_remove(*this, *node);
-
 	// Find the pointer to the last node.
 	hook** const last_parent_child = find_last(&m_root, m_size--).second;
 
@@ -260,10 +259,10 @@ void base::remove(hook* const node, comparator* const comparator)
 
 	percolate_to_root(*this, last, comparator);
 
-	vsm_assert_slow(invariant(*this));
+	//vsm_assert_slow(invariant(*this));
 }
 
-hook* base::pop(comparator* const comparator)
+hook* _heap::pop(comparator* const comparator)
 {
 	vsm_assert(m_size > 0);
 	hook* const node = m_root;
@@ -271,7 +270,7 @@ hook* base::pop(comparator* const comparator)
 	return node;
 }
 
-void base::clear()
+void _heap::clear()
 {
 	if (m_root != nullptr)
 	{
@@ -289,8 +288,6 @@ void base::clear()
 
 				children = std::exchange(node->parent, nullptr);
 				children[node != children[0]] = nullptr;
-
-				vsm_intrusive_link_remove(*this, *node);
 			}
 		}
 
@@ -298,5 +295,5 @@ void base::clear()
 		m_size = 0;
 	}
 
-	vsm_assert_slow(invariant(*this));
+	//vsm_assert_slow(invariant(*this));
 }

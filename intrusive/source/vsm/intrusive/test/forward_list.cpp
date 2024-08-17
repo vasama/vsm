@@ -12,9 +12,13 @@ using namespace vsm::intrusive::test;
 
 namespace {
 
-using list = vsm::intrusive::forward_list<element>;
+using list_type = vsm::intrusive::forward_list<element>;
 
-static void check_content(list const& l, std::initializer_list<int> const expect)
+static_assert(std::forward_iterator<list_type::iterator>);
+static_assert(std::forward_iterator<list_type::const_iterator>);
+static_assert(std::ranges::forward_range<list_type>);
+
+static void check_content(list_type const& l, std::initializer_list<int> const expect)
 {
 	CHECK(l.empty() == (expect.size() == 0));
 
@@ -30,7 +34,7 @@ static void check_content(list const& l, std::initializer_list<int> const expect
 
 TEST_CASE("forward_list::push_front", "[intrusive][forward_list]")
 {
-	list l;
+	list_type l;
 	elements e;
 
 	l.push_front(e(1));
@@ -48,7 +52,7 @@ TEST_CASE("forward_list::push_front", "[intrusive][forward_list]")
 
 TEST_CASE("forward_list::push_back", "[intrusive][forward_list]")
 {
-	list l;
+	list_type l;
 	elements e;
 
 	l.push_back(e(1));
@@ -66,7 +70,7 @@ TEST_CASE("forward_list::push_back", "[intrusive][forward_list]")
 
 TEST_CASE("forward_list::pop_front", "[intrusive][forward_list]")
 {
-	list l;
+	list_type l;
 	elements e;
 
 	l.push_front(e(1));
@@ -88,6 +92,46 @@ TEST_CASE("forward_list::pop_front", "[intrusive][forward_list]")
 TEST_CASE("forward_list::splice_front", "[intrusive][forward_list]")
 {
 
+}
+
+TEST_CASE("forward_list move constructor", "[intrusive][forward_list]")
+{
+	elements e;
+
+	list_type l1;
+	l1.push_back(e(1));
+
+	list_type l2 = std::move(l1);
+
+	REQUIRE(l1.empty());
+	REQUIRE(l2.pop_front()->value == 1);
+
+}
+
+TEST_CASE("forward_list move assignment", "[intrusive][forward_list]")
+{
+	elements e;
+
+	list_type l1;
+	l1.push_back(e(1));
+
+	list_type l2;
+	l2 = std::move(l1);
+
+	REQUIRE(l1.empty());
+	REQUIRE(l2.pop_front()->value == 1);
+}
+
+TEST_CASE("forward_list self assignment", "[intrusive][forward_list]")
+{
+	elements e;
+
+	list_type l1;
+	l1.push_back(e(1));
+
+	l1 = std::move(l1);
+
+	REQUIRE(l1.pop_front()->value == 1);
 }
 
 } // namespace

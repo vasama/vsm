@@ -1,26 +1,27 @@
 #pragma once
 
 #include <vsm/assert.h>
-#include <vsm/bit_pointer.hpp>
-#include <vsm/bit_reference.hpp>
+#include <vsm/bit_ptr.hpp>
+#include <vsm/bit_ref.hpp>
 
 namespace vsm {
 
 template<typename Word>
 class bit_span
 {
-	bit_pointer<Word> m_data;
+	bit_ptr<Word> m_data;
 	size_t m_size = 0;
 
 public:
-	using size_type = size_t;
-	using difference_type = ptrdiff_t;
-	using pointer = bit_pointer<Word>;
-	using const_pointer = pointer;
-	using reference = bit_reference<Word>;
-	using const_reference = reference;
-	using iterator = pointer;
-	using const_iterator = const_pointer;
+	using word_type                     = Word;
+	using size_type                     = size_t;
+	using difference_type               = ptrdiff_t;
+	using pointer                       = bit_ptr<Word>;
+	using const_pointer                 = pointer;
+	using reference                     = bit_ref<Word>;
+	using const_reference               = reference;
+	using iterator                      = pointer;
+	using const_iterator                = const_pointer;
 
 
 	bit_span() = default;

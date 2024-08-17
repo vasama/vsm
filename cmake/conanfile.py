@@ -1,6 +1,5 @@
 from conan import ConanFile
 from conan.tools.files import copy
-from conan.tools.cmake import cmake_layout
 from os.path import join
 
 class package(ConanFile):
@@ -8,6 +7,9 @@ class package(ConanFile):
 
 	name = "vsm_cmake"
 	version = "0.1"
+
+	def layout(self):
+		self.folders.generators = "build"
 
 	def package(self):
 		copy(
@@ -20,3 +22,5 @@ class package(ConanFile):
 		self.cpp_info.includedirs = []
 		self.cpp_info.libdirs = []
 		self.cpp_info.builddirs.append("cmake")
+		self.cpp_info.set_property("cmake_file_name", "vsm-cmake")
+		self.cpp_info.set_property("cmake_target_name", "vsm::cmake")

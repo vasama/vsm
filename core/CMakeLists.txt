@@ -1,25 +1,40 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.24)
 
 project(vsm_core)
 
-vsm_find_sibling(vsm-test_tools)
-
 vsm_add_library(vsm::core
 	HEADERS
+		include/vsm/array.hpp
 		include/vsm/assert.h
 		include/vsm/atomic.hpp
 		include/vsm/concepts.hpp
 		include/vsm/defer.hpp
+		include/vsm/exceptions.hpp
+		include/vsm/float.hpp
 		include/vsm/int128.hpp
+		include/vsm/lazy.hpp
 		include/vsm/lift.hpp
 		include/vsm/platform.h
 		include/vsm/preprocessor.h
+		include/vsm/relocate.hpp
 		include/vsm/standard.hpp
 		include/vsm/tag_invoke.hpp
 		include/vsm/type_traits.hpp
 		include/vsm/utility.hpp
+		include/vsm/weak.h
 
 		include/vsm/detail/atomic/x86_64.hpp
+
+		include/vsm/detail/categories.hpp
+
+		include/vsm/detail/float16.hpp
+		include/vsm/detail/float16/generic.h
+		include/vsm/detail/float16/x86.h
+		include/vsm/detail/float16/x86_32.h
+		include/vsm/detail/float16/x86_64.h
+
+		include/vsm/detail/msvc_delete.hpp
+
 		include/vsm/detail/platform/arch.h
 		include/vsm/detail/platform/clang.h
 		include/vsm/detail/platform/compiler.h
@@ -32,15 +47,11 @@ vsm_add_library(vsm::core
 		include/vsm/detail/platform/x86.h
 		include/vsm/detail/platform/x86_32.h
 		include/vsm/detail/platform/x86_64.h
-		include/vsm/detail/categories.hpp
 
-	ADDITIONAL_SOURCES
+		include/vsm/detail/start_lifetime_as.ipp
 
-	TEST_SOURCES
-		source/vsm/test/utility.cpp
-
-	TEST_DEPENDENCIES
-		vsm::test_tools
+	SOURCES
+		source/vsm/impl/memory.cpp
 )
 vsm_configure(vsm::core
 	PLATFORM Windows
@@ -52,3 +63,20 @@ vsm_configure(vsm::core
 	SOURCES
 		source/vsm/impl/linux/assert.cpp
 )
+
+if(DEFINED vsm_aggregate_test_target)
+	vsm_find_sibling(vsm-test_tools)
+
+	vsm_configure(
+		vsm::core
+
+		TEST_SOURCES
+			source/vsm/test/atomic.cpp
+			source/vsm/test/float.cpp
+			source/vsm/test/relocate.cpp
+			source/vsm/test/utility.cpp
+	
+		TEST_DEPENDENCIES
+			vsm::test_tools
+	)
+endif()

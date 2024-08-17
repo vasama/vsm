@@ -4,7 +4,19 @@
 
 using namespace vsm;
 
+namespace {
+
 using view_type = function_view<int(int)>;
+
+struct struct_type
+{
+	int x;
+
+	int function(this struct_type const& self, int const y)
+	{
+		return self.x + y;
+	}
+};
 
 TEST_CASE("function_view borrows callable object", "[function_view]")
 {
@@ -44,3 +56,12 @@ TEST_CASE("function_view binds to function", "[function_view]")
 		CHECK(view_type(function)(42) == 42 * 7);
 	}
 }
+
+TEST_CASE("function_view binds to explicit this function", "[function_view]")
+{
+	struct_type const object{ 1 };
+	view_type const f(nontype<&struct_type::function>, object);
+	REQUIRE(f(42) == 43);
+}
+
+} // namespace

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vsm/assert.h>
+#include <vsm/hash.hpp>
 
 #include <bit>
 #include <limits>
@@ -40,7 +41,7 @@ consteval Tag tag_ptr_max_tag()
 		{
 			max = std::numeric_limits<Tag>::max();
 		}
-		return max;
+		return static_cast<Tag>(max);
 	}
 }
 
@@ -263,6 +264,9 @@ private:
 	friend auto vsm::reinterpret_pointer_cast(In const in)
 		-> decltype(detail::reinterpret_cast_constraint_int(static_cast<In**>(0), static_cast<Out**>(0)));
 };
+
+template<typename T, typename Tag, Tag Max>
+inline constexpr bool is_trivially_hashable_v<detail::tag_ptr<T, Tag, Max>> = true;
 
 template<typename T, typename Tag, Tag Max>
 using incomplete_tag_ptr = detail::tag_ptr<T, Tag, Max>;

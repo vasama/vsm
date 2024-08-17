@@ -1,41 +1,49 @@
 #pragma once
 
 #include <vsm/assert.h>
-#include <vsm/bit_pointer.hpp>
-#include <vsm/bit_reference.hpp>
+#include <vsm/bit_ptr.hpp>
+#include <vsm/standard.hpp>
 
 #include <climits>
 #include <cstddef>
 
 namespace vsm {
-namespace detail::bits_ {
+namespace detail {
 
 template<typename Word, size_t Size>
-class bit_array_storage
+struct _bit_array_storage
 {
 	Word data[Size];
 };
 
 template<typename Word>
-class bit_array_storage<Word, 0>
+struct _bit_array_storage<Word, 0>
 {
 	static constexpr Word* data = nullptr;
 };
 
-template<size_t Size, typename Word = unsigned int>
+} // namespace detail
+
+template<bit_size_t Size, detail::_bit_word Word = unsigned int>
 class bit_array
 {
 	static constexpr size_t word_bits = sizeof(Word) * CHAR_BIT;
-	static constexpr size_t word_count = (Size + word_bits - 1) / word_bits;
+	static constexpr size_t word_count = static_cast<size_t>((Size + (word_bits - 1)) / word_bits);
 
-	[[no_unique_address]] bit_array_storage<Word, word_count> m = {};
+	vsm_no_unique_address detail::_bit_array_storage<Word, word_count> m = {};
 
 public:
-	using       reference = bit_reference<      Word>;
-	using const_reference = bit_reference<const Word>;
+	using size_type = bit_size_t;
+	using difference_type = bit_ptrdiff_t;
 
-	using       pointer = bit_pointer<      Word>;
-	using const_pointer = bit_pointer<const Word>;
+	using       reference = bit_ref<      Word>;
+	using const_reference = bit_ref<const Word>;
+
+	using       pointer = bit_ptr<      Word>;
+	using const_pointer = bit_ptr<const Word>;
+
+	using       iterator =       pointer;
+	using const_iterator = const_pointer;
 
 
 	[[nodiscard]] constexpr size_t size() const noexcept
@@ -83,21 +91,37 @@ public:
 		return const_pointer(m.data, 0)[Size - 1];
 	}
 
-	[[nodiscard]] reference operator[](size_t const index) noexcept
+	[[nodiscard]] reference operator[](bit_size_t const index)
 	{
 		vsm_assert(index < Size);
 		return pointer(m.data, 0)[index];
 	}
 
-	[[nodiscard]] const_reference operator[](size_t const index) const noexcept
+	[[nodiscard]] const_reference operator[](bit_size_t const index) const
 	{
 		vsm_assert(index < Size);
 		return const_pointer(m.data, 0)[index];
 	}
+
+	[[nodiscard]] iterator begin() noexcept
+	{
+		return pointer(m.data, 0);
+	}
+
+	[[nodiscard]] const_iterator begin() const noexcept
+	{
+		return const_pointer(m.data, 0);
+	}
+
+	[[nodiscard]] iterator end() noexcept
+	{
+		return pointer(m.data, 0) + Size;
+	}
+
+	[[nodiscard]] const_iterator end() const noexcept
+	{
+		return const_pointer(m.data, 0) + Size;
+	}
 };
-
-} // namespace detail::bits_
-
-using detail::bits_::bit_array;
 
 } // namespace vsm

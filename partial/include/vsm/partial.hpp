@@ -1,5 +1,8 @@
 #pragma once
 
+#include <memory>
+#include <new>
+
 namespace vsm {
 namespace detail {
 
@@ -22,13 +25,34 @@ struct self_traits<Interface const*>
 
 } // namespace detail
 
-struct partial
+class partial
 {
-	template<typename T>
-	using internal_class = typename T::internal_class;
+#if vsm_compiler_clang
+#	if __clang_major__ >= 19
+#		error Remove this workaround.
+#	endif
 
 	template<typename T>
-	using private_class = typename T::private_class;
+	struct access
+	{
+		using internal_class = T::internal_class;
+		using private_class = T::private_class;
+	};
+
+public:
+	template<typename T>
+	using internal_class = access<T>::internal_class;
+
+	template<typename T>
+	using private_class = access<T>::private_class;
+#else
+public:
+	template<typename T>
+	using internal_class = T::internal_class;
+
+	template<typename T>
+	using private_class = T::private_class;
+#endif
 };
 
 #define vsm_partial(T) \
@@ -42,7 +66,18 @@ struct partial
 		T& operator=(T const&) = delete; \
 		~T() = default; \
 	private: \
-		friend struct ::vsm::partial \
+		friend ::vsm::partial \
+
+#define vsm_partial_delete(T) \
+	public: \
+		static void operator delete(T* ptr, ::std::destroying_delete_t); \
+	private: \
+		friend ::std::default_delete<T> \
+
+#define vsm_partial_internal(T) \
+	private: \
+		friend T; \
+		friend T::private_class
 
 #define vsm_self(T) \
 	auto* const self = static_cast<::vsm::detail::self_traits<decltype(this)>::template type<T>>(this)

@@ -1,29 +1,21 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.24)
 
 project(vsm_cli)
 
-if(PROJECT_IS_TOP_LEVEL)
-	find_package(vsm-assert REQUIRED)
-	find_package(vsm-core REQUIRED)
-endif()
+vsm_add_library(
+	vsm::cli
 
-add_library(vsm_cli)
-
-target_sources(vsm_cli
-	PUBLIC
-	FILE_SET HEADERS
-	BASE_DIRS include
-	FILES
-		include/vsm/cli/detail/base.hpp
+	HEADERS
+		include/vsm/cli.hpp
 		include/vsm/cli/app.hpp
+		include/vsm/cli/detail/base.hpp
 		include/vsm/cli/error.hpp
 		include/vsm/cli/group.hpp
 		include/vsm/cli/option.hpp
 		include/vsm/cli/parse.hpp
 		include/vsm/cli/style.hpp
-		include/vsm/cli.hpp
 
-	PRIVATE
+	SOURCES
 		source/vsm/cli/impl/app.cpp
 		source/vsm/cli/impl/app.hpp
 		source/vsm/cli/impl/group.cpp
@@ -32,21 +24,8 @@ target_sources(vsm_cli
 		source/vsm/cli/impl/option.hpp
 		source/vsm/cli/impl/resource.hpp
 		source/vsm/cli/impl/style.cpp
-)
 
-target_include_directories(vsm_cli
-	PUBLIC
-		include
-)
-
-target_link_libraries(vsm_cli
-	PUBLIC
+	HEADER_DEPENDENCIES
 		vsm::assert
 		vsm::core
 )
-
-install(TARGETS vsm_cli FILE_SET HEADERS)
-
-if(NOT PROJECT_IS_TOP_LEVEL)
-	add_library(vsm::assert ALIAS vsm_cli)
-endif()

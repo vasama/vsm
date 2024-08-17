@@ -1,8 +1,10 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.24)
 
 project(vsm_offset_ptr)
 
-vsm_add_library(vsm::offset_ptr
+vsm_add_library(
+	vsm::offset_ptr
+
 	HEADERS
 		include/vsm/offset_ptr.hpp
 

@@ -1,12 +1,14 @@
 #pragma once
 
+#include <vsm/intrusive/link.hpp>
+
 #include <list>
 #include <ranges>
 #include <unordered_map>
 
 namespace vsm::intrusive::test {
 
-struct element : intrusive::link<4>
+struct element : intrusive::basic_link<4>
 {
 	int value;
 

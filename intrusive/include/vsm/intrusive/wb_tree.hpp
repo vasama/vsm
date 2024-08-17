@@ -15,69 +15,114 @@
 #include <utility>
 
 namespace vsm::intrusive {
-
-using wb_tree_link = link<4>;
-
-namespace detail::wb_tree_ {
-
-#define vsm_detail_wb_hook(elem, ...) \
-	(reinterpret_cast<hook __VA_ARGS__*>(static_cast<wb_tree_link __VA_ARGS__*>(elem)))
-
-#define vsm_detail_wb_elem(hook, ...) \
-	(static_cast<T __VA_ARGS__*>(reinterpret_cast<wb_tree_link __VA_ARGS__*>(hook)))
+namespace detail {
 
 #define vsm_detail_wb_hook_from_children(children) \
-	static_cast<hook*>(reinterpret_cast<hook_data*>(children))
+	reinterpret_cast<hook*>(children)
 
-
-template<typename T>
-using ptr = incomplete_tag_ptr<T, bool, 1>;
-
-struct hook;
-
-struct hook_data
+struct _wb
 {
-	hook* children[2];
+	template<typename T>
+	using ptr = incomplete_tag_ptr<T, bool, 1>;
 
-	// Pointer to children[0] of a parent hook or base::m_root;
-	hook** parent;
-
-	// Weight of the subtree rooted at this node, including this node.
-	uintptr_t weight;
-};
-
-struct hook : link_base, hook_data {};
-
-struct base : link_container
-{
-	hook* m_root = {};
-
-
-	base() = default;
-
-	base(base&& other) noexcept
-		: link_container(static_cast<link_container&&>(other))
-		, m_root(other.m_root)
+	struct hook
 	{
-		other.m_root = {};
+		hook* children[2];
+
+		// Pointer to children[0] of a parent hook or _wb::m_root;
+		hook** parent;
+
+		// Weight of the subtree rooted at this node, including this node.
+		uintptr_t weight;
+	};
+
+	template<typename T, typename Tag>
+	class iterator
+	{
+		hook** m_children;
+
+	public:
+		using difference_type = ptrdiff_t;
+		using value_type = T;
+		using pointer = T*;
+		using reference = T&;
+
+
+		iterator() = default;
+
+		iterator(hook** const children)
+			: m_children(children)
+		{
+		}
+
+
+		[[nodiscard]] T& operator*() const
+		{
+			return *links::get_elem<T, Tag>(vsm_detail_wb_hook_from_children(m_children));
+		}
+
+		[[nodiscard]] T* operator->() const
+		{
+			return links::get_elem<T, Tag>(vsm_detail_wb_hook_from_children(m_children));
+		}
+
+
+		iterator& operator++() &
+		{
+			m_children = iterator_advance(m_children, 0);
+			return *this;
+		}
+
+		[[nodiscard]] iterator operator++(int) &
+		{
+			iterator result = *this;
+			m_children = iterator_advance(m_children, 0);
+			return result;
+		}
+
+		iterator& operator--() &
+		{
+			m_children = iterator_advance(m_children, 1);
+			return *this;
+		}
+
+		[[nodiscard]] iterator operator--(int) &
+		{
+			iterator result = *this;
+			m_children = iterator_advance(m_children, 1);
+			return result;
+		}
+
+
+		[[nodiscard]] bool operator==(iterator const&) const = default;
+	};
+
+
+	hook* m_root = nullptr;
+
+
+	_wb() = default;
+
+	_wb(_wb&& other) noexcept
+		: m_root(other.m_root)
+	{
+		other.m_root = nullptr;
 	}
 
-	base& operator=(base&& other) & noexcept
+	_wb& operator=(_wb&& other) & noexcept
 	{
 		if (m_root != nullptr)
 		{
 			clear();
 		}
 
-		static_cast<link_container&>(*this) = static_cast<link_container&&>(other);
-
 		m_root = other.m_root;
-		other.m_root = {};
+		other.m_root = nullptr;
 
 		return *this;
 	}
 
-	~base()
+	~_wb()
 	{
 		if (m_root != nullptr)
 		{
@@ -89,7 +134,7 @@ struct base : link_container
 	struct find_result
 	{
 		hook* node;
-		ptr<hook*> parent;
+		ptr<hook* const> parent;
 	};
 
 	hook* select(size_t rank) const;
@@ -98,102 +143,51 @@ struct base : link_container
 	void insert(hook* node, ptr<hook*> parent_and_side);
 	void remove(hook* node);
 	void clear();
-	list_::hook* flatten();
+	_list::hook* flatten();
 
-	friend void swap(base& lhs, base& rhs) noexcept
+	friend void swap(_wb& lhs, _wb& rhs) noexcept
 	{
 		using std::swap;
 		swap(lhs.m_root, rhs.m_root);
 	};
+
+
+	static hook** iterator_begin(hook** root);
+	static hook** iterator_advance(hook** children, bool l);
 };
 
-hook** iterator_begin(hook** root);
-hook** iterator_advance(hook** children, bool l);
+} // namespace detail
 
+template<typename Tag>
+using basic_wb_tree_link = basic_link<4, Tag>;
+
+using wb_tree_link = basic_wb_tree_link<void>;
 
 template<typename T>
-class iterator
-{
-	hook** m_children;
+using wb_tree_children = std::array<T*, 2>;
 
-public:
-	using difference_type = ptrdiff_t;
-	using value_type = T;
-	using pointer = T*;
-	using reference = T&;
-
-
-	iterator() = default;
-
-	iterator(hook** const children)
-		: m_children(children)
-	{
-	}
-
-
-	[[nodiscard]] T& operator*() const
-	{
-		return *vsm_detail_wb_elem(vsm_detail_wb_hook_from_children(m_children));
-	}
-
-	[[nodiscard]] T* operator->() const
-	{
-		return vsm_detail_wb_elem(vsm_detail_wb_hook_from_children(m_children));
-	}
-
-
-	iterator& operator++() &
-	{
-		m_children = iterator_advance(m_children, 0);
-		return *this;
-	}
-
-	[[nodiscard]] iterator operator++(int) &
-	{
-		iterator result = *this;
-		m_children = iterator_advance(m_children, 0);
-		return result;
-	}
-
-	iterator& operator--() &
-	{
-		m_children = iterator_advance(m_children, 1);
-		return *this;
-	}
-
-	[[nodiscard]] iterator operator--(int) &
-	{
-		iterator result = *this;
-		m_children = iterator_advance(m_children, 1);
-		return result;
-	}
-
-
-	[[nodiscard]] bool operator==(iterator const&) const = default;
-};
-
-
-template<std::derived_from<wb_tree_link> T>
-using wb_tree_children = std::array<T, 2>;
-
-template<std::derived_from<wb_tree_link> T,
+template<
+	typename T,
 	key_selector<T> KeySelector = identity_key_selector,
 	typename Comparator = std::compare_three_way>
-class wb_tree : base
+class wb_tree : detail::_wb
 {
+public:
+	using element_type = detail::element_t<T>;
+	using tag_type = detail::tag_t<T>;
+
+	using key_type = decltype(std::declval<KeySelector const&>()(std::declval<element_type const&>()));
+
+	using       iterator = _wb::iterator<      element_type, tag_type>;
+	using const_iterator = _wb::iterator<const element_type, tag_type>;
+
+	using insert_result = vsm::insert_result<element_type>;
+
+private:
 	vsm_no_unique_address KeySelector m_key_selector;
 	vsm_no_unique_address Comparator m_comparator;
 
 public:
-	using element_type = T;
-	using key_type = decltype(std::declval<KeySelector const&>()(std::declval<T const&>()));
-
-	using       iterator = wb_tree_::iterator<      T>;
-	using const_iterator = wb_tree_::iterator<const T>;
-
-	using insert_result = vsm::insert_result<T>;
-
-
 	wb_tree() = default;
 
 	explicit constexpr wb_tree(KeySelector key_selector)
@@ -218,7 +212,9 @@ public:
 	/// @return Size of the set.
 	[[nodiscard]] size_t size() const
 	{
-		return m_root != nullptr ? m_root->weight : 0;
+		return m_root == nullptr
+			? 0
+			: m_root->weight;
 	}
 
 	/// @return True if the set is empty.
@@ -228,122 +224,138 @@ public:
 	}
 
 
-	[[nodiscard]] T* root()
+	[[nodiscard]] element_type* root()
 	{
 		vsm_assert(m_root != nullptr);
-		return vsm_detail_wb_elem(m_root);
+		return get_elem(m_root);
 	}
 
-	[[nodiscard]] T const* root() const
+	[[nodiscard]] element_type const* root() const
 	{
 		vsm_assert(m_root != nullptr);
-		return vsm_detail_wb_elem(m_root);
+		return get_elem(m_root);
 	}
 
 
-	[[nodiscard]] size_t weight(T const* const element) const
+	[[nodiscard]] size_t weight(element_type const* const element) const
 	{
 		vsm_intrusive_link_check(*this, *element);
-		return vsm_detail_wb_hook(element, const)->weight;
+		return get_hook(element)->weight;
 	}
 
-	[[nodiscard]] wb_tree_children<T> children(T const* const element)
+	[[nodiscard]] wb_tree_children<element_type> children(element_type const* const element)
 	{
 		vsm_intrusive_link_check(*this, *element);
-		hook const* const node = vsm_detail_wb_hook(element, const);
-		return { vsm_detail_wb_elem(node->children[0]), vsm_detail_wb_elem(node->children[1]) };
+		hook const* const node = get_hook(element);
+		return { get_elem(node->children[0]), get_elem(node->children[1]) };
 	}
 
-	[[nodiscard]] wb_tree_children<T const> children(T const* const element) const
+	[[nodiscard]] wb_tree_children<element_type const> children(element_type const* const element) const
 	{
 		vsm_intrusive_link_check(*this, *element);
-		hook const* const node = vsm_detail_wb_hook(element, const);
-		return { vsm_detail_wb_elem(node->children[0]), vsm_detail_wb_elem(node->children[1]) };
+		hook const* const node = get_hook(element);
+		return { get_elem(node->children[0]), get_elem(node->children[1]) };
 	}
 
 
-	[[nodiscard]] T* select(size_t const rank)
+	[[nodiscard]] element_type* select(size_t const rank)
 	{
-		return vsm_detail_wb_elem(base::select(rank));
+		return get_elem(_wb::select(rank));
 	}
 
-	[[nodiscard]] const T* select(size_t const rank) const
+	[[nodiscard]] const element_type* select(size_t const rank) const
 	{
-		return vsm_detail_wb_elem(base::select(rank));
+		return get_elem(_wb::select(rank));
 	}
 
-	[[nodiscard]] size_t rank(T const* const element) const
+	[[nodiscard]] size_t rank(element_type const* const element) const
 	{
-		return base::rank(vsm_detail_wb_hook(element));
+		return _wb::rank(get_hook(element));
 	}
 
 
-	[[nodiscard]] T* find(key_type const& key)
+	[[nodiscard]] element_type* find(key_type const& key)
 		noexcept(noexcept(find_internal(key)))
 	{
-		return vsm_detail_wb_elem(find_internal(key).node);
+		hook* const node = find_internal(key).node;
+
+		return node == nullptr
+			? nullptr
+			: get_elem(node);
 	}
 
-	[[nodiscard]] T const* find(key_type const& key) const
+	[[nodiscard]] element_type const* find(key_type const& key) const
 		noexcept(noexcept(find_internal(key)))
 	{
-		return vsm_detail_wb_elem(find_internal(key).node);
+		hook const* const node = find_internal(key).node;
+
+		return node == nullptr
+			? nullptr
+			: get_elem(node);
 	}
 
 	template<typename Key>
-	[[nodiscard]] T* find_equivalent(Key const& key)
+	[[nodiscard]] element_type* find_equivalent(Key const& key)
 		noexcept(noexcept(find_internal(key)))
 		requires (requires (key_type const& tree_key) { m_comparator(key, tree_key); })
 	{
-		return vsm_detail_wb_elem(find_internal(key).node);
+		hook* const node = find_internal(key).node;
+
+		return node == nullptr
+			? nullptr
+			: get_elem(node);
 	}
 
 	template<typename Key>
-	[[nodiscard]] T const* find_equivalent(Key const& key) const
+	[[nodiscard]] element_type const* find_equivalent(Key const& key) const
 		noexcept(noexcept(find_internal(key)))
 		requires (requires (key_type const& tree_key) { m_comparator(key, tree_key); })
 	{
-		return vsm_detail_wb_elem(find_internal(key).node);
+		hook const* const node = find_internal(key).node;
+
+		return node == nullptr
+			? nullptr
+			: get_elem(node);
 	}
 
 
-	insert_result insert(T* const element)
+	insert_result insert(element_type* const element)
 		noexcept(noexcept(find_internal(std::declval<key_type>())))
 	{
 		auto const r = find_internal(m_key_selector(*element));
 		if (r.node != nullptr)
 		{
-			return { vsm_detail_wb_elem(r.node), false };
+			return { get_elem(r.node), false };
 		}
-		base::insert(vsm_detail_wb_hook(element), r.parent);
+		_wb::insert(
+			detail::links::construct<hook, tag_type>(element),
+			const_pointer_cast<ptr<hook*>>(r.parent));
 		return { element, true };
 	}
 
-	void remove(T* const element)
+	void remove(element_type* const element)
 	{
-		base::remove(vsm_detail_wb_hook(element));
+		_wb::remove(get_hook(element));
 	}
 
-	using base::clear;
+	using _wb::clear;
 
 	[[nodiscard]] list<T> flatten()
 	{
 		size_t const size = this->size();
-		return list<T>(static_cast<link_container&&>(*this), base::flatten(), size);
+		return list<T>(_wb::flatten(), size);
 	}
 
 
 
-	[[nodiscard]] iterator make_iterator(T* const element)
+	[[nodiscard]] iterator make_iterator(element_type* const element)
 	{
-		vsm_intrusive_link_check(*this, *element);
-		return iterator(vsm_detail_wb_hook(element));
+		return iterator(get_hook(element));
 	}
 
-	[[nodiscard]] const_iterator make_iterator(T const* const element) const
+	[[nodiscard]] const_iterator make_iterator(element_type const* const element) const
 	{
-		vsm_intrusive_link_check(*this, *element);
-		return const_iterator(vsm_detail_wb_hook(element, const));
+		return const_iterator(get_hook(element));
 	}
 
 
@@ -371,24 +383,36 @@ public:
 	friend void swap(wb_tree& lhs, wb_tree& rhs) noexcept
 	{
 		using std::swap;
-		swap(static_cast<base&>(lhs), static_cast<base&>(rhs));
 		swap(lhs.m_key_selector, rhs.m_key_selector);
 		swap(lhs.m_comparator, rhs.m_comparator);
 	}
 
 private:
+	[[nodiscard]] static auto* get_hook(auto* const element)
+	{
+		return detail::links::get_hook<hook, tag_type>(element);
+	}
+
+	[[nodiscard]] static auto* get_elem(auto* const hook)
+	{
+		return detail::links::get_elem<element_type, tag_type>(hook);
+	}
+
 	template<typename Key>
 	find_result find_internal(Key const& key) const
 		noexcept(noexcept(m_comparator(key, std::declval<key_type const&>())))
 	{
-		hook** parent = const_cast<hook**>(&m_root);
+		hook* const* parent = &m_root;
 		bool l = 0;
 
 		while (parent[l] != nullptr)
 		{
 			hook* const child = parent[l];
 
-			auto const ordering = m_comparator(key, m_key_selector(*vsm_detail_wb_elem(child)));
+			auto const ordering = m_comparator(
+				key,
+				m_key_selector(*get_elem(child)));
+
 			if (ordering == 0)
 			{
 				return { child, { parent, l } };
@@ -401,10 +425,5 @@ private:
 		return find_result{ nullptr, { parent, l } };
 	}
 };
-
-} // namespace detail::wb_tree_
-
-using detail::wb_tree_::wb_tree_children;
-using detail::wb_tree_::wb_tree;
 
 } // namespace vsm::intrusive

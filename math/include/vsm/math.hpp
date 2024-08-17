@@ -76,7 +76,14 @@ constexpr bool is_power_of_two_or_zero(T const value)
 template<std::unsigned_integral T>
 constexpr bool is_power_of_two(T const value)
 {
-	return std::popcount(value) == 1;
+	return std::has_single_bit(value);
+}
+
+template<std::unsigned_integral T>
+constexpr T round_up_to_power_of_two(T const value)
+{
+	vsm_assert(value < most_significant_bit<T>);
+	return most_significant_bit<T> >> (std::countl_zero(value) - 1);
 }
 
 template<std::unsigned_integral T>
@@ -85,6 +92,12 @@ constexpr T round_up_to_power_of_two(T const value, T const power_of_two)
 	vsm_assert_slow(is_power_of_two(power_of_two));
 	T const power_of_two_bits = power_of_two - 1;
 	return value + power_of_two_bits & ~power_of_two_bits;
+}
+
+template<std::unsigned_integral T>
+constexpr T round_down_to_power_of_two(T const value, T const power_of_two)
+{
+	return value - (value & (power_of_two - 1));
 }
 
 } // namespace vsm

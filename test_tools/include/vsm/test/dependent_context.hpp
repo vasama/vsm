@@ -1,46 +1,54 @@
 #pragma once
 
+#include <vsm/preprocessor.h>
+
 #include <type_traits>
 
 namespace vsm::detail {
 
-template<typename T>
-using dependent_type_identity = T;
-
-template<bool>
-struct dependent_value;
-
-template<>
-struct dependent_value<0>
+struct dependent_context
 {
-	template<typename T>
-	static T identity(T const&);
+	template<bool>
+	struct select;
+
+	template<>
+	struct select<0>
+	{
+		template<typename T>
+		static T identity(T);
+	};
+
+	template<>
+	struct select<1> : std::true_type
+	{
+		template<typename T>
+		using type = T;
+
+		template<typename T>
+		static T&& identity(T&&);
+	};
+
+	dependent_context(auto lambda)
+	{
+		static_assert(select<std::is_void_v<decltype(lambda())>>::value);
+	}
+
+	template<bool Bool, typename T>
+	using type = typename select<Bool>::template type<T>;
+
+	template<bool Bool, typename T>
+	using value = select<Bool && std::is_reference_v<T>>;
 };
 
-template<>
-struct dependent_value<1>
-{
-	template<typename T>
-	static T&& identity(T&&);
-};
-
-template<bool>
-struct dependent_impl
-{
-	template<typename T>
-	using type = T;
-
-	template<bool Reference>
-	using value = dependent_value<Reference>;
-};
-
-#define vsm_dependent_context(...) \
-	static_assert(([]<bool vsm_detail_dependent_context = true>() -> void { __VA_ARGS__ }(), true))
+#define vsm_dependent_context \
+	static ::vsm::detail::dependent_context const \
+	vsm_pp_cat(vsm_detail_dependent_context, vsm_pp_counter) = \
+		[]<bool vsm_detail_dependent_context = true>() -> auto
 
 #define vsm_dep_t(...) \
-	::vsm::detail::dependent_type_identity<typename ::vsm::detail::dependent_impl<vsm_detail_dependent_context>::template type<__VA_ARGS__>>
+	::vsm::detail::dependent_context::type<vsm_detail_dependent_context, __VA_ARGS__>
 
 #define vsm_dep_v(...) \
-	::vsm::detail::dependent_impl<vsm_detail_dependent_context>::template value<::std::is_reference_v<decltype((__VA_ARGS__))>>::identity(__VA_ARGS__)
+	(::vsm::detail::dependent_context::value<vsm_detail_dependent_context, decltype((__VA_ARGS__))>::identity(__VA_ARGS__))
 
 } // namespace vsm::detail

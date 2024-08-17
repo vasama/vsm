@@ -4,17 +4,23 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <ranges>
+
 using namespace vsm;
 using namespace vsm::intrusive;
 using namespace vsm::intrusive::test;
 
 namespace {
 
-using list = vsm::intrusive::list<element>;
+using list_type = vsm::intrusive::list<element>;
+
+static_assert(std::bidirectional_iterator<list_type::iterator>);
+static_assert(std::bidirectional_iterator<list_type::const_iterator>);
+static_assert(std::ranges::bidirectional_range<list_type>);
 
 TEST_CASE("list::push_back", "[intrusive][list]")
 {
-	list list;
+	list_type list;
 	elements e;
 
 	list.push_back(e(1));
@@ -35,7 +41,7 @@ TEST_CASE("list::push_back", "[intrusive][list]")
 
 TEST_CASE("list::push_front", "[intrusive][list]")
 {
-	list list;
+	list_type list;
 	elements e;
 
 	list.push_front(e(1));
@@ -56,7 +62,7 @@ TEST_CASE("list::push_front", "[intrusive][list]")
 
 TEST_CASE("list iteration.", "[intrusive][list]")
 {
-	list list;
+	list_type list;
 	elements e;
 
 	int const count = GENERATE(0, 100);
@@ -80,7 +86,7 @@ TEST_CASE("list iteration.", "[intrusive][list]")
 
 TEST_CASE("list::remove" "[intrusive][list]")
 {
-	list list;
+	list_type list;
 	elements e;
 
 	element* elements[5];
@@ -106,7 +112,7 @@ TEST_CASE("list::remove" "[intrusive][list]")
 
 TEST_CASE("list::remove during iteration.", "[intrusive][list]")
 {
-	list list;
+	list_type list;
 	elements e;
 
 	list.push_back(e(1));

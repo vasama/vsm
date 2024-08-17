@@ -6,3 +6,8 @@ class package(ConanFile):
 
 	vsm_name = "vsm::numeric"
 	version = "0.1"
+
+	requires = (
+		"vsm_core/0.1",
+		"vsm_result/0.1",
+	)

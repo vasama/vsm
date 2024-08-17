@@ -10,6 +10,10 @@
 #	define vsm_compiler_gcc 0
 #endif
 
+#ifndef vsm_compiler_gnu
+#	define vsm_compiler_gnu 0
+#endif
+
 #ifndef vsm_gnu_diagnostic
 #	define vsm_gnu_diagnostic(...)
 #endif
@@ -44,4 +48,12 @@
 
 #ifndef vsm_restrict
 #	define vsm_restrict __restrict
+#endif
+
+#ifndef vsm_empty_bases
+#	define vsm_empty_bases
+#endif
+
+#ifndef vsm_compiler_preview
+#	define vsm_compiler_preview 0
 #endif

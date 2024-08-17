@@ -8,5 +8,3 @@ class package(ConanFile):
 	version = "0.1"
 
 	vsm_libs = ["vsm_core"]
-
-	test_requires = "vsm_test_tools/0.1"

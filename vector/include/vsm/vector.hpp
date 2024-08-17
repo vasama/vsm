@@ -4,7 +4,11 @@
 #include <vsm/algorithm/remove_unstable.hpp>
 #include <vsm/concepts.hpp>
 #include <vsm/default_allocator.hpp>
+#include <vsm/detail/front_pad.hpp>
 #include <vsm/platform.h>
+#include <vsm/relocate.hpp>
+#include <vsm/standard.hpp>
+#include <vsm/standard/stdexcept.hpp>
 #include <vsm/type_traits.hpp>
 #include <vsm/utility.hpp>
 
@@ -12,6 +16,7 @@
 #include <iterator>
 #include <memory>
 #include <new>
+#include <ranges>
 
 #include <cstddef>
 #include <cstring>
@@ -20,171 +25,79 @@ vsm_msvc_warning(push)
 vsm_msvc_warning(disable: 4102) // unreferenced label
 
 namespace vsm {
-namespace detail::vector_ {
+namespace detail {
 
-using std::byte;
+struct init_none_t;
+struct init_zero_t;
 
-template<typename T>
-using is_trivially_relocatable = std::is_trivially_copyable<T>;
-
-template<typename T>
-constexpr bool is_trivially_relocatable_v = is_trivially_relocatable<T>::value;
-
-template<typename T>
-void relocate(T* dst, T* src_beg, T* const src_end)
+struct _vector
 {
-	if constexpr (is_trivially_relocatable_v<T>)
-	{
-		std::memcpy(
-			reinterpret_cast<byte*>(dst),
-			reinterpret_cast<byte*>(src_beg),
-			reinterpret_cast<byte*>(src_end) - reinterpret_cast<byte*>(src_beg));
-	}
-	else
-	{
-		for (; src_beg != src_end; ++dst, ++src_beg)
-		{
-			new (dst) T(vsm_move(*src_beg));
-			src_beg->~T();
-		}
-	}
-}
-
-template<typename T>
-void relocate_left(T* dst, T* src_beg, T* const src_end)
-{
-	if constexpr (is_trivially_relocatable_v<T>)
-	{
-		std::memmove(
-			reinterpret_cast<byte*>(dst),
-			reinterpret_cast<byte*>(src_beg),
-			reinterpret_cast<byte*>(src_end) - reinterpret_cast<byte*>(src_beg));
-	}
-	else
-	{
-		for (; src_beg != src_end; ++dst, ++src_beg)
-		{
-			new (dst) T(vsm_move(*src_beg));
-			src_beg->~T();
-		}
-	}
-}
-
-template<typename T>
-void relocate_right(T* dst, T* const src_beg, T* src_end)
-{
-	if constexpr (is_trivially_relocatable_v<T>)
-	{
-		std::memmove(
-			reinterpret_cast<byte*>(dst),
-			reinterpret_cast<byte*>(src_beg),
-			reinterpret_cast<byte*>(src_end) - reinterpret_cast<byte*>(src_beg));
-	}
-	else
-	{
-		for (dst += src_end - src_beg; src_end-- != src_beg;)
-		{
-			new (--dst) T(vsm_move(*src_end));
-			src_end->~T();
-		}
-	}
-}
-
-template<bool>
-struct front_pad_1;
-
-template<>
-struct front_pad_1<0>
-{
-	template<typename T, size_t Alignment>
-	using type = T;
-};
-
-template<>
-struct front_pad_1<1>
-{
-	template<size_t Size, size_t Alignment>
-	struct padding
-	{
-		char padding[((Size + Alignment - 1) & ~(Alignment - 1)) - Size];
-	};
-
-	template<typename T, size_t Alignment>
-	struct type : padding<sizeof(T), Alignment>, T
-	{
-		using T::T;
-	};
-};
-
-template<typename T, size_t Alignment>
-using front_pad = front_pad_1<alignof(T) < Alignment>::template type<T, Alignment>;
-
-struct core
-{
-	byte* beg;
-	byte* mid;
-	byte* end;
+	std::byte* beg;
+	std::byte* mid;
+	std::byte* end;
 };
 
 template<typename Allocator>
-struct allocator_wrapper
+struct _wrap_allocator
 {
-	[[no_unique_address]] Allocator allocator;
+	vsm_no_unique_address Allocator allocator;
 
-	allocator_wrapper() = default;
+	_wrap_allocator() = default;
 
-	explicit vsm_always_inline allocator_wrapper(any_cvref_of<Allocator> auto&& allocator)
+	explicit vsm_always_inline _wrap_allocator(any_cvref_of<Allocator> auto&& allocator)
 		: allocator(allocator)
 	{
 	}
 };
 
 template<typename Allocator>
-struct allocator_layout
-	: allocator_wrapper<Allocator>
-	, front_pad<core, alignof(Allocator)>
+struct _vector_allocator
+	: _wrap_allocator<Allocator>
+	, front_pad<_vector, alignof(Allocator)>
 {
-	using allocator_wrapper<Allocator>::allocator_wrapper;
+	using _wrap_allocator<Allocator>::_wrap_allocator;
 };
 
 template<typename T, typename Allocator, size_t Capacity>
-struct storage_layout : allocator_layout<Allocator>
+struct _vector_storage : _vector_allocator<Allocator>
 {
-	using allocator_layout<Allocator>::allocator_layout;
-	byte mutable storage alignas(T)[sizeof(T) * Capacity];
+	using _vector_allocator<Allocator>::_vector_allocator;
+	std::byte mutable storage alignas(T)[sizeof(T) * Capacity];
 };
 
 template<typename T, typename Allocator>
-struct storage_layout<T, Allocator, 0> : allocator_layout<Allocator>
+struct _vector_storage<T, Allocator, 0> : _vector_allocator<Allocator>
 {
-	using allocator_layout<Allocator>::allocator_layout;
+	using _vector_allocator<Allocator>::_vector_allocator;
 };
 
 template<bool>
-struct capacity_param
+struct _vector_capacity
 {
-	constexpr capacity_param(size_t)
+	static constexpr size_t capacity = 0;
+
+	constexpr _vector_capacity(size_t)
 	{
 	}
 };
 
 template<>
-struct capacity_param<true>
+struct _vector_capacity<true>
 {
 	size_t capacity;
 
-	constexpr capacity_param(size_t const capacity)
+	constexpr _vector_capacity(size_t const capacity)
 		: capacity(capacity)
 	{
 	}
 };
 
-template<bool HasLocalStorage>
-bool vsm_always_inline is_dynamic(core const& self, byte const* const beg)
+template<bool Local>
+vsm_always_inline bool _vector_dynamic(_vector const& self, std::byte const* const beg)
 {
-	if constexpr (HasLocalStorage)
+	if constexpr (Local)
 	{
-		return beg != reinterpret_cast<byte const*>(&self + 1);
+		return beg != reinterpret_cast<std::byte const*>(&self + 1);
 	}
 	else
 	{
@@ -192,16 +105,27 @@ bool vsm_always_inline is_dynamic(core const& self, byte const* const beg)
 	}
 }
 
-template<bool HasLocalStorage>
-void construct(core& self, capacity_param<HasLocalStorage> const local_capacity)
+template<bool Local>
+vsm_always_inline bool _vector_requires_dynamic(_vector_capacity<Local> const local, size_t const size)
 {
-	if constexpr (HasLocalStorage)
+	if constexpr (Local)
 	{
-		byte* const storage = reinterpret_cast<byte*>(&self + 1);
+		return size > local.capacity;
+	}
+
+	return true;
+}
+
+template<bool Local>
+void _vector_construct(_vector& self, _vector_capacity<Local> const local)
+{
+	if constexpr (Local)
+	{
+		std::byte* const storage = reinterpret_cast<std::byte*>(&self + 1);
 
 		self.beg = storage;
 		self.mid = storage;
-		self.end = storage + local_capacity.capacity;
+		self.end = storage + local.capacity;
 	}
 	else
 	{
@@ -211,533 +135,605 @@ void construct(core& self, capacity_param<HasLocalStorage> const local_capacity)
 	}
 }
 
-template<typename DestroyT, bool HasLocalStorage, typename Allocator>
-void destroy(allocator_layout<Allocator>& self)
+template<typename DtorT, bool Local, typename A>
+void _vector_destroy(_vector_allocator<A>& self)
 {
-	byte* const beg = self.beg;
-	byte* const mid = self.mid;
+	std::byte* const beg = self.beg;
+	std::byte* const mid = self.mid;
 
-	std::destroy(
-		reinterpret_cast<DestroyT*>(beg),
-		reinterpret_cast<DestroyT*>(mid));
-
-	if (is_dynamic<HasLocalStorage>(self, beg))
+	if constexpr (!std::is_same_v<DtorT, init_none_t>)
 	{
-		self.allocator.deallocate(allocation{ beg, static_cast<size_t>(self.end - beg) });
+		std::destroy(
+			reinterpret_cast<DtorT*>(beg),
+			reinterpret_cast<DtorT*>(mid));
+	}
+
+	if (_vector_dynamic<Local>(self, beg))
+	{
+		self.allocator.deallocate(allocation
+		{
+			beg,
+			static_cast<size_t>(self.end - beg)
+		});
 	}
 }
 
-template<size_t ElementSize, typename RelocateT, typename Allocator, bool HasLocalStorage>
-struct operations
+template<size_t Size, typename A>
+std::byte* _vector_allocate(_vector_allocator<A>& self, size_t& new_capacity)
 {
-	using allocator_layout_type = allocator_layout<Allocator>;
-	using capacity_param_type = capacity_param<HasLocalStorage>;
+	allocation const allocation = self.allocator.allocate(new_capacity);
+	new_capacity = allocation.size - allocation.size % Size;
+	return reinterpret_cast<std::byte*>(allocation.buffer);
+}
 
-	static vsm_always_inline byte* allocate(allocator_layout_type& self, size_t& new_capacity)
+template<size_t Size, typename A, bool Local>
+vsm_always_inline std::byte* _vector_allocate_local(
+	_vector_allocator<A>& self,
+	_vector_capacity<Local> const local,
+	size_t& new_capacity)
+{
+	if constexpr (Local)
 	{
-		allocation const allocation = self.allocator.allocate(new_capacity);
-		new_capacity = allocation.size - allocation.size % ElementSize;
-		return reinterpret_cast<byte*>(allocation.buffer);
-	}
-
-	static vsm_always_inline byte* local_allocate(allocator_layout_type& self, capacity_param_type const local_capacity, size_t& new_capacity)
-	{
-		if constexpr (HasLocalStorage)
+		if (new_capacity <= local.capacity)
 		{
-			if (new_capacity <= local_capacity.capacity)
-			{
-				new_capacity = local_capacity.capacity;
-				return reinterpret_cast<byte*>(&self + 1);
-			}
+			new_capacity = local.capacity;
+			return reinterpret_cast<std::byte*>(&self + 1);
 		}
-
-		return allocate<ElementSize>(self, new_capacity);
 	}
 
-	static vsm_always_inline bool requires_allocation(capacity_param_type const local_capacity, size_t const size)
+	return _vector_allocate<Size>(self, new_capacity);
+}
+
+template<typename A, bool Local>
+static vsm_always_inline std::byte* _vector_local_allocate(
+	_vector_allocator<A>& self,
+	_vector_capacity<Local> const local,
+	size_t& new_capacity)
+{
+	if constexpr (Local)
 	{
-		if constexpr (HasLocalStorage)
+		if (new_capacity <= local.capacity)
 		{
-			return size > local_capacity.capacity;
+			new_capacity = local.capacity;
+			return reinterpret_cast<std::byte*>(&self + 1);
 		}
-
-		return true;
 	}
 
-	template<bool SrcHasLocalStorage>
-	static void move_construct_adopt(
-		allocator_layout_type& self,
-		allocator_layout_type& src,
-		capacity_param_type const local_capacity,
-		capacity_param<SrcHasLocalStorage> const src_local_capacity)
-	{
-		byte* const src_beg = src.beg;
-		byte* const src_mid = src.mid;
+	return _vector_allocate(self, new_capacity);
+}
 
-		if (src_beg == src_mid)
+template<typename ReloT, size_t Size, typename A, bool Local, bool SrcLocal>
+void _vector_move_construct(
+	_vector_allocator<A>& self,
+	_vector_allocator<A>& src,
+	_vector_capacity<Local> const local,
+	_vector_capacity<SrcLocal> const src_local)
+{
+	std::byte* const src_beg = src.beg;
+	std::byte* const src_mid = src.mid;
+
+	if (src_beg == src_mid)
+	{
+		_vector_construct(self, local);
+		return;
+	}
+
+	size_t const size = src_mid - src_beg;
+
+	if (_vector_dynamic<SrcLocal>(src, src_beg))
+	{
+		std::byte* const src_end = src.end;
+
+		if (_vector_requires_dynamic(local, src_end - src_beg))
 		{
-			construct(self, local_capacity);
+			self.beg = src_beg;
+			self.mid = src_mid;
+			self.end = src_end;
+
+			_vector_construct(src, src_local);
+
 			return;
 		}
-
-		size_t const size = src_mid - src_beg;
-
-		if (is_dynamic<SrcHasLocalStorage>(src, src_beg))
-		{
-			byte* const src_end = src.end;
-			
-			if (requires_allocation(local_capacity, src_end - src_beg))
-			{
-				self.beg = src_beg;
-				self.mid = src_mid;
-				self.end = src_end;
-
-				construct(src, src_local_capacity);
-				
-				return;
-			}
-		}
-
-		size_t new_capacity = size;
-		byte* const beg = local_allocate(self, new_capacity);
-
-		self.beg = beg;
-		self.mid = beg + size;
-		self.end = beg + new_capacity;
-		
-		src.mid = src_beg;
-
-		relocate(
-			reinterpret_cast<RelocateT*>(beg),
-			reinterpret_cast<RelocateT*>(src_beg),
-			reinterpret_cast<RelocateT*>(src_mid));
 	}
 
-	template<typename DestroyT, bool SrcHasLocalStorage, size_t ElementSize>
-	static void move_assign(
-		allocator_layout_type& self,
-		allocator_layout_type& src,
-		capacity_param_type const local_capacity,
-		capacity_param<SrcHasLocalStorage> const src_local_capacity)
-	{
-		byte* const beg = self.beg;
-		byte* const mid = self.mid;
-		byte* const end = self.end;
+	size_t new_capacity = size;
+	std::byte* const beg = _vector_allocate_local<Size>(self, local, new_capacity);
 
+	self.beg = beg;
+	self.mid = beg + size;
+	self.end = beg + new_capacity;
+
+	src.mid = src_beg;
+
+	uninitialized_relocate(
+		reinterpret_cast<ReloT*>(src_beg),
+		reinterpret_cast<ReloT*>(src_mid),
+		reinterpret_cast<ReloT*>(beg));
+}
+
+template<typename ReloT, typename DtorT, size_t Size, typename A, bool Local, bool SrcLocal>
+void _vector_move_assign(
+	_vector_allocator<A>& self,
+	_vector_allocator<A>& src,
+	_vector_capacity<Local> const local,
+	_vector_capacity<SrcLocal> const src_local)
+{
+	std::byte* const beg = self.beg;
+	std::byte* const mid = self.mid;
+	std::byte* const end = self.end;
+
+	if constexpr (!std::is_same_v<DtorT, init_none_t>)
+	{
 		std::destroy(
-			reinterpret_cast<DestroyT*>(beg),
-			reinterpret_cast<DestroyT*>(mid));
+			reinterpret_cast<DtorT*>(beg),
+			reinterpret_cast<DtorT*>(mid));
+	}
 
-		byte* const src_beg = src.beg;
-		byte* const src_mid = src.mid;
+	std::byte* const src_beg = src.beg;
+	std::byte* const src_mid = src.mid;
 
-		if (is_dynamic<SrcHasLocalStorage>(src, src_beg))
+	if (_vector_dynamic<SrcLocal>(src, src_beg))
+	{
+		std::byte* const src_end = src.end;
+
+		if (static_cast<size_t>(src_end - src_beg) > src_local.capacity)
 		{
-			byte* const src_end = src.end;
-			
-			if (requires_allocation(local_capacity, src_end - src_beg))
+			if (_vector_dynamic<Local>(self, beg))
 			{
-				if (is_dynamic<HasLocalStorage>(self, beg))
-				{
-					allocator.deallocate(allocation{ beg, end - beg });
-				}
-
-				self.beg = src_beg;
-				self.mid = src_mid;
-				self.end = src_end;
-
-				construct(src, src_local_capacity);
-
-				return;
-			}
-		}
-
-		size_t const size = src_mid - src_beg;
-		size_t const capacity = end - beg;
-
-		if (size > capacity)
-		{
-			size_t new_capacity = allocators::resize(
-				self.allocator, allocation{ beg, capacity }, size);
-
-			if (new_capacity == 0)
-			{
-				allocator.deallocate(allocation);
-
-				allocation const new_allocation = allocator.allocate(capacity);
-				beg = reinterpret_cast<byte*>(new_allocation.buffer);
-				new_capacity = new_allocation.size - new_allocation.size % ElementSize;
-			}
-		
-			allocator.deallocate(allocation{ beg, capacity });
-			beg = allocator.allocate(size);
-
-			self.beg = beg;
-			self.end = beg + size;
-		}
-
-		relocate(
-			reinterpret_cast<RelocateT*>(beg),
-			reinterpret_cast<RelocateT*>(src_beg),
-			reinterpret_cast<RelocateT*>(src_mid));
-
-		self.mid = beg + size;
-		src.mid = src_beg;
-	}
-
-	static byte* expand(allocator_layout_type& self, size_t const min_capacity)
-	{
-		byte* const beg = self.beg;
-		byte* const mid = self.mid;
-		byte* const end = self.end;
-
-		size_t const capacity = end - beg;
-		size_t new_capacity = std::max(min_capacity, capacity * 2);
-
-		byte* const new_beg = allocate(self, new_capacity);
-		byte* const new_end = new_beg + new_capacity;
-
-		if (beg != mid)
-		{
-			relocate(
-				reinterpret_cast<RelocateT*>(new_beg),
-				reinterpret_cast<RelocateT*>(beg),
-				reinterpret_cast<RelocateT*>(mid));
-		}
-
-		byte* empty = nullptr;
-
-		if constexpr (HasLocalStorage)
-		{
-			empty = reinterpret_cast<byte*>(&self + 1);
-		}
-
-		if (beg != empty)
-		{
-			self.allocator.deallocate(allocation{ beg, capacity });
-		}
-
-		self.beg = new_beg;
-		self.mid = new_beg + (mid - beg);
-		self.end = new_end;
-
-		return new_beg;
-	}
-
-	static vsm_never_inline byte* push_back_slow(allocator_layout_type& self, size_t const size)
-	{
-		size_t const cur_size = self.mid - self.beg;
-		size_t const new_size = cur_size + size;
-
-		byte* const new_beg = expand(self, new_size);
-
-		self.mid = new_beg + new_size;
-		return new_beg + cur_size;
-	}
-
-	static byte* push_back(allocator_layout_type& self, size_t const size)
-	{
-		byte* const mid = self.mid;
-		byte* const new_mid = mid + size;
-
-		if (vsm_unlikely(new_mid > self.end))
-		{
-			return push_back_slow(self, size);
-		}
-
-		self.mid = new_mid;
-		return mid;
-	}
-
-	template<typename CopyT>
-	static byte* push_back_range(allocator_layout_type& self, CopyT const* const first, CopyT const* const last)
-	{
-		byte* const slots = push_back(self,
-			reinterpret_cast<byte const*>(last) -
-				reinterpret_cast<byte const*>(first), allocator);
-
-		std::uninitialized_copy(first, last, reinterpret_cast<CopyT*>(slots));
-	}
-
-	template<typename T, typename InputIt>
-	static byte* push_back_range(allocator_layout_type& self, InputIt const first, InputIt const last)
-	{
-		byte* const slots = push_back(self,
-			std::distance(first, last) * sizeof(T), allocator);
-
-		std::uninitialized_copy(first, last, reinterpret_cast<T*>(slots));
-	}
-	
-	static vsm_never_inline byte* insert_slow(allocator_layout_type& self, byte* const pos, size_t const size)
-	{
-		byte* const beg = self.beg;
-
-		size_t const offset = pos - beg;
-		size_t const cur_size = self.mid - beg;
-		size_t const new_size = cur_size + size;
-
-		byte* const new_beg = expand(self, new_size);
-
-		byte* const new_pos = new_beg + offset;
-
-		relocate_right(
-			reinterpret_cast<RelocateT*>(new_pos + size),
-			reinterpret_cast<RelocateT*>(new_pos),
-			reinterpret_cast<RelocateT*>(new_beg + cur_size));
-
-		self.mid = new_beg + new_size;
-		return new_pos;
-	}
-
-	static byte* insert(allocator_layout_type& self, byte* const pos, size_t const size)
-	{
-		byte* const mid = self.mid;
-		byte* const new_mid = mid + size;
-
-		if (vsm_unlikely(new_mid > self.end))
-		{
-			return insert_slow(self, pos, size);
-		}
-
-		if (pos != mid)
-		{
-			relocate_right(
-				reinterpret_cast<RelocateT*>(pos + size),
-				reinterpret_cast<RelocateT*>(pos),
-				reinterpret_cast<RelocateT*>(mid));
-		}
-
-		self.mid = new_mid;
-		return pos;
-	}
-
-	template<typename CopyT>
-	static byte* insert_range(allocator_layout_type& self, byte* const pos, CopyT const* const first, CopyT const* const last)
-	{
-		byte* const slots = insert(self, pos,
-			reinterpret_cast<byte const*>(last) -
-				reinterpret_cast<byte const*>(first), allocator);
-
-		std::uninitialized_copy(first, last, reinterpret_cast<CopyT*>(slots));
-
-		return slots;
-	}
-
-	template<typename T, typename InputIt>
-	static byte* insert_range(allocator_layout_type& self, byte* const pos, InputIt const first, InputIt const last)
-	{
-		byte* const slots = insert(self, pos, std::distance(first, last) * sizeof(T));
-		std::uninitialized_copy(first, last, reinterpret_cast<T*>(slots));
-		return slots;
-	}
-
-	template<bool Construct, typename ConstructT, typename DestroyT>
-	static byte* resize(allocator_layout_type& self, size_t const new_size)
-	{
-		byte* const beg = self.beg;
-		byte* const mid = self.mid;
-		byte* const new_mid = beg + new_size;
-
-		if (vsm_likely(new_mid > mid))
-		{
-			if (new_mid > self.end)
-			{
-				byte* const new_beg = expand(self, new_size, allocator);
-
-				mid = new_beg + (mid - beg);
-				new_mid = new_beg + new_size;
+				self.allocator.deallocate(allocation(
+					beg,
+					static_cast<size_t>(end - beg)));
 			}
 
-			self.mid = new_mid;
+			self.beg = src_beg;
+			self.mid = src_mid;
+			self.end = src_end;
 
-			if constexpr (Construct)
-			{
-				std::uninitialized_value_construct(
-					reinterpret_cast<ConstructT*>(mid),
-					reinterpret_cast<ConstructT*>(new_mid));
-			}
+			_vector_construct(src, src_local);
 
-			return mid;
-		}
-		else if (vsm_likely(new_mid < mid))
-		{
-			self.mid = new_mid;
-
-			std::destroy(
-				reinterpret_cast<DestroyT*>(new_mid),
-				reinterpret_cast<DestroyT*>(mid));
-
-			return new_mid;
-		}
-
-		return mid;
-	}
-
-	static void reserve(allocator_layout_type& self, size_t const min_capacity)
-	{
-		if (static_cast<size_t>(self.end - self.beg) < min_capacity)
-		{
-			expand(self, min_capacity, allocator);
-		}
-	}
-
-	static void shrink_to_fit(allocator_layout_type& self, capacity_param_type const local_capacity)
-	{
-		byte* const mid = self.mid;
-		byte* const end = self.end;
-
-		if (mid == end)
-		{
 			return;
 		}
+	}
 
-		byte* const beg = self.beg;
-		size_t const capacity = end - beg;
-		size_t const new_capacity = mid - beg;
+	size_t const size = static_cast<size_t>(src_mid - src_beg);
+	size_t const capacity = static_cast<size_t>(end - beg);
 
-		byte* new_beg;
-		if constexpr (HasLocalStorage)
+	if (size > capacity)
+	{
+		auto const old_allocation = allocation(beg, capacity);
+
+		size_t new_allocation_size = allocators::resize(
+			self.allocator,
+			old_allocation,
+			size);
+
+		if (new_allocation_size == 0)
 		{
-			if (capacity <= local_capacity.capacity)
+			self.allocator.deallocate(old_allocation);
+			allocation const new_allocation = self.allocator.allocate(capacity);
+			self.beg = reinterpret_cast<std::byte*>(new_allocation.buffer);
+			new_allocation_size = new_allocation.size;
+		}
+
+		self.end = self.beg + (new_allocation_size - new_allocation_size % Size);
+	}
+
+	uninitialized_relocate(
+		reinterpret_cast<ReloT*>(src_beg),
+		reinterpret_cast<ReloT*>(src_mid),
+		reinterpret_cast<ReloT*>(self.beg));
+
+	self.mid = self.beg + size;
+	src.mid = src_beg;
+}
+
+template<typename ReloT>
+void _vector_swap2(_vector& small, _vector& large)
+{
+	_vector const large_copy = large;
+
+	large.beg = reinterpret_cast<std::byte*>(&large + 1);
+	large.mid = large.beg + static_cast<size_t>(small.mid - small.beg);
+	large.end = large.beg + static_cast<size_t>(small.end - small.beg);
+
+	uninitialized_relocate(
+		reinterpret_cast<ReloT*>(small.beg),
+		reinterpret_cast<ReloT*>(small.mid),
+		reinterpret_cast<ReloT*>(large.beg));
+
+	small = large_copy;
+}
+
+template<typename ReloT, bool Local, typename A>
+void _vector_swap(_vector_allocator<A>& lhs, _vector_allocator<A>& rhs)
+{
+	static_assert(std::is_nothrow_swappable_v<A>);
+
+	if constexpr (Local)
+	{
+		static_assert(std::is_nothrow_swappable_v<ReloT>);
+		static_assert(is_nothrow_relocatable_v<ReloT>);
+
+		bool const lhs_small = !_vector_dynamic<true>(lhs, lhs.beg);
+		bool const rhs_small = !_vector_dynamic<true>(rhs, rhs.beg);
+
+		if (lhs_small && rhs_small)
+		{
+			ReloT* lhs_pos = reinterpret_cast<ReloT*>(lhs.beg);
+			ReloT* rhs_pos = reinterpret_cast<ReloT*>(rhs.beg);
+
+			ReloT* const lhs_mid = reinterpret_cast<ReloT*>(lhs.mid);
+			ReloT* const rhs_mid = reinterpret_cast<ReloT*>(rhs.mid);
+
+			while (lhs_pos != lhs_mid && rhs_pos != rhs_mid)
 			{
-				return;
+				using std::swap;
+				swap(*lhs_pos++, *rhs_pos++);
 			}
 
-			if (new_capacity <= local_capacity.capacity)
+			/**/ if (lhs_pos != lhs_mid)
 			{
-				new_beg = reinterpret_cast<byte*>(self + 1);
+				uninitialized_relocate(
+					lhs_pos,
+					lhs_mid,
+					rhs_pos);
 			}
-			else
+			else if (rhs_pos != rhs_mid)
 			{
-				new_beg = allocator.allocate(new_capacity);
+				uninitialized_relocate(
+					rhs_pos,
+					rhs_mid,
+					lhs_pos);
 			}
+
+			size_t const lhs_size = static_cast<size_t>(lhs.mid - lhs.beg);
+			size_t const rhs_size = static_cast<size_t>(rhs.mid - rhs.beg);
+
+			lhs.mid = lhs.beg + rhs_size;
+			rhs.mid = rhs.beg + lhs_size;
+		}
+		else if (lhs_small)
+		{
+			_vector_swap2<ReloT>(lhs, rhs);
+		}
+		else if (rhs_small)
+		{
+			_vector_swap2<ReloT>(rhs, lhs);
 		}
 		else
 		{
-			if (new_capacity > 0)
-			{
-				new_beg = allocator.allocate(new_capacity);
-			}
-			else
-			{
-				allocator.deallocate(allocation{ beg, capacity });
+			std::swap(lhs.beg, rhs.beg);
+			std::swap(lhs.mid, rhs.mid);
+			std::swap(lhs.end, rhs.end);
+		}
+	}
+	else
+	{
+		std::swap(lhs.beg, rhs.beg);
+		std::swap(lhs.mid, rhs.mid);
+		std::swap(lhs.end, rhs.end);
+	}
 
-				self.beg = nullptr;
-				self.mid = nullptr;
-				self.end = nullptr;
+	using std::swap;
+	swap(lhs.allocator, rhs.allocator);
+}
 
-				return;
-			}
+template<typename ReloT, bool Local, size_t Size, typename A>
+std::byte* _vector_expand_new(
+	_vector_allocator<A>& self,
+	std::byte* const pos,
+	size_t const min_size)
+{
+	static_assert(is_nothrow_relocatable_v<ReloT>);
+
+	std::byte* const beg = self.beg;
+	std::byte* const mid = self.mid;
+	std::byte* const end = self.end;
+
+	size_t const capacity = static_cast<size_t>(end - beg);
+	size_t new_capacity = std::max(capacity + min_size, capacity * 2);
+
+	std::byte* const new_beg = _vector_allocate<Size>(self, new_capacity);
+	std::byte* const new_pos = new_beg + (pos - beg);
+
+	if (beg != mid)
+	{
+		vsm_assert_slow(pos <= mid);
+
+		uninitialized_relocate(
+			reinterpret_cast<ReloT*>(beg),
+			reinterpret_cast<ReloT*>(pos),
+			reinterpret_cast<ReloT*>(new_beg));
+
+		uninitialized_relocate(
+			reinterpret_cast<ReloT*>(pos),
+			reinterpret_cast<ReloT*>(mid),
+			reinterpret_cast<ReloT*>(new_pos + min_size));
+	}
+
+	if (_vector_dynamic<Local>(self, beg))
+	{
+		self.allocator.deallocate(allocation{ beg, capacity });
+	}
+
+	self.beg = new_beg;
+	self.mid = new_beg + (mid - beg);
+	self.end = new_beg + new_capacity;
+
+	return new_pos;
+}
+
+template<typename ReloT, bool Local, size_t Size, typename A>
+vsm_never_inline std::byte* _vector_push2(_vector_allocator<A>& self, size_t const size)
+{
+	std::byte* const new_pos = _vector_expand_new<ReloT, Local, Size>(self, self.mid, size);
+
+	vsm_assert_slow(new_pos == self.mid);
+	self.mid = new_pos + size;
+
+	return new_pos;
+}
+
+template<typename ReloT, bool Local, size_t Size, typename A>
+std::byte* _vector_push(_vector_allocator<A>& self, size_t const size)
+{
+	std::byte* const mid = self.mid;
+
+	if (vsm_unlikely(size > static_cast<size_t>(self.end - mid)))
+	{
+		return _vector_push2<ReloT, Local, Size>(self, size);
+	}
+
+	self.mid = mid + size;
+	return mid;
+}
+
+template<typename ReloT, bool Local, size_t Size, typename A>
+vsm_never_inline std::byte* _vector_insert2(
+	_vector_allocator<A>& self,
+	std::byte* const pos,
+	size_t const size)
+{
+	std::byte* const new_pos = _vector_expand_new<ReloT, Local, Size>(self, pos, size);
+	self.mid += size;
+	return new_pos;
+}
+
+template<typename ReloT, bool Local, size_t Size, typename A>
+std::byte* _vector_insert(_vector_allocator<A>& self, std::byte* const pos, size_t const size)
+{
+	static_assert(is_nothrow_relocatable_v<ReloT>);
+
+	std::byte* const mid = self.mid;
+
+	if (vsm_unlikely(size > static_cast<size_t>(self.end - mid)))
+	{
+		return _vector_insert2<ReloT, Local, Size>(self, pos, size);
+	}
+
+	self.mid = mid + size;
+
+	if (pos != mid)
+	{
+		uninitialized_relocate_backward(
+			reinterpret_cast<ReloT*>(pos),
+			reinterpret_cast<ReloT*>(mid),
+			reinterpret_cast<ReloT*>(self.mid));
+	}
+
+	return pos;
+}
+
+template<typename ReloT, typename DtorT, bool Local, size_t Size, typename A>
+std::byte* _vector_resize(_vector_allocator<A>& self, size_t const new_size)
+{
+	size_t const cur_size = static_cast<size_t>(self.mid - self.beg);
+
+	if (vsm_likely(new_size > cur_size))
+	{
+		std::byte* pos = self.mid;
+
+		if (new_size > static_cast<size_t>(self.end - self.beg))
+		{
+			pos = _vector_expand_new<ReloT, Local, Size>(
+				self,
+				self.mid,
+				new_size - cur_size);
 		}
 
-		relocate(
-			reinterpret_cast<RelocateT*>(new_beg),
-			reinterpret_cast<RelocateT*>(beg),
-			reinterpret_cast<RelocateT*>(mid));
+		self.mid = self.beg + new_size;
 
-		allocator.deallocate(allocation{ beg, capacity });
-
-		byte* const new_end = new_beg + new_capacity;
-
-		self.beg = new_beg;
-		self.mid = new_end;
-		self.end = new_end;
+		return pos;
 	}
-};
 
-template<typename DestroyT>
-void clear(core& self)
+	if (vsm_likely(new_size < cur_size))
+	{
+		std::byte* const mid = self.mid;
+		std::byte* const new_mid = self.beg + new_size;
+
+		if constexpr (!std::is_same_v<DtorT, init_none_t>)
+		{
+			std::destroy(
+				reinterpret_cast<DtorT*>(new_mid),
+				reinterpret_cast<DtorT*>(mid));
+		}
+
+		self.mid = new_mid;
+	}
+
+	return nullptr;
+}
+
+template<typename ReloT, typename DtorT>
+std::byte* _vector_erase(_vector& self, std::byte* const begin, std::byte* const end)
 {
-	byte* const beg = self.beg;
-	byte* const mid = self.mid;
+	std::byte* const mid = self.mid;
+	std::byte* const new_mid = mid - (end - begin);
+
+	if constexpr (!std::is_same_v<DtorT, init_none_t>)
+	{
+		std::destroy(
+			reinterpret_cast<DtorT*>(begin),
+			reinterpret_cast<DtorT*>(end));
+	}
+
+	if (end != mid)
+	{
+		uninitialized_relocate(
+			reinterpret_cast<ReloT*>(end),
+			reinterpret_cast<ReloT*>(mid),
+			reinterpret_cast<ReloT*>(begin));
+	}
+
+	self.mid = new_mid;
+
+	return begin;
+}
+
+template<typename ReloT, typename DtorT>
+std::byte* _vector_erase_u(_vector& self, std::byte* const begin, std::byte* const end)
+{
+	std::byte* const mid = self.mid;
+	std::byte* const new_mid = mid - (end - begin);
+
+	if constexpr (!std::is_same_v<DtorT, init_none_t>)
+	{
+		std::destroy(
+			reinterpret_cast<DtorT*>(begin),
+			reinterpret_cast<DtorT*>(end));
+	}
+
+	if (end != mid)
+	{
+		uninitialized_relocate(
+			reinterpret_cast<ReloT*>(new_mid),
+			reinterpret_cast<ReloT*>(mid),
+			reinterpret_cast<ReloT*>(begin));
+	}
+
+	self.mid = new_mid;
+
+	return begin;
+}
+
+template<typename DtorT>
+void _vector_clear(_vector& self)
+{
+	std::byte* const beg = self.beg;
+	std::byte* const mid = self.mid;
 	self.mid = beg;
 
-	std::destroy(
-		reinterpret_cast<DestroyT*>(beg),
-		reinterpret_cast<DestroyT*>(mid));
+	if constexpr (!std::is_same_v<DtorT, init_none_t>)
+	{
+		std::destroy(
+			reinterpret_cast<DtorT*>(beg),
+			reinterpret_cast<DtorT*>(mid));
+	}
 }
 
-template<typename RelocateT, typename DestroyT>
-byte* erase(core& self, byte* const first, byte* const last)
+template<typename ReloT, bool Local, size_t Size, typename A>
+void _vector_reserve(_vector_allocator<A>& self, size_t const min_capacity)
 {
-	byte* const mid = self.mid;
-	byte* const new_mid = mid - (last - first);
-
-	std::destroy(
-		reinterpret_cast<DestroyT*>(first),
-		reinterpret_cast<DestroyT*>(last));
-
-	if (last != mid)
+	if (min_capacity > static_cast<size_t>(self.end - self.beg))
 	{
-		relocate_left(
-			reinterpret_cast<RelocateT*>(first),
-			reinterpret_cast<RelocateT*>(last),
-			reinterpret_cast<RelocateT*>(mid));
+		_vector_expand_new<ReloT, Local, Size>(
+			self,
+			self.mid,
+			min_capacity - static_cast<size_t>(self.mid - self.beg));
+	}
+}
+
+template<typename ReloT, typename A, bool Local>
+void _vector_shrink(_vector_allocator<A>& self, _vector_capacity<Local> const local)
+{
+	std::byte* const mid = self.mid;
+	std::byte* const end = self.end;
+
+	if (mid == end)
+	{
+		return;
 	}
 
-	self.mid = new_mid;
+	std::byte* const beg = self.beg;
+	size_t const capacity = end - beg;
+	size_t const new_capacity = mid - beg;
 
-	return first;
-}
-
-template<typename RelocateT, typename DestroyT>
-byte* erase_unstable(core& self, byte* const first, byte* const last)
-{
-	byte* const mid = self.mid;
-	byte* const new_mid = mid - (last - first);
-
-	std::destroy(
-		reinterpret_cast<DestroyT*>(first),
-		reinterpret_cast<DestroyT*>(last));
-
-	if (last != mid)
+	std::byte* new_beg;
+	if constexpr (Local)
 	{
-		relocate(
-			reinterpret_cast<RelocateT*>(first),
-			reinterpret_cast<RelocateT*>(new_mid),
-			reinterpret_cast<RelocateT*>(mid));
+		if (capacity <= local.capacity)
+		{
+			return;
+		}
+
+		if (new_capacity <= local.capacity)
+		{
+			new_beg = reinterpret_cast<std::byte*>(self + 1);
+		}
+		else
+		{
+			new_beg = self.allocator.allocate(new_capacity);
+		}
+	}
+	else
+	{
+		if (new_capacity > 0)
+		{
+			new_beg = self.allocator.allocate(new_capacity);
+		}
+		else
+		{
+			self.allocator.deallocate(allocation{ beg, capacity });
+
+			self.beg = nullptr;
+			self.mid = nullptr;
+			self.end = nullptr;
+
+			return;
+		}
 	}
 
-	self.mid = new_mid;
+	uninitialized_relocate(
+		reinterpret_cast<ReloT*>(beg),
+		reinterpret_cast<ReloT*>(mid),
+		reinterpret_cast<ReloT*>(new_beg));
 
-	return first;
+	self.allocator.deallocate(allocation{ beg, capacity });
+	std::byte* const new_end = new_beg + new_capacity;
+
+	self.beg = new_beg;
+	self.mid = new_end;
+	self.end = new_end;
 }
 
-template<typename DestroyT>
-void pop_back(core& self, size_t const size)
+template<typename DtorT>
+void _vector_pop(_vector& self, size_t const size)
 {
-	byte* const mid = self.mid;
-	byte* const new_mid = mid - size;
+	std::byte* const mid = self.mid;
+	std::byte* const new_mid = mid - size;
 	self.mid = new_mid;
 
-	reinterpret_cast<DestroyT*>(new_mid)->~DestroyT();
-}
-
-template<typename DestroyT>
-void pop_back_n(core& self, size_t const size)
-{
-	byte* const mid = self.mid;
-	byte* const new_mid = mid - size;
-	self.mid = new_mid;
-
-	std::destroy(
-		reinterpret_cast<DestroyT*>(new_mid),
-		reinterpret_cast<DestroyT*>(mid));
+	if constexpr (!std::is_same_v<DtorT, init_none_t>)
+	{
+		std::destroy(
+			reinterpret_cast<DtorT*>(new_mid),
+			reinterpret_cast<DtorT*>(mid));
+	}
 }
 
 template<typename T>
-bool equal(core const& lhs, core const& rhs)
+bool _vector_equal(_vector const& lhs, _vector const& rhs)
 {
-	byte* const lhs_beg = lhs.beg;
-	byte* const lhs_mid = lhs.mid;
-	byte* const rhs_beg = rhs.beg;
-	byte* const rhs_mid = rhs.mid;
+	std::byte* const lhs_beg = lhs.beg;
+	std::byte* const lhs_mid = lhs.mid;
+	std::byte* const rhs_beg = rhs.beg;
+	std::byte* const rhs_mid = rhs.mid;
 
 	if (lhs_mid - lhs_beg != rhs_mid - rhs_beg)
 	{
 		return false;
 	}
-	
+
 	return std::equal(
 		reinterpret_cast<T const*>(lhs_beg),
 		reinterpret_cast<T const*>(lhs_mid),
@@ -746,7 +742,7 @@ bool equal(core const& lhs, core const& rhs)
 }
 
 template<typename T>
-auto compare(core const& lhs, core const& rhs)
+auto _vector_compare(_vector const& lhs, _vector const& rhs)
 {
 	return std::lexicographical_compare_three_way(
 		reinterpret_cast<T const*>(lhs.beg),
@@ -755,555 +751,1056 @@ auto compare(core const& lhs, core const& rhs)
 		reinterpret_cast<T const*>(rhs.mid));
 }
 
-template<typename T, typename Allocator, size_t Capacity>
-class vector
+} // namespace detail
+
+template<typename T, size_t Capacity, allocator Allocator = default_allocator>
+class small_vector
 {
-	static constexpr bool has_local_storage = Capacity > 0;
+	static constexpr bool local = Capacity > 0;
+	using capacity_t = detail::_vector_capacity<local>;
 
-#pragma push_macro("storage_capacity")
-#define storage_capacity (Capacity * sizeof(T))
+	#pragma push_macro("ctor_t")
+	#define ctor_t select_t<std::is_trivially_constructible_v<T>, detail::init_zero_t, T>
 
-#pragma push_macro("construct_type")
-#define construct_type select_t<std::is_trivially_constructible_v<T>, byte, T>
+	#pragma push_macro("dtor_t")
+	#define dtor_t select_t<std::is_trivially_destructible_v<T>, detail::init_none_t, T>
 
-#pragma push_macro("destroy_type")
-#define destroy_type select_t<std::is_trivially_destructible_v<T>, byte, T>
+	#pragma push_macro("relo_t")
+	#define relo_t select_t<is_trivially_relocatable_v<T>, std::byte, T>
 
-#pragma push_macro("relocate_type")
-#define relocate_type select_t<is_trivially_relocatable_v<T>, byte, T>
+	#pragma push_macro("copy_t")
+	#define copy_t select_t<std::is_trivially_copyable_v<T>, std::byte, T>
 
-#pragma push_macro("copy_type")
-#define copy_type select_t<std::is_trivially_copyable_v<T>, byte, T>
-
-#pragma push_macro("operations")
-#define operations operations<sizeof(T), relocate_type, Allocator, has_local_storage>
-
-	storage_layout<T, Allocator, Capacity> m;
+	detail::_vector_storage<T, Allocator, Capacity> m;
 
 public:
-	using value_type                                        = T;
-	using allocator_type                                    = Allocator;
-	using size_type                                         = size_t;
-	using difference_type                                   = ptrdiff_t;
-	using reference                                         = T&;
-	using const_reference                                   = T const&;
-	using pointer                                           = T*;
-	using const_pointer                                     = T const*;
-	using iterator                                          = T*;
-	using const_iterator                                    = T const*;
-	using reverse_iterator =                                std::reverse_iterator<T*>;
-	using const_reverse_iterator =                          std::reverse_iterator<T const*>;
+	using value_type                    = T;
+	using allocator_type                = Allocator;
+	using size_type                     = size_t;
+	using difference_type               = ptrdiff_t;
+	using reference                     = T&;
+	using const_reference               = T const&;
+	using pointer                       = T*;
+	using const_pointer                 = T const*;
+	using iterator                      = T*;
+	using const_iterator                = T const*;
+	using reverse_iterator              = std::reverse_iterator<T*>;
+	using const_reverse_iterator        = std::reverse_iterator<T const*>;
 
-	vsm_always_inline vector()
+
+	vsm_always_inline small_vector()
+		: m(Allocator())
 	{
-		construct<has_local_storage>(m, storage_capacity);
+		detail::_vector_construct<local>(
+			m,
+			Capacity * sizeof(T));
 	}
-	
-	explicit vsm_always_inline vector(Allocator const& allocator)
+
+	explicit vsm_always_inline small_vector(Allocator const& allocator)
 		: m(allocator)
 	{
-		construct<has_local_storage>(m, storage_capacity);
+		detail::_vector_construct<local>(
+			m,
+			capacity_t(Capacity * sizeof(T)));
 	}
 
-	vsm_always_inline vector(vector&& other)
+	template<std::input_iterator Iterator, std::sentinel_for<Iterator> Sentinel>
+	small_vector(Iterator const iterator, Sentinel const sentinel, Allocator const& allocator = Allocator())
+		requires std::convertible_to<std::iter_reference_t<Iterator>, T>
+		: m(allocator)
+	{
+		detail::_vector_construct<local>(
+			m,
+			capacity_t(Capacity * sizeof(T)));
+
+		if constexpr (std::sized_sentinel_for<Sentinel, Iterator>)
+		{
+			vsm_except_try
+			{
+				_push_back_range(iterator, sentinel);
+			}
+			vsm_except_catch (...)
+			{
+				detail::_vector_destroy<detail::init_none_t, local>(m);
+
+				vsm_except_rethrow;
+			}
+		}
+		else
+		{
+			static_assert(sizeof(T) == 0, "not implemented yet");
+		}
+	}
+
+	template<std::ranges::input_range R>
+	small_vector(std::from_range_t, R&& range, Allocator const& allocator = Allocator())
+		requires std::convertible_to<std::ranges::range_reference_t<R>, T>
+		: m(allocator)
+	{
+		detail::_vector_construct<local>(
+			m,
+			capacity_t(Capacity * sizeof(T)));
+
+		vsm_except_try
+		{
+			_push_back_range(range);
+		}
+		vsm_except_catch (...)
+		{
+			detail::_vector_destroy<detail::init_none_t, local>(m);
+
+			vsm_except_rethrow;
+		}
+	}
+
+	vsm_always_inline small_vector(small_vector&& other) noexcept
 		requires allocators::is_propagatable_v<Allocator>
 		: m(vsm_move(other.m))
 	{
-		operations::template move_construct<has_local_storage>(
+		detail::_vector_move_construct<relo_t, sizeof(T)>(
 			m,
 			other.m,
-			storage_capacity,
-			storage_capacity);
+			capacity_t(Capacity * sizeof(T)),
+			capacity_t(Capacity * sizeof(T)));
 	}
 
-	vsm_always_inline vector& operator=(vector&& other) &
+	vsm_always_inline small_vector& operator=(small_vector&& other) & noexcept
 		requires allocators::is_propagatable_v<Allocator>
 	{
-		operations::template move_assign_allocator<destroy_type>(
+		detail::_vector_move_assign<relo_t, dtor_t, sizeof(T)>(
 			m,
 			other.m,
-			storage_capacity);
+			capacity_t(Capacity * sizeof(T)),
+			capacity_t(Capacity * sizeof(T)));
 
 		return *this;
 	}
 
-	vsm_always_inline ~vector()
+	vsm_always_inline ~small_vector()
 	{
-		destroy<destroy_type, has_local_storage>(m);
+		detail::_vector_destroy<dtor_t, local>(m);
 	}
 
-	vsm_always_inline Allocator get_allocator() const
+
+	[[nodiscard]] vsm_always_inline Allocator get_allocator() const
 	{
 		return m.allocator;
 	}
 
-	vsm_always_inline T& operator[](size_t const index)
+	[[nodiscard]] vsm_always_inline T& operator[](size_t const index)
 	{
 		vsm_assert(index < size());
 		return reinterpret_cast<T*>(m.beg)[index];
 	}
 
-	vsm_always_inline T const& operator[](size_t const index) const
+	[[nodiscard]] vsm_always_inline T const& operator[](size_t const index) const
 	{
 		vsm_assert(index < size());
 		return reinterpret_cast<T const*>(m.beg)[index];
 	}
 
-	vsm_always_inline T& front()
+	[[nodiscard]] T& at(size_t const index)
+	{
+		if (index < size())
+		{
+			vsm_except_throw_or_terminate(std::out_of_range("vector index out of range"));
+		}
+		return reinterpret_cast<T*>(m.beg)[index];
+	}
+
+	[[nodiscard]] T const& at(size_t const index) const
+	{
+		if (index < size())
+		{
+			vsm_except_throw_or_terminate(std::out_of_range("vector index out of range"));
+		}
+		return reinterpret_cast<T const*>(m.beg)[index];
+	}
+
+	[[nodiscard]] vsm_always_inline T& front()
 	{
 		vsm_assert(!empty());
 		return *reinterpret_cast<T*>(m.beg);
 	}
 
-	vsm_always_inline T const& front() const
+	[[nodiscard]] vsm_always_inline T const& front() const
 	{
 		vsm_assert(!empty());
 		return *reinterpret_cast<T const*>(m.beg);
 	}
 
-	vsm_always_inline T& back()
+	[[nodiscard]] vsm_always_inline T& back()
 	{
 		vsm_assert(!empty());
 		return reinterpret_cast<T*>(m.mid)[-1];
 	}
 
-	vsm_always_inline T const& back() const
+	[[nodiscard]] vsm_always_inline T const& back() const
 	{
 		vsm_assert(!empty());
 		return reinterpret_cast<T const*>(m.mid)[-1];
 	}
 
-	vsm_always_inline T* data()
+	[[nodiscard]] vsm_always_inline iterator data()
 	{
 		return reinterpret_cast<T*>(m.beg);
 	}
 
-	vsm_always_inline T const* data() const
+	[[nodiscard]] vsm_always_inline const_iterator data() const
 	{
 		return reinterpret_cast<T const*>(m.beg);
 	}
 
-	vsm_always_inline T* begin()
+	[[nodiscard]] vsm_always_inline iterator begin()
 	{
 		return reinterpret_cast<T*>(m.beg);
 	}
 
-	vsm_always_inline T const* begin() const
+	[[nodiscard]] vsm_always_inline const_iterator begin() const
 	{
 		return reinterpret_cast<T const*>(m.beg);
 	}
 
-	vsm_always_inline T const* cbegin() const
+	[[nodiscard]] vsm_always_inline const_iterator cbegin() const
 	{
 		return reinterpret_cast<T const*>(m.beg);
 	}
 
-	vsm_always_inline T* end()
+	[[nodiscard]] vsm_always_inline iterator end()
 	{
 		return reinterpret_cast<T*>(m.mid);
 	}
 
-	vsm_always_inline T const* end() const
+	[[nodiscard]] vsm_always_inline const_iterator end() const
 	{
 		return reinterpret_cast<T const*>(m.mid);
 	}
 
-	vsm_always_inline T const* cend() const
+	[[nodiscard]] vsm_always_inline const_iterator cend() const
 	{
 		return reinterpret_cast<T const*>(m.mid);
 	}
 
-	vsm_always_inline std::reverse_iterator<T*> rbegin()
+	[[nodiscard]] vsm_always_inline reverse_iterator rbegin()
 	{
 		return std::make_reverse_iterator(end());
 	}
 
-	vsm_always_inline std::reverse_iterator<T const*> rbegin() const
+	[[nodiscard]] vsm_always_inline const_reverse_iterator rbegin() const
 	{
 		return std::make_reverse_iterator(end());
 	}
 
-	vsm_always_inline std::reverse_iterator<T const*> crbegin() const
+	[[nodiscard]] vsm_always_inline const_reverse_iterator crbegin() const
 	{
 		return std::make_reverse_iterator(cend());
 	}
 
-	vsm_always_inline std::reverse_iterator<T*> rend()
+	[[nodiscard]] vsm_always_inline reverse_iterator rend()
 	{
 		return std::make_reverse_iterator(begin());
 	}
 
-	vsm_always_inline std::reverse_iterator<T const*> rend() const
+	[[nodiscard]] vsm_always_inline const_reverse_iterator rend() const
 	{
 		return std::make_reverse_iterator(begin());
 	}
 
-	vsm_always_inline std::reverse_iterator<T const*> crend() const
+	[[nodiscard]] vsm_always_inline const_reverse_iterator crend() const
 	{
 		return std::make_reverse_iterator(cbegin());
 	}
 
-	vsm_always_inline bool empty() const
+	[[nodiscard]] vsm_always_inline bool empty() const
 	{
 		return m.beg == m.mid;
 	}
 
-	vsm_always_inline size_t size() const
+	[[nodiscard]] vsm_always_inline size_t size() const
 	{
 		return reinterpret_cast<T const*>(m.mid) - reinterpret_cast<T const*>(m.beg);
 	}
 
-	vsm_always_inline size_t max_size() const
+	[[nodiscard]] vsm_always_inline size_t max_size() const
 	{
 		return std::numeric_limits<size_t>::max() / sizeof(T);
 	}
 
 	vsm_always_inline void reserve(size_t const min_capacity)
 	{
-		operations::reserve(m, min_capacity * sizeof(T));
+		detail::_vector_reserve<relo_t, local, sizeof(T)>(
+			m,
+			min_capacity * sizeof(T));
 	}
 
-	vsm_always_inline size_t capacity() const
+	[[nodiscard]] vsm_always_inline size_t capacity() const
 	{
 		return reinterpret_cast<T const*>(m.end) - reinterpret_cast<T const*>(m.beg);
 	}
 
 	vsm_always_inline void shrink_to_fit()
 	{
-		operations::shrink_to_fit(m, storage_capacity);
+		detail::_vector_shrink<relo_t, Allocator, local>(
+			m,
+			capacity_t(Capacity * sizeof(T)));
 	}
 
 	vsm_always_inline void clear()
 	{
-		vector_::clear<destroy_type>(m);
+		detail::_vector_clear<dtor_t>(m);
 	}
 
-	void _assign(T const* const beg, size_t const count)
+	template<std::ranges::input_range R>
+	void _assign_range(R&& range)
+		requires std::convertible_to<std::ranges::range_reference_t<R>, T>
 	{
-		vector_::clear<destroy_type>(m);
-		byte* const slots = operations::push_back(m, count * sizeof(T));
-		std::uninitialized_copy_n(beg, count, reinterpret_cast<T*>(slots));
+		if constexpr (std::ranges::sized_range<R>)
+		{
+			return _assign_n(
+				std::ranges::begin(range),
+				std::ranges::size(range));
+		}
+		else
+		{
+			return _assign_range(
+				std::ranges::begin(range),
+				std::ranges::end(range));
+		}
 	}
 
-	vsm_always_inline T* insert(T const* const pos, T const& value)
+	template<std::input_iterator Iterator, std::sentinel_for<Iterator> Sentinel>
+	void _assign_range(Iterator const begin, Sentinel const end)
+		requires std::convertible_to<std::iter_reference_t<Iterator>, T>
+	{
+		if constexpr (std::sized_sentinel_for<Sentinel, Iterator>)
+		{
+			return _assign_n(
+				begin,
+				static_cast<size_t>(end - begin));
+		}
+		else
+		{
+			static_assert(sizeof(T) == 0, "not implemented");
+		}
+	}
+
+	template<std::input_iterator Iterator>
+	void _assign_n(Iterator const begin, size_t const count)
+		requires std::convertible_to<std::iter_reference_t<Iterator>, T>
+	{
+		detail::_vector_clear<dtor_t>(m);
+
+		std::byte* const storage = detail::_vector_push<relo_t, local, sizeof(T)>(
+			m,
+			count * sizeof(T));
+
+		vsm_except_try
+		{
+			std::uninitialized_copy_n(
+				begin,
+				count,
+				reinterpret_cast<T*>(storage));
+		}
+		vsm_except_catch (...)
+		{
+			if constexpr (!std::is_nothrow_convertible_v<std::iter_reference_t<Iterator>, T>)
+			{
+				m.mid = m.beg;
+			}
+
+			vsm_except_rethrow;
+		}
+	}
+
+	template<std::convertible_to<T> U = T>
+	iterator insert(const_iterator const pos, U&& value)
 	{
 		vsm_assert(
 			pos >= reinterpret_cast<T const*>(m.beg) &&
 			pos <= reinterpret_cast<T const*>(m.mid));
 
-		byte* const slot = operations::insert(
+		std::byte* const storage = detail::_vector_insert<relo_t, local, sizeof(T)>(
 			m,
-			reinterpret_cast<byte*>(const_cast<T*>(pos)),
+			reinterpret_cast<std::byte*>(const_cast<T*>(pos)),
 			sizeof(T));
 
-		return new (slot) T(value);
+		vsm_except_try
+		{
+			return new (storage) T(vsm_forward(value));
+		}
+		vsm_except_catch (...)
+		{
+			if constexpr (!std::is_nothrow_convertible_v<U, T>)
+			{
+				detail::_vector_erase<relo_t, detail::init_none_t>(
+					m,
+					storage,
+					storage + sizeof(T));
+			}
+
+			vsm_except_rethrow;
+		}
 	}
 
-	vsm_always_inline T* insert(T const* const pos, T&& value)
+	iterator insert(const_iterator const pos, size_t const count, T const& value)
 	{
 		vsm_assert(
 			pos >= reinterpret_cast<T const*>(m.beg) &&
 			pos <= reinterpret_cast<T const*>(m.mid));
 
-		byte* const slot = operations::insert(
+		std::byte* const storage = detail::_vector_insert<relo_t, local, sizeof(T)>(
 			m,
-			reinterpret_cast<byte*>(const_cast<T*>(pos)),
-			sizeof(T));
+			reinterpret_cast<std::byte*>(const_cast<T*>(pos)),
+			count * sizeof(T));
 
-		return new (slot) T(vsm_move(value));
+		vsm_except_try
+		{
+			T* const objects = reinterpret_cast<T*>(storage);
+
+			std::uninitialized_fill_n(
+				objects,
+				count,
+				value);
+
+			return objects;
+		}
+		vsm_except_catch (...)
+		{
+			if constexpr (!std::is_nothrow_copy_constructible_v<T>)
+			{
+				detail::_vector_erase<relo_t, detail::init_none_t>(
+					m,
+					storage,
+					storage + count * sizeof(T));
+			}
+
+			vsm_except_rethrow;
+		}
 	}
 
-	T* insert(T const* const pos, size_t const count, T const& value)
+	template<std::input_iterator Iterator>
+	vsm_always_inline iterator insert(const_iterator const pos, Iterator const begin, Iterator const end)
+		requires std::convertible_to<std::iter_reference_t<Iterator>, T>
+	{
+		return _insert_range(pos, begin, end);
+	}
+
+	template<std::input_iterator Iterator>
+	iterator _insert_n(const_iterator const pos, Iterator const begin, size_t const count)
+		requires std::convertible_to<std::iter_reference_t<Iterator>, T>
 	{
 		vsm_assert(
 			pos >= reinterpret_cast<T const*>(m.beg) &&
 			pos <= reinterpret_cast<T const*>(m.mid));
 
-		size_t const size = count * sizeof(T);
-
-		byte* const slots = operations::insert(
+		std::byte* const storage = detail::_vector_insert<relo_t, local, sizeof(T)>(
 			m,
-			reinterpret_cast<byte*>(const_cast<T*>(pos)),
-			size);
+			reinterpret_cast<std::byte*>(const_cast<T*>(pos)),
+			count * sizeof(T));
 
-		std::uninitialized_fill(
-			reinterpret_cast<T*>(slots),
-			reinterpret_cast<T*>(slots + size), value);
+		vsm_except_try
+		{
+			T* const objects = reinterpret_cast<T*>(storage);
 
-		return reinterpret_cast<T*>(slots);
+			std::uninitialized_copy_n(
+				begin,
+				count,
+				objects);
+
+			return objects;
+		}
+		vsm_except_catch (...)
+		{
+			if constexpr (!std::is_nothrow_convertible_v<std::iter_reference_t<Iterator>, T>)
+			{
+				detail::_vector_erase<relo_t, detail::init_none_t>(
+					m,
+					storage,
+					storage + count * sizeof(T));
+			}
+
+			vsm_except_rethrow;
+		}
 	}
 
-	vsm_always_inline T* insert(T const* const pos, T const* const first, T const* const last)
+	template<std::ranges::input_range R>
+	vsm_always_inline iterator _insert_range(const_iterator const pos, R&& range)
+		requires std::convertible_to<std::ranges::range_reference_t<R>, T>
 	{
-		vsm_assert(
-			pos >= reinterpret_cast<T const*>(m.beg) &&
-			pos <= reinterpret_cast<T const*>(m.mid));
-
-		byte* const slots = operations::template insert_range<copy_type>(
-				m,
-				reinterpret_cast<byte*>(const_cast<T*>(pos)),
-				reinterpret_cast<copy_type const*>(first),
-				reinterpret_cast<copy_type const*>(last));
-
-		return reinterpret_cast<T*>(slots);
+		if constexpr (std::ranges::sized_range<R>)
+		{
+			return _insert_n(
+				pos,
+				std::ranges::begin(range),
+				std::ranges::size(range));
+		}
+		else
+		{
+			return _insert_range(
+				pos,
+				std::ranges::begin(range),
+				std::ranges::end(range));
+		}
 	}
 
-	template<typename InputIt>
-	vsm_always_inline T* insert(T const* const pos, InputIt const first, InputIt const last)
+	template<std::input_iterator Iterator, std::sentinel_for<Iterator> Sentinel>
+	vsm_always_inline iterator _insert_range(const_iterator const pos, Iterator const begin, Sentinel const end)
+		requires std::convertible_to<std::iter_reference_t<Iterator>, T>
 	{
-		vsm_assert(
-			pos >= reinterpret_cast<T const*>(m.beg) &&
-			pos <= reinterpret_cast<T const*>(m.mid));
+		if constexpr (std::sized_sentinel_for<Sentinel, Iterator>)
+		{
+			return _insert_n(
+				pos,
+				begin,
+				static_cast<size_t>(end - begin));
+		}
+		else
+		{
+			static_assert(sizeof(T) == 0, "not implemented");
+		}
+	}
 
-		byte* const slots = operations::template insert_range<T, InputIt>(
-			m,
-			reinterpret_cast<byte*>(const_cast<T*>(pos)),
-			first,
-			last);
-
-		return reinterpret_cast<T*>(slots);
+	template<std::forward_iterator Iterator>
+	iterator _insert_range(const_iterator const pos, Iterator const begin, Iterator const end)
+		requires std::convertible_to<std::iter_reference_t<Iterator>, T>
+	{
+		return _insert_n(
+			pos,
+			begin,
+			static_cast<size_t>(std::distance(begin, end)));
 	}
 
 	template<typename... Args>
-	vsm_always_inline T* emplace(T const* const pos, Args&&... args)
+	iterator emplace(const_iterator const pos, Args&&... args)
+		requires std::constructible_from<T, Args...>
 	{
 		vsm_assert(
 			pos >= reinterpret_cast<T const*>(m.beg) &&
 			pos <= reinterpret_cast<T const*>(m.mid));
 
-		byte* const slot = operations::insert(
+		std::byte* const storage = detail::_vector_insert<relo_t, local, sizeof(T)>(
 			m,
-			reinterpret_cast<byte*>(const_cast<T*>(pos)),
+			reinterpret_cast<std::byte*>(const_cast<T*>(pos)),
 			sizeof(T));
 
-		return new (slot) T(vsm_forward(args)...);
+		vsm_except_try
+		{
+			return new (storage) T(vsm_forward(args)...);
+		}
+		vsm_except_catch (...)
+		{
+			if constexpr (!std::is_nothrow_constructible_v<T, Args...>)
+			{
+				detail::_vector_erase<relo_t, detail::init_none_t>(
+					m,
+					storage,
+					storage + sizeof(T));
+			}
+
+			vsm_except_rethrow;
+		}
 	}
 
-	vsm_always_inline T* erase(T const* const pos)
+	vsm_always_inline iterator erase(const_iterator const pos)
 	{
 		vsm_assert(
 			pos >= reinterpret_cast<T const*>(m.beg) &&
 			pos < reinterpret_cast<T const*>(m.mid));
 
-		byte* const next = vector_::erase<relocate_type, destroy_type>(
+		auto const next = detail::_vector_erase<relo_t, dtor_t>(
 			m,
-			reinterpret_cast<byte*>(const_cast<T*>(pos)),
-			reinterpret_cast<byte*>(const_cast<T*>(pos) + 1));
+			reinterpret_cast<std::byte*>(const_cast<T*>(pos)),
+			reinterpret_cast<std::byte*>(const_cast<T*>(pos) + 1));
 
 		return reinterpret_cast<T*>(next);
 	}
 
-	vsm_always_inline T* _erase_unstable(T const* const pos)
+	vsm_always_inline iterator _erase_unstable(const_iterator const pos)
 	{
 		vsm_assert(
 			pos >= reinterpret_cast<T const*>(m.beg) &&
 			pos < reinterpret_cast<T const*>(m.mid));
 
-		byte* const next = vector_::erase_unstable<relocate_type, destroy_type>(
+		auto const next = detail::_vector_erase_u<relo_t, dtor_t>(
 			m,
-			reinterpret_cast<byte*>(const_cast<T*>(pos)),
-			reinterpret_cast<byte*>(const_cast<T*>(pos) + 1));
+			reinterpret_cast<std::byte*>(const_cast<T*>(pos)),
+			reinterpret_cast<std::byte*>(const_cast<T*>(pos) + 1));
 
 		return reinterpret_cast<T*>(next);
 	}
 
-	vsm_always_inline T* erase(T const* const first, T const* const last)
+	vsm_always_inline iterator erase(const_iterator const begin, const_iterator const end)
 	{
-		vsm_assert(first <= last &&
-			first >= reinterpret_cast<T const*>(m.beg) &&
-			last <= reinterpret_cast<T const*>(m.mid));
+		vsm_assert(
+			begin <= end &&
+			begin >= reinterpret_cast<T const*>(m.beg) &&
+			end <= reinterpret_cast<T const*>(m.mid));
 
-		byte* const next = vector_::erase<relocate_type, destroy_type>(
+		auto const next = detail::_vector_erase<relo_t, dtor_t>(
 			m,
-			reinterpret_cast<byte*>(const_cast<T*>(first)),
-			reinterpret_cast<byte*>(const_cast<T*>(last)));
+			reinterpret_cast<std::byte*>(const_cast<T*>(begin)),
+			reinterpret_cast<std::byte*>(const_cast<T*>(end)));
 
 		return reinterpret_cast<T*>(next);
 	}
 
-	vsm_always_inline T& push_back(T&& value)
+	vsm_always_inline iterator _erase_unstable(const_iterator const begin, const_iterator const end)
 	{
-		byte* const slot = operations::push_back(m, sizeof(T));
-		return *new (slot) T(vsm_move(value));
+		vsm_assert(
+			begin <= end &&
+			begin >= reinterpret_cast<T const*>(m.beg) &&
+			end <= reinterpret_cast<T const*>(m.mid));
+
+		auto const next = detail::_vector_erase_u<relo_t, dtor_t>(
+			m,
+			reinterpret_cast<std::byte*>(const_cast<T*>(begin)),
+			reinterpret_cast<std::byte*>(const_cast<T*>(end)));
+
+		return reinterpret_cast<T*>(next);
 	}
 
-	vsm_always_inline T& push_back(T const& value)
+	template<std::convertible_to<T> U = T>
+	T& push_back(U&& value)
 	{
-		byte* const slot = operations::push_back(m, sizeof(T));
-		return *new (slot) T(value);
+		std::byte* const storage = detail::_vector_push<relo_t, local, sizeof(T)>(
+			m,
+			sizeof(T));
+
+		vsm_except_try
+		{
+			return *new (storage) T(vsm_move(value));
+		}
+		vsm_except_catch (...)
+		{
+			if constexpr (!std::is_nothrow_convertible_v<U, T>)
+			{
+				detail::_vector_pop<detail::init_none_t>(
+					m,
+					sizeof(T));
+			}
+
+			vsm_except_rethrow;
+		}
 	}
 
-	template<typename InputIt>
-	vsm_always_inline T* _push_back_range(InputIt const beg, InputIt const end)
+	template<std::ranges::input_range R>
+	vsm_always_inline iterator _push_back_range(R&& range)
+		requires std::convertible_to<std::ranges::range_reference_t<R>, T>
 	{
-		byte* const slots = operations::push_back(m, std::distance(beg, end) * sizeof(T));
-		std::uninitialized_copy(beg, end, reinterpret_cast<T*>(slots));
-		return reinterpret_cast<T*>(slots);
+		if constexpr (std::ranges::sized_range<R>)
+		{
+			return _push_back_n(
+				std::ranges::begin(range),
+				std::ranges::size(range));
+		}
+		else
+		{
+			return _push_back_range(
+				std::ranges::begin(range),
+				std::ranges::end(range));
+		}
 	}
 
-	template<typename InputIt>
-	vsm_always_inline T* _push_back_n(InputIt const beg, size_t const count)
+	template<std::input_iterator Iterator, std::sentinel_for<Iterator> Sentinel>
+	iterator _push_back_range(Iterator begin, Sentinel const end)
+		requires std::convertible_to<std::iter_reference_t<Iterator>, T>
 	{
-		byte* const slots = operations::push_back(m, count * sizeof(T));
-		std::uninitialized_copy_n(beg, count, reinterpret_cast<T*>(slots));
-		return reinterpret_cast<T*>(slots);
+		if (std::sized_sentinel_for<Sentinel, Iterator>)
+		{
+			return _push_back_n(
+				begin,
+				static_cast<size_t>(end - begin));
+		}
+		else
+		{
+			static_assert(sizeof(T) == 0, "not implemented");
+		}
 	}
 
-	template<typename U = T>
-	vsm_always_inline T* _push_back_fill(size_t const count, U const& value)
+	template<std::forward_iterator Iterator>
+	vsm_always_inline iterator _push_back_range(Iterator const begin, Iterator const end)
+		requires std::convertible_to<std::iter_reference_t<Iterator>, T>
 	{
-		byte* const slots = operations::push_back(m, count * sizeof(T));
-		std::uninitialized_fill_n(reinterpret_cast<T*>(slots), count, value);
-		return reinterpret_cast<T*>(slots);
+		return _push_back_n(
+			begin,
+			static_cast<size_t>(std::distance(begin, end)));
 	}
 
-	vsm_always_inline T* _push_back_default(size_t const count)
+	template<std::input_iterator Iterator>
+	iterator _push_back_n(Iterator beg, size_t const count)
+		requires std::convertible_to<std::iter_reference_t<Iterator>, T>
 	{
-		byte* const slots = operations::push_back(m, count * sizeof(T));
-		std::uninitialized_default_construct_n(reinterpret_cast<T*>(slots), count);
-		return reinterpret_cast<T*>(slots);
+		std::byte* const storage = detail::_vector_push<relo_t, local, sizeof(T)>(
+			m,
+			count * sizeof(T));
+
+		vsm_except_try
+		{
+			T* const objects = reinterpret_cast<T*>(storage);
+
+			std::uninitialized_copy_n(
+				beg,
+				count,
+				objects);
+
+			return objects;
+		}
+		vsm_except_catch (...)
+		{
+			if constexpr (!std::is_nothrow_copy_constructible_v<T>)
+			{
+				detail::_vector_pop<detail::init_none_t>(
+					m,
+					count * sizeof(T));
+			}
+
+			vsm_except_rethrow;
+		}
 	}
 
-	vsm_always_inline T* _push_back_uninitialized(size_t const count)
+	iterator _push_back_fill(size_t const count, T const& value)
+		requires std::is_copy_constructible_v<T>
 	{
-		byte* const slots = operations::push_back(m, count * sizeof(T));
-		return reinterpret_cast<T*>(slots);
+		std::byte* const storage = detail::_vector_push<relo_t, local, sizeof(T)>(
+			m,
+			count * sizeof(T));
+
+		vsm_except_try
+		{
+			T* const objects = reinterpret_cast<T*>(storage);
+
+			std::uninitialized_fill_n(
+				objects,
+				count,
+				value);
+
+			return objects;
+		}
+		vsm_except_catch (...)
+		{
+			if constexpr (!std::is_nothrow_copy_constructible_v<T>)
+			{
+				detail::_vector_pop<detail::init_none_t>(
+					m,
+					count * sizeof(T));
+			}
+
+			vsm_except_rethrow;
+		}
+	}
+
+	iterator _push_back_default(size_t const count)
+		requires std::is_default_constructible_v<T>
+	{
+		std::byte* const storage = detail::_vector_push<relo_t, local, sizeof(T)>(
+			m,
+			count * sizeof(T));
+
+		vsm_except_try
+		{
+			T* const objects = reinterpret_cast<T*>(storage);
+
+			std::uninitialized_default_construct_n(
+				objects,
+				count);
+
+			return objects;
+		}
+		vsm_except_catch (...)
+		{
+			if constexpr (!std::is_nothrow_default_constructible_v<T>)
+			{
+				detail::_vector_pop<detail::init_none_t>(
+					m,
+					count * sizeof(T));
+			}
+
+			vsm_except_rethrow;
+		}
+	}
+
+	vsm_always_inline iterator _push_back_uninitialized(size_t const count)
+	{
+		std::byte* const storage = detail::_vector_push<relo_t, local, sizeof(T)>(
+			m,
+			count * sizeof(T));
+
+		T* const objects = reinterpret_cast<T*>(storage);
+
+		start_lifetime_as_array<T>(
+			objects,
+			count);
+
+		return objects;
 	}
 
 	template<typename... Args>
 	vsm_always_inline T& emplace_back(Args&&... args)
+		requires std::constructible_from<T, Args...>
 	{
-		byte* const slot = operations::push_back(m, sizeof(T));
-		return *new (slot) T(vsm_forward(args)...);
+		std::byte* const storage = detail::_vector_push<relo_t, local, sizeof(T)>(
+			m,
+			sizeof(T));
+
+		vsm_except_try
+		{
+			return *new (storage) T(vsm_forward(args)...);
+		}
+		vsm_except_catch (...)
+		{
+			if constexpr (!std::is_nothrow_constructible_v<T, Args...>)
+			{
+				detail::_vector_pop<detail::init_none_t>(
+					m,
+					sizeof(T));
+			}
+
+			vsm_except_rethrow;
+		}
 	}
 
 	vsm_always_inline void pop_back()
 	{
 		vsm_assert(!empty());
-		vector_::pop_back<destroy_type>(m, sizeof(T));
+
+		detail::_vector_pop<dtor_t>(
+			m,
+			sizeof(T));
 	}
 
 	vsm_always_inline void _pop_back_n(size_t const count)
 	{
 		vsm_assert(count <= size());
-		vector_::pop_back_n<destroy_type>(m, count * sizeof(T));
+
+		detail::_vector_pop<dtor_t>(
+			m,
+			count * sizeof(T));
 	}
 
 	vsm_always_inline void _pop_back_uninitialized(size_t const count)
 	{
 		vsm_assert(count <= size());
-		vector_::pop_back<byte>(m, count * sizeof(T));
+
+		detail::_vector_pop<detail::init_none_t>(
+			m,
+			count * sizeof(T));
 	}
 
-	vsm_always_inline T _pop_back_value()
+	[[nodiscard]] vsm_always_inline T _pop_back_value()
 	{
 		vsm_assert(!empty());
-		T value = vsm_move(reinterpret_cast<T*>(m.mid)[-1]);
-		vector_::pop_back<destroy_type>(m, sizeof(T));
-		return value;
+
+		struct popper_back
+		{
+			detail::_vector& vector;
+			bool pop_back = true;
+
+			popper_back(detail::_vector& vector)
+				: vector(vector)
+			{
+			}
+
+			popper_back(popper_back const&) = delete;
+			popper_back& operator=(popper_back const&) = delete;
+
+			~popper_back()
+			{
+				if (pop_back)
+				{
+					detail::_vector_pop<dtor_t>(
+						vector,
+						sizeof(T));
+				}
+			}
+		};
+
+		[[maybe_unused]] popper_back popper(m);
+
+		if constexpr (std::is_nothrow_move_constructible_v<T>)
+		{
+			return vsm_move(reinterpret_cast<T*>(m.mid)[-1]);
+		}
+		else
+		{
+			vsm_except_try
+			{
+				return vsm_move(reinterpret_cast<T*>(m.mid)[-1]);
+			}
+			vsm_except_catch (...)
+			{
+				popper.pop_back = false;
+				vsm_except_rethrow;
+			}
+		}
 	}
 
 	vsm_always_inline void resize(size_t const count)
+		requires std::is_default_constructible_v<T>
 	{
-		operations::template resize< true, construct_type, destroy_type>(
+		auto const storage = detail::_vector_resize<relo_t, dtor_t, local, sizeof(T)>(
 			m,
 			count * sizeof(T));
+
+		if (storage != nullptr)
+		{
+			vsm_except_try
+			{
+				std::uninitialized_value_construct(
+					reinterpret_cast<T*>(storage),
+					reinterpret_cast<T*>(m.mid));
+			}
+			vsm_except_catch (...)
+			{
+				m.mid = storage;
+				vsm_except_rethrow;
+			}
+		}
 	}
 
-	vsm_always_inline void _resize_uninitialized(size_t const count)
+	vsm_always_inline void _resize_default(size_t const count)
+		requires std::is_default_constructible_v<T>
 	{
-		operations::template resize<false, byte, byte>(
+		auto const storage = detail::_vector_resize<relo_t, dtor_t, local, sizeof(T)>(
 			m,
 			count * sizeof(T));
+
+		if (storage != nullptr)
+		{
+			vsm_except_try
+			{
+				std::uninitialized_default_construct_n(
+					reinterpret_cast<T*>(storage),
+					count);
+			}
+			vsm_except_catch (...)
+			{
+				if constexpr (!std::is_nothrow_default_constructible_v<T>)
+				{
+					detail::_vector_erase(
+						m,
+						storage,
+						storage + count * sizeof(T));
+				}
+
+				vsm_except_rethrow;
+			}
+		}
 	}
 
 	void resize(size_t const count, T const& value)
+		requires std::is_copy_constructible_v<T>
 	{
-		byte* const pos = operations::template resize<false, void, destroy_type>(
+		auto const storage = detail::_vector_resize<relo_t, dtor_t, local, sizeof(T)>(
 			m,
 			count * sizeof(T));
 
-		std::uninitialized_fill(reinterpret_cast<T*>(pos), reinterpret_cast<T*>(m.mid), value);
+		if (storage != nullptr)
+		{
+			vsm_except_try
+			{
+				std::uninitialized_fill_n(
+					reinterpret_cast<T*>(storage),
+					count,
+					value);
+			}
+			vsm_except_catch (...)
+			{
+				if constexpr (!std::is_nothrow_copy_constructible_v<T>)
+				{
+					detail::_vector_erase(
+						m,
+						storage,
+						storage + count * sizeof(T));
+				}
+
+				vsm_except_rethrow;
+			}
+		}
 	}
 
-	T* _release_storage()
+	vsm_always_inline void swap(small_vector& other)
 	{
-		vsm_assert(is_dynamic<has_local_storage>(m, m.beg));
-		T* const buffer = reinterpret_cast<T*>(m.beg);
-		construct<has_local_storage>(m, storage_capacity);
-		return buffer;
+		detail::_vector_swap<relo_t, local>(m, other.m);
 	}
 
-	void _acquire_storage(T* const buffer, size_t const size, size_t const capacity)
+	[[nodiscard]] T* _release_storage()
+	{
+		vsm_assert(detail::_vector_dynamic<local>(m, m.beg));
+
+		T* const objects = reinterpret_cast<T*>(m.beg);
+
+		detail::_vector_construct<local>(
+			m,
+			capacity_t(Capacity * sizeof(T)));
+
+		return objects;
+	}
+
+	void _acquire_storage(T* const objects, size_t const size, size_t const capacity)
 	{
 		vsm_assert(size > Capacity);
-		destroy<destroy_type, has_local_storage>(m);
-		byte* const beg = reinterpret_cast<byte*>(buffer);
+
+		detail::_vector_destroy<dtor_t, local>(m);
+
+		std::byte* const beg = reinterpret_cast<std::byte*>(objects);
 		m.beg = beg;
 		m.mid = beg + size * sizeof(T);
 		m.end = beg + capacity * sizeof(T);
 	}
 
 	template<typename T, typename Allocator, size_t Capacity>
-	friend vsm_always_inline bool operator==(vector const& lhs, vector const& rhs)
+	friend vsm_always_inline bool operator==(small_vector const& lhs, small_vector const& rhs)
 	{
 		return equal<T>(lhs.m, rhs.m);
 	}
 
 	template<typename T, typename Allocator, size_t Capacity>
-	friend vsm_always_inline auto operator<=>(vector const& lhs, vector const& rhs)
+	friend vsm_always_inline auto operator<=>(small_vector const& lhs, small_vector const& rhs)
 	{
 		return compare<T>(lhs.m, rhs.m);
 	}
 
-#pragma pop_macro("storage_capacity")
-#pragma pop_macro("construct_type")
-#pragma pop_macro("destroy_type")
-#pragma pop_macro("relocate_type")
-#pragma pop_macro("copy_type")
-#pragma pop_macro("operations")
+	#pragma pop_macro("ctor_t")
+	#pragma pop_macro("dtor_t")
+	#pragma pop_macro("relo_t")
+	#pragma pop_macro("copy_t")
 };
 
-} // namespace detail::vector_
-
 template<typename T, typename Allocator = default_allocator>
-using vector = detail::vector_::vector<T, Allocator, 0>;
+using vector = small_vector<T, 0, Allocator>;
 
-template<typename T, size_t Capacity, typename Allocator = default_allocator>
-using small_vector = detail::vector_::vector<T, Allocator, Capacity>;
-
-template<typename T, typename A, size_t C, typename U>
-typename detail::vector_::vector<T, A, C>::size_type erase(detail::vector_::vector<T, A, C>& v, U const& value)
+template<typename T, size_t C, typename A, typename U>
+typename small_vector<T, C, A>::size_type erase(small_vector<T, C, A>& v, U const& value)
 {
 	auto it = std::remove(v.begin(), v.end(), value);
-	typename detail::vector_::vector<T, A, C>::size_type n = v.end() - it;
+	typename small_vector<T, C, A>::size_type n = v.end() - it;
 	v._pop_back_n(n);
 	return n;
 }
 
-template<typename T, typename A, size_t C, typename Pred>
-typename detail::vector_::vector<T, A, C>::size_type erase_if(detail::vector_::vector<T, A, C>& v, Pred&& pred)
+template<typename T, size_t C, typename A, typename Pred>
+typename small_vector<T, C, A>::size_type erase_if(small_vector<T, C, A>& v, Pred&& pred)
 {
 	auto it = std::remove_if(v.begin(), v.end(), vsm_forward(pred));
-	typename detail::vector_::vector<T, A, C>::size_type n = v.end() - it;
+	typename small_vector<T, C, A>::size_type n = v.end() - it;
 	v._pop_back_n(n);
 	return n;
 }
 
-template<typename T, typename A, size_t C, typename U>
-typename detail::vector_::vector<T, A, C>::size_type erase_unstable(detail::vector_::vector<T, A, C>& v, U const& value)
+template<typename T, size_t C, typename A, typename U>
+typename small_vector<T, C, A>::size_type erase_unstable(small_vector<T, C, A>& v, U const& value)
 {
 	auto it = remove_unstable(v.begin(), v.end(), value);
-	typename detail::vector_::vector<T, A, C>::size_type n = v.end() - it;
+	typename small_vector<T, C, A>::size_type n = v.end() - it;
 	v._pop_back_n(n);
 	return n;
 }
 
-template<typename T, typename A, size_t C, typename Pred>
-typename detail::vector_::vector<T, A, C>::size_type erase_if_unstable(detail::vector_::vector<T, A, C>& v, Pred&& pred)
+template<typename T, size_t C, typename A, typename Pred>
+typename small_vector<T, C, A>::size_type erase_if_unstable(small_vector<T, C, A>& v, Pred&& pred)
 {
 	auto it = remove_if_unstable(v.begin(), v.end(), vsm_forward(pred));
-	typename detail::vector_::vector<T, A, C>::size_type n = v.end() - it;
+	typename small_vector<T, C, A>::size_type n = v.end() - it;
 	v._pop_back_n(n);
 	return n;
 }

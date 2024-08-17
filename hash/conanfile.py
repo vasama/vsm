@@ -10,3 +10,5 @@ class package(ConanFile):
 	requires = (
 		"vsm_core/0.1",
 	)
+
+	vsm_libs = ["vsm_hash"]

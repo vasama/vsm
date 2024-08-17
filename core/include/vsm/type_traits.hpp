@@ -50,6 +50,7 @@ struct select<1>
 
 /* value category copy */
 
+#if 1 //TODO: Look into copy compile time performance
 template<typename T>
 struct copy
 {
@@ -115,6 +116,77 @@ struct copy<T const&&>
 	template<typename U>
 	using cvref = U const&&;
 };
+#else
+struct _copy
+{
+	template<typename U>
+	using cv = U;
+
+	template<typename U>
+	using ref = U;
+
+	template<typename U>
+	using cvref = U;
+};
+
+struct _copy_c
+{
+	template<typename U>
+	using cv = U const;
+
+	template<typename U>
+	using ref = U;
+
+	template<typename U>
+	using cvref = U;
+};
+
+struct _copy_l
+{
+	template<typename U>
+	using ref = U&;
+
+	template<typename U>
+	using cvref = U&;
+};
+
+struct _copy_cl
+{
+	template<typename U>
+	using ref = U&;
+
+	template<typename U>
+	using cvref = U const&;
+};
+
+struct _copy_r
+{
+	template<typename U>
+	using ref = U&&;
+
+	template<typename U>
+	using cvref = U&&;
+};
+
+struct _copy_cr
+{
+	template<typename U>
+	using ref = U&&;
+
+	template<typename U>
+	using cvref = U const&&;
+};
+
+template<typename T> _copy _copy_f(T(*)());
+template<typename T> _copy_c _copy_f(T const(*)());
+template<typename T> _copy_l _copy_f(T&(*)());
+template<typename T> _copy_cl _copy_f(T const&(*)());
+template<typename T> _copy_r _copy_f(T&&(*)());
+template<typename T> _copy_cr _copy_f(T const&&(*)());
+
+template<typename T>
+using copy = decltype(_type_traits::_copy_f(static_cast<T(*)()>(0)));
+#endif
 
 
 /* type properties */
@@ -159,6 +231,9 @@ struct integer_of_size<8>
 
 } // namespace detail::_type_traits
 
+struct monostate {};
+
+
 /* type comparison */
 
 template<typename... Ts>
@@ -196,6 +271,9 @@ using remove_ref_t = std::remove_reference_t<T>;
 
 template<typename T>
 using remove_ptr_t = std::remove_pointer_t<T>;
+
+template<typename T>
+using remove_cvptr_t = remove_cv_t<remove_ptr_t<T>>;
 
 
 /* value category copy */

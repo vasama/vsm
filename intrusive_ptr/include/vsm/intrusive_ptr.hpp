@@ -22,20 +22,20 @@ struct intrusive_ptr_acquire_tag {};
 struct intrusive_ptr_acquire_cpo
 {
 	template<typename T>
-	void vsm_static_operator_invoke(T* const ptr, size_t const count)
+	vsm_static_operator void operator()(T* const ptr, size_t const count) vsm_static_operator_const
 		requires tag_invocable<intrusive_ptr_acquire_cpo, T*, size_t>
 	{
-		tag_invoke(intrusive_ptr_acquire_cpo(), ptr, count);
+		vsm::tag_invoke(intrusive_ptr_acquire_cpo(), ptr, count);
 	}
 };
 
 struct intrusive_ptr_release_cpo
 {
 	template<typename T>
-	void vsm_static_operator_invoke(T* const ptr, size_t const count)
+	vsm_static_operator void operator()(T* const ptr, size_t const count) vsm_static_operator_const
 		requires tag_invocable<intrusive_ptr_release_cpo, T*, size_t>
 	{
-		tag_invoke(intrusive_ptr_release_cpo(), ptr, count);
+		vsm::tag_invoke(intrusive_ptr_release_cpo(), ptr, count);
 	}
 };
 
@@ -44,14 +44,14 @@ struct intrusive_ptr_delete_cpo
 	template<typename T>
 	friend void tag_invoke(intrusive_ptr_delete_cpo, T* const ptr)
 	{
-		delete ptr;
+		std::default_delete<T>()(ptr);
 	}
 
 	template<typename T>
-	void vsm_static_operator_invoke(T* const ptr)
+	vsm_static_operator void operator()(T* const ptr) vsm_static_operator_const
 		requires tag_invocable<intrusive_ptr_delete_cpo, T*>
 	{
-		tag_invoke(intrusive_ptr_delete_cpo(), ptr);
+		vsm::tag_invoke(intrusive_ptr_delete_cpo(), ptr);
 	}
 };
 
@@ -93,8 +93,8 @@ protected:
 	{
 	}
 
-	explicit basic_intrusive_ref_count(intrusive_ptr_acquire_tag)
-		: Base(1)
+	explicit basic_intrusive_ref_count(size_t const ref_count)
+		: Base(ref_count)
 	{
 	}
 

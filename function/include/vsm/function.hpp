@@ -1,6 +1,7 @@
 #pragma once
 
-#include <vsm/static_function.hpp>
+#include <vsm/detail/function.hpp>
+#include <vsm/default_allocator.hpp>
 
 #include <memory>
 
@@ -16,132 +17,115 @@ consteval size_t function_min_capacity(size_t const capacity)
 	return capacity;
 }
 
-template<typename Signature, int Category, size_t Capacity>
-class function_impl;
-
-template<typename Result, typename... Params, int Category, size_t Capacity>
-class function_impl<Result(Params...), Category, Capacity>
-	: static_function_impl<Result(Params...), Category, function_min_capacity(Capacity)>
+template<typename Allocator, typename Callable>
+class _function_dynamic
 {
-	using signature_type = Result(Params...);
-	using static_function_type = static_function_impl<Result(Params...), Category, function_min_capacity(Capacity)>;
-
-	template<typename Callable, typename Allocator>
-	class dynamic_callable
+	struct storage
 	{
-		class dynamic_storage
+		Callable callable;
+		Allocator allocator;
+	};
+
+	struct deleter
+	{
+		vsm_static_operator void operator()(storage* const object) vsm_static_operator_const
 		{
-			Allocator allocator;
-			Callable callable;
-
-			friend class dynamic_callable;
-		};
-
-		using allocator_type = typename std::allocator_traits<Allocator>::template rebind<dynamic_storage>;
-
-		dynamic_storage* m_storage;
-
-	public:
-		explicit dynamic_callable(auto&& allocator, auto&& callable)
-		{
-			allocator_type rebound_allocator = allocator_type(vsm_forward(allocator));
-			//TODO: alignment
-			m_storage = new (rebound_allocator.allocate(sizeof(dynamic_storage)))
-				dynamic_storage{ { vsm_move(rebound_allocator) }, vsm_forward(callable) };
-		}
-
-		explicit dynamic_callable(auto&& allocator, std::in_place_t, auto&&... args)
-		{
-			allocator_type rebound_allocator = allocator_type(vsm_forward(allocator));
-			//TODO: alignment
-			m_storage = new (rebound_allocator.allocate(sizeof(dynamic_storage)))
-				dynamic_storage{ { vsm_move(rebound_allocator) }, { vsm_forward(args)... } };
-		}
-
-		// Intentionally trivially copyable despite non-trivial destructor.
-		// static_function relocation drops the source object after copying it.
-		dynamic_callable(dynamic_callable const&) = default;
-		dynamic_callable& operator=(dynamic_callable const&) = default;
-
-		~dynamic_callable()
-		{
-			allocator_type rebound_allocator = allocator_type(vsm_move(m_storage->allocator));
-			m_storage->~dynamic_storage();
-			rebound_allocator.deallocate(m_storage, sizeof(dynamic_storage));
+			vsm::delete_via(Allocator(vsm_move(object->allocator)), object);
 		}
 	};
 
+	std::unique_ptr<storage, deleter> m_storage;
+
 public:
-	function_impl() = default;
-
-	template<no_cvref_of<function_impl> Callable, typename Allocator>
-	explicit constexpr function_impl(Callable&& callable, Allocator&& allocator)
-		requires
-			detail::callable<std::remove_cvref_t<Callable>, Category, Result, Params...> &&
-			(sizeof(Callable) <= Capacity)
-		: static_function_type(vsm_forward(callable))
+	explicit _function_dynamic(Allocator const& allocator, auto&&... args)
 	{
+		m_storage.reset(new (allocator) storage
+		{
+			Callable(vsm_forward(args)...),
+			allocator,
+		});
 	}
 
-	template<no_cvref_of<function_impl> Callable, typename Allocator>
-	explicit constexpr function_impl(Callable&& callable, Allocator&& allocator)
-		requires
-			detail::callable<std::remove_cvref_t<Callable>, Category, Result, Params...> &&
-			(sizeof(Callable) > Capacity)
-		: static_function_type(std::in_place_type<dynamic_callable<std::decay_t<Callable>, std::remove_cvref_t<Allocator>>>, vsm_forward(allocator), vsm_forward(callable))
+	template<typename Self, typename... Args>
+	auto operator()(this Self&& self, Args&&... args)
+		noexcept(std::is_nothrow_invocable_v<copy_cvref_t<Self, Callable>, Args...>)
 	{
+		return static_cast<copy_cvref_t<Self, Callable>&&>(self.m_storage->callable)(vsm_forward(args)...);
 	}
-
-	template<int OtherCategory, size_t OtherCapacity>
-	constexpr function_impl(static_function_impl<signature_type, OtherCategory, OtherCapacity>&& src)
-		requires (OtherCapacity <= Capacity && (OtherCategory & Category) == Category)
-		: static_function_type(vsm_move(src))
-	{
-	}
-
-	template<int OtherCategory, size_t OtherCapacity>
-	constexpr function_impl(function_impl<signature_type, OtherCategory, OtherCapacity>&& src)
-		requires (OtherCapacity <= Capacity && (OtherCategory & Category) == Category)
-		: static_function_type(static_cast<typename function_impl<signature_type, OtherCategory, OtherCapacity>::static_function_type&&>(src))
-	{
-	}
-
-	template<typename Callable>
-	constexpr function_impl(std::in_place_type_t<Callable>) = delete;
-
-	template<typename Callable, typename... Args>
-	constexpr function_impl(std::in_place_type_t<Callable> const in_place_type, Args&&... args)
-		requires
-			detail::callable<std::remove_cvref_t<Callable>, Category, Result, Params...> &&
-			(sizeof(Callable) <= Capacity)
-		: static_function_type(in_place_type, vsm_forward(callable))
-	{
-	}
-
-	template<typename Callable, typename... Args>
-	constexpr function_impl(std::in_place_type_t<Callable>, Args&&... args)
-		requires
-			detail::callable<std::remove_cvref_t<Callable>, Category, Result, Params...> &&
-			(sizeof(Callable) > Capacity)
-		: static_function_type(std::in_place_type<dynamic_callable<std::decay_t<Callable>, std::remove_cvref_t<std::allocator>>>, std::in_place, vsm_forward(args)...)
-	{
-	}
-
-
-	using static_function_type::operator bool;
-	using static_function_type::operator();
-
-private:
-	template<typename OtherSignature, int OtherCategory, size_t OtherCapacity>
-	friend class function_impl;
 };
 
 } // namespace detail
 
 template<typename Signature, size_t Capacity = detail::function_default_capacity>
-using function = detail::function_impl<
-	typename detail::function_traits<Signature>::signature,
-	detail::function_traits<Signature>::category,
-	Capacity>;
+class function : detail::_function_call<detail::function_min_capacity(Capacity), Signature>
+{
+	static constexpr size_t capacity = detail::function_min_capacity(Capacity);
+	using base_type = detail::_function_call<capacity, Signature>;
+
+public:
+	using base_type::base_type;
+
+	function() = default;
+
+	function(function&&) = default;
+	function& operator=(function&&) & = default;
+
+	template<no_cvref_of<function> F>
+	constexpr function(F&& f)
+		requires
+			no_instance_of<remove_cvref_t<F>, std::in_place_type_t> &&
+			base_type::template is_invocable<std::decay_t<F>>
+	{
+		construct<F>(default_allocator(), vsm_forward(f));
+	}
+
+	template<typename T, typename... Args>
+	explicit constexpr function(std::in_place_type_t<T>, Args&&... args)
+		requires
+			std::constructible_from<std::decay_t<T>, Args...> &&
+			base_type::template is_invocable<std::decay_t<T>>
+	{
+		construct<T>(default_allocator(), vsm_forward(args)...);
+	}
+
+	template<allocator Allocator, no_cvref_of<function> F>
+	constexpr function(Allocator const& allocator, F&& f)
+		requires
+			no_instance_of<remove_cvref_t<F>, std::in_place_type_t> &&
+			base_type::template is_invocable<std::decay_t<F>>
+	{
+		construct<F>(allocator, vsm_forward(f));
+	}
+
+	template<allocator Allocator, typename T, typename... Args>
+	explicit constexpr function(Allocator const& allocator, std::in_place_type_t<T>, Args&&... args)
+		requires
+			std::constructible_from<std::decay_t<T>, Args...> &&
+			base_type::template is_invocable<std::decay_t<T>>
+	{
+		construct<T>(allocator, vsm_forward(args)...);
+	}
+
+	using base_type::operator bool;
+	using base_type::operator();
+
+private:
+	template<typename T, typename Allocator, typename... Args>
+	void construct(Allocator const& allocator, Args&&... args)
+	{
+		using value_type = std::decay_t<T>;
+		if constexpr (sizeof(value_type) <= Capacity)
+		{
+			using type = value_type;
+			static_assert(alignof(type) <= alignof(std::max_align_t), "not implemented");
+			base_type::template construct<type, typename base_type::template view_type<type>>(vsm_forward(args)...);
+		}
+		else
+		{
+			using type = detail::_function_dynamic<Allocator, value_type>;
+			base_type::template construct<type, typename base_type::template view_type<type>>(allocator, vsm_forward(args)...);
+		}
+	}
+};
 
 } // namespace vsm

@@ -5,6 +5,7 @@
 #include <vsm/assert.h>
 #include <vsm/concepts.hpp>
 #include <vsm/default_allocator.hpp>
+#include <vsm/key_selector.hpp>
 #include <vsm/standard.hpp>
 #include <vsm/type_traits.hpp>
 #include <vsm/utility.hpp>
@@ -22,12 +23,12 @@ class basic_unique_string;
 template<typename Char, typename Traits = std::char_traits<Char>, typename Allocator = default_allocator>
 class basic_shared_string;
 
-namespace detail::shared_string_ {
+namespace detail {
 
-struct borrow_tag {};
+struct _shared_string_borrow {};
 
 template<typename Char, typename Allocator>
-struct shared_string_base
+struct _shared_string
 {
 	struct large_storage
 	{
@@ -40,29 +41,30 @@ struct shared_string_base
 			, capacity(capacity)
 		{
 		}
-		
+
 		void acquire()
 		{
 			vsm_verify(refcount.fetch_add(1, std::memory_order_relaxed) != 0);
 		}
-		
+
 		bool release()
 		{
 			size_t const r = refcount.fetch_sub(1, std::memory_order_acq_rel);
 			vsm_assert(r != 0);
 			return r == 1;
 		}
-	
+
 		bool is_unique() const
 		{
 			size_t const r = refcount.load(std::memory_order_acquire);
 			vsm_assert(r != 0);
 			return r == 1;
 		}
-	
+
 		static large_storage* from_data(Char* const data)
 		{
-			return reinterpret_cast<large_storage*>(reinterpret_cast<std::byte*>(data) - offsetof(large_storage, data));
+			return reinterpret_cast<large_storage*>(
+				reinterpret_cast<std::byte*>(data) - offsetof(large_storage, data));
 		}
 	};
 
@@ -102,21 +104,23 @@ struct shared_string_base
 	class vector_allocator
 	{
 		static constexpr size_t data_offset = offsetof(large_storage, data);
-		
-		[[no_unique_address]] Allocator m_allocator;
-	
+
+		vsm_no_unique_address Allocator m_allocator;
+
 	public:
+		vector_allocator() = default;
+
 		vector_allocator(any_cvref_of<Allocator> auto&& allocator)
 			: m_allocator(vsm_forward(allocator))
 		{
 		}
-	
-		Allocator const& underlying() const
+
+		[[nodiscard]] Allocator const& underlying() const
 		{
 			return m_allocator;
 		}
 
-		allocation allocate(size_t const size)
+		[[nodiscard]] allocation allocate(size_t const size) const
 		{
 			allocation allocation = m_allocator.allocate(data_offset + size * sizeof(Char));
 			if (allocation.buffer != nullptr)
@@ -127,13 +131,13 @@ struct shared_string_base
 			}
 			return allocation;
 		}
-		
-		void deallocate(allocation const allocation)
+
+		void deallocate(allocation const allocation) const
 		{
 			m_allocator.deallocate(get_block(allocation));
 		}
-		
-		size_t resize(allocation const allocation, size_t const min_size)
+
+		[[nodiscard]] size_t resize(allocation const allocation, size_t const min_size) const
 		{
 			size_t new_size = m_allocator.resize(get_block(allocation), data_offset + min_size);
 			if (new_size != 0)
@@ -142,7 +146,7 @@ struct shared_string_base
 			}
 			return new_size;
 		}
-		
+
 	private:
 		static allocation get_block(allocation const allocation)
 		{
@@ -153,169 +157,143 @@ struct shared_string_base
 			};
 		}
 	};
+	static_assert(allocator<vector_allocator>);
 
-	using vector_type = small_vector<Char, max_small_size + 1, vector_allocator>;
+	using vector_type = small_vector<Char, max_small_size, vector_allocator>;
 
 
 	class large_storage_deleter
 	{
 		Allocator m_allocator;
-	
+
 	public:
 		explicit(false) large_storage_deleter(Allocator const& allocator)
 			: m_allocator(allocator)
 		{
 		}
-	
+
 		void operator()(large_storage* const large)
 		{
 			vsm_assert(large->is_unique());
-			m_allocator.deallocate(allocation{ large, large_storage_size + large->capacity * sizeof(Char) });
+			m_allocator.deallocate(allocation
+			{
+				large,
+				large_storage_size + large->capacity * sizeof(Char)
+			});
 		}
 	};
-	
+
 	using unique_large_storage = std::unique_ptr<large_storage, large_storage_deleter>;
 };
 
-} // namespace detail::shared_string_
-
-#define vsm_detail detail::shared_string_
+} // namespace detail
 
 template<typename Char, typename Traits, typename Allocator>
-class basic_unique_string : vsm_detail::shared_string_base<Char, Allocator>::vector_type
+class basic_unique_string : detail::_shared_string<Char, Allocator>::vector_type
 {
 	static_assert(std::is_copy_constructible_v<Allocator>);
 
 	using shared_string_type = basic_shared_string<Char, Traits, Allocator>;
 	using string_view_type = std::basic_string_view<Char, Traits>;
 
-	using t = vsm_detail::shared_string_base<Char, Allocator>;
-	using b = typename t::vector_type;
+	using t = detail::_shared_string<Char, Allocator>;
+	using vector_type = typename t::vector_type;
 
 public:
-	basic_unique_string() = default;
+	using vector_type::vector_type;
+
+	explicit basic_unique_string(string_view_type const string)
+		: vector_type(std::from_range, string)
+	{
+	}
 
 	basic_unique_string(shared_string_type&& shared)
-		: b(shared.m_allocator)
+		: vector_type(shared.m_allocator)
 	{
 		if (shared.m.large_ctrl & t::large_flag)
 		{
 			if (!try_adopt(vsm_move(shared)))
 			{
-				b::_assign(shared.m.large_data, shared.m.large_size + 1);
+				vector_type::_assign_n(shared.m.large_data, shared.m.large_size);
 			}
 		}
 		else
 		{
-			b::_assign(shared.m.small_data, (t::max_small_size + 1) - shared.m.large_ctrl);
+			vector_type::_assign_n(shared.m.small_data, t::max_small_size - shared.m.large_ctrl);
 		}
 	}
 
 	explicit basic_unique_string(shared_string_type const& shared)
-		: b(shared.m_allocator)
+		: vector_type(shared.m_allocator)
 	{
 		if (shared.m.large_ctrl & t::large_flag)
 		{
-			b::_assign(shared.m.large_data, shared.m.large_size + 1);
+			vector_type::_assign_n(shared.m.large_data, shared.m.large_size);
 		}
 		else
 		{
-			b::_assign(shared.m.small_data, (t::max_small_size + 1) - shared.m.large_ctrl);
+			vector_type::_assign_n(shared.m.small_data, t::max_small_size - shared.m.large_ctrl);
 		}
 	}
 
 	basic_unique_string(basic_unique_string&& other) = default;
 
-	basic_unique_string& operator=(shared_string_type&& shared) &
+	basic_unique_string& operator=(shared_string_type&& shared)&
 	{
 		if (shared.m.large_ctrl & t::large_flag)
 		{
 			if (!try_adopt(vsm_move(shared)))
 			{
-				b::_assign(shared.m.large_data, shared.m.large_size + 1);
+				vector_type::_assign_n(shared.m.large_data, shared.m.large_size);
 			}
 		}
 		else
 		{
-			b::_assign(shared.m.small_data, (t::max_small_size + 1) - shared.m.large_ctrl);
+			vector_type::_assign_n(shared.m.small_data, t::max_small_size - shared.m.large_ctrl);
 		}
 	}
 
 	basic_unique_string& operator=(basic_unique_string&& other) & = default;
 
 
-	using b::operator[];
-	using b::front;
+	using vector_type::at;
+	using vector_type::operator[];
+	using vector_type::front;
+	using vector_type::back;
+	using vector_type::data;
+	using vector_type::begin;
+	using vector_type::end;
+	using vector_type::cbegin;
+	using vector_type::cend;
+	using vector_type::rbegin;
+	using vector_type::rend;
+	using vector_type::crbegin;
+	using vector_type::crend;
 
-	[[nodiscard]] Char& back()
+	using vector_type::empty;
+	using vector_type::size;
+
+	[[nodiscard]] size_t length() const
 	{
-		return b::operator[](size() - 1);
+		return vector_type::size();
 	}
 
-	[[nodiscard]] Char const& back() const
+	[[nodiscard]] size_t max_size() const
 	{
-		return b::operator[](size() - 1);
+		return vector_type::max_size() - 1;
 	}
 
-	using b::data;
+	using vector_type::reserve;
+	using vector_type::capacity;
+	using vector_type::shrink_to_fit;
 
-
-	using b::begin;
-	using b::cbegin;
-
-	[[nodiscard]] typename b::iterator end()
-	{
-		return b::end() - 1;
-	}
-
-	[[nodiscard]] typename b::const_iterator end() const
-	{
-		return b::end() - 1;
-	}
-
-	[[nodiscard]] typename b::const_iterator cend() const
-	{
-		return b::end() - 1;
-	}
-
-
-	[[nodiscard]] bool empty() const
-	{
-		return b::size() == 1;
-	}
-
-	[[nodiscard]] size_t size() const
-	{
-		return b::size() - 1;
-	}
-
-	void reserve(size_t const min_capacity)
-	{
-		b::reserve(min_capacity + 1);
-	}
-
-	[[nodiscard]] size_t capacity() const
-	{
-		return b::capacity() - 1;
-	}
-
-	using b::shrink_to_fit;
-
-
-	void clear()
-	{
-		resize(0);
-	}
-
-	void resize(size_t const size)
-	{
-		b::resize(size + 1);
-		b::operator[](size) = Char(0);
-	}
+	using vector_type::clear;
+	using vector_type::erase;
+	using vector_type::resize;
 
 	void append(string_view_type const string)
 	{
-		b::insert(b::end() - 1, string.begin(), string.end());
+		vector_type::_push_back_range(string);
 	}
 
 
@@ -324,22 +302,28 @@ public:
 		return string_view_type(data(), size());
 	}
 
-	template<convertible_from<string_view_type> String>
+	template<std::constructible_from<string_view_type> String>
 	[[nodiscard]] explicit operator String() const
 	{
-		return string_view_type(data(), size());
+		return String(string_view_type(data(), size()));
 	}
 
 
-	[[nodiscard]] friend bool operator==(basic_unique_string const& lhs, basic_unique_string const& rhs)
-	{
-		return string_view_type(lhs) == string_view_type(rhs);
-	}
+	[[nodiscard]] friend bool operator==(
+		basic_unique_string const&,
+		basic_unique_string const&) = default;
 
 	template<std::convertible_to<string_view_type> String>
 	[[nodiscard]] friend bool operator==(basic_unique_string const& lhs, String const& rhs)
 	{
 		return string_view_type(lhs) == string_view_type(rhs);
+	}
+
+	[[nodiscard]] friend string_view_type tag_invoke(
+		decltype(normalize_key),
+		basic_unique_string const& self)
+	{
+		return string_view_type(self);
 	}
 
 private:
@@ -348,25 +332,25 @@ private:
 		if (shared.m.large_ctrl & t::dynamic_flag)
 		{
 			size_t const size = shared.m.large_size;
-		
+
 			if (auto large = shared.release_large_storage())
 			{
-				b::_acquire_storage(large->data, size + 1, large->capacity + 1);
+				vector_type::_acquire_storage(large->data, size, large->capacity);
 				(void)large.release();
 				return true;
 			}
 		}
-		
+
 		return false;
 	}
 
 	typename t::large_storage* release_large_storage()
 	{
-		vsm_assert(b::size() > t::max_small_size);
-		return t::large_storage::from_data(b::_release_storage());
+		vsm_assert(vector_type::size() > t::max_small_size);
+		return t::large_storage::from_data(vector_type::_release_storage());
 	}
 
-	friend class basic_shared_string<Char, Traits, Allocator>;
+	friend basic_shared_string<Char, Traits, Allocator>;
 };
 
 template<typename Char, typename Traits, typename Allocator>
@@ -375,10 +359,10 @@ class basic_shared_string
 	using unique_string_type = basic_unique_string<Char>;
 	using string_view_type = std::basic_string_view<Char, Traits>;
 
-	using t = vsm_detail::shared_string_base<Char, Allocator>;
+	using t = detail::_shared_string<Char, Allocator>;
 
 	typename t::storage_union m;
-	[[no_unique_address]] Allocator m_allocator;
+	vsm_no_unique_address Allocator m_allocator;
 
 public:
 	constexpr basic_shared_string()
@@ -519,7 +503,7 @@ public:
 
 	[[nodiscard]] Char const& operator[](size_t const index) const
 	{
-		vsm_assert(index < size());
+		vsm_assert(index <= size());
 		return data()[index];
 	}
 
@@ -566,14 +550,21 @@ public:
 		return string_view_type(lhs) == string_view_type(rhs);
 	}
 
+	[[nodiscard]] friend string_view_type tag_invoke(
+		decltype(normalize_key),
+		basic_shared_string const& self)
+	{
+		return string_view_type(self);
+	}
+
 
 	[[nodiscard]] static constexpr basic_shared_string borrow(string_view_type const string)
 	{
-		return basic_shared_string(string.data(), string.size(), vsm_detail::borrow_tag());
+		return basic_shared_string(string.data(), string.size(), detail::_shared_string_borrow());
 	}
 
 private:
-	explicit constexpr basic_shared_string(Char const* const data, size_t const size, vsm_detail::borrow_tag)
+	explicit constexpr basic_shared_string(Char const* const data, size_t const size, detail::_shared_string_borrow)
 	{
 		if (size <= t::max_small_size)
 		{
@@ -617,7 +608,7 @@ private:
 			memcpy(m.small_data, string, size * sizeof(Char));
 			m.small_data[size] = Char(0);
 		}
-		m.small_ctrl = t::max_small_size - size;
+		m.small_ctrl = static_cast<t::ctrl_type>(t::max_small_size - size);
 	}
 
 	constexpr void set_borrow(Char const* const string, size_t const size)
@@ -688,10 +679,8 @@ private:
 		return typename t::unique_large_storage(large, m_allocator);
 	}
 
-	friend class basic_unique_string<Char, Traits, Allocator>;
+	friend basic_unique_string<Char, Traits, Allocator>;
 };
-
-#undef vsm_detail
 
 using unique_string = basic_unique_string<char>;
 using shared_string = basic_shared_string<char>;

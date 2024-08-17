@@ -1,23 +1,25 @@
 #pragma once
 
+#include <compare>
+
 namespace vsm {
 
 template<typename Char, size_t Size>
-struct basic_static_string
+struct static_string
 {
 	static_assert(Size > 0);
 
 	using value_type = Char;
 
-	Char m_data[Size];
+	[[deprecated]] Char m_data[Size];
 
 
-	consteval basic_static_string() requires (Size == 1)
+	consteval static_string() requires (Size == 1)
+		: m_data{ static_cast<Char>(0) }
 	{
-		m_data[0] = static_cast<Char>(0);
 	}
 
-	consteval basic_static_string(Char const(&string)[Size])
+	consteval static_string(Char const(&string)[Size])
 	{
 		for (size_t i = 0; i < Size; ++i)
 		{
@@ -26,10 +28,36 @@ struct basic_static_string
 	}
 
 
-	friend auto operator<=>(basic_static_string const&, basic_static_string const&) = default;
+	[[nodiscard]] constexpr size_t size() const
+	{
+		return Size;
+	}
+
+	[[nodiscard]] constexpr bool empty() const
+	{
+		return Size == 0;
+	}
+
+	[[nodiscard]] constexpr Char const* data() const
+	{
+		return m_data;
+	}
+
+	[[nodiscard]] constexpr Char const* c_str() const
+	{
+		return m_data;
+	}
+
+	[[nodiscard]] constexpr Char const& operator[](size_t const index) const
+	{
+		return m_data[index];
+	}
+
+
+	friend auto operator<=>(static_string const&, static_string const&) = default;
 };
 
 template<typename Char, size_t Size>
-basic_static_string(Char const(&)[Size]) -> basic_static_string<Char, Size>;
+static_string(Char const(&)[Size]) -> static_string<Char, Size>;
 
 } // namespace vsm

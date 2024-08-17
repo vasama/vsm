@@ -16,8 +16,9 @@ static_assert(atomic<s>::is_always_lock_free);
 
 TEST_CASE("atomic_intrusive_ptr: single thread", "[intrusive_ptr][atomic]")
 {
-	struct shared_object : intrusive_ref_count, test::instance_counter<shared_object> {};
+	struct shared_object : intrusive_ref_count, test::counted {};
 
+	test::scoped_count instance_count;
 	{
 		shared_object* const shared = new shared_object();
 		atomic_intrusive_ptr atomic = atomic_intrusive_ptr(shared);
@@ -33,13 +34,11 @@ TEST_CASE("atomic_intrusive_ptr: single thread", "[intrusive_ptr][atomic]")
 		pointer = atomic.exchange(vsm_move(pointer));
 		REQUIRE(pointer == nullptr);
 	}
-	CHECK(test::instance_count<shared_object>() == 0);
+	CHECK(instance_count.empty());
 }
 
 
-struct alignas(64) mt_shared_object
-	: intrusive_ref_count
-	, test::instance_counter<mt_shared_object>
+struct alignas(64) mt_shared_object : intrusive_ref_count
 {
 	std::atomic_flag destroyed;
 	std::atomic_flag* failed = nullptr;

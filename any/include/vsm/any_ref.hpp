@@ -1,70 +1,227 @@
 #pragma once
 
-#include <vsm/any_interface.hpp>
+#include <vsm/concepts.hpp>
+#include <vsm/type_list.hpp>
 #include <vsm/utility.hpp>
+
+#include <bit>
 
 namespace vsm {
 namespace detail {
 
-template<typename Interface, typename Context, value_category ValueCategory>
-class any_ref_2
+template<typename Container, typename Value>
+	requires (sizeof(Container) >= sizeof(Value))
+struct bit_pack_t
 {
-	detail::any_function_ptr const* m_vptr;
-	Context* m_context;
+	Value value;
+	unsigned char padding[sizeof(Container) - sizeof(Value)];
+};
+
+template<typename Container, typename Value>
+	requires (sizeof(Container) == sizeof(Value))
+struct bit_pack_t<Container, Value>
+{
+	Value value;
+};
+
+template<typename Container, typename Value>
+	requires
+		(sizeof(Container) >= sizeof(Value)) &&
+		std::is_trivially_copyable_v<Container> &&
+		std::is_trivially_copyable_v<Value>
+constexpr Container bit_pack(Value const& value)
+{
+	return std::bit_cast<Container>(bit_pack_t<Container, Value>(value));
+}
+
+template<typename Value, typename Container>
+	requires
+		(sizeof(Container) >= sizeof(Value)) &&
+		std::is_trivially_copyable_v<Container> &&
+		std::is_trivially_copyable_v<Value>
+constexpr Value bit_unpack(Container const& container)
+{
+	return std::bit_cast<bit_pack_t<Container, Value>>(container).value;
+}
+
+
+template<typename Signature>
+struct _any_traits;
+
+template<typename R, typename... Ps>
+struct _any_traits<R(Ps...)>
+{
+	template<typename T>
+	using member_type = R(T::*)(Ps...);
+
+	template<typename F, typename T>
+	static constexpr bool requirement = requires
+	{
+		{ F::invoke(std::declval<T>(), std::declval<Ps>()...) } -> std::convertible_to<R>;
+	};
+
+	using context_type = void;
+	using function_type = R(context_type*, Ps...);
+
+	template<typename F, typename T, bool Packed>
+	static R invoke(context_type* const context, Ps... args)
+	{
+		if constexpr (Packed)
+		{
+			auto const object = bit_unpack<T>(context);
+			return F::invoke(object, vsm_move(args)...);
+		}
+		else
+		{
+			return F::invoke(*static_cast<T*>(context), vsm_move(args)...);
+		}
+	}
+};
+
+template<typename R, typename... Ps>
+struct _any_traits<R(Ps...) const>
+{
+	template<typename T>
+	using member_type = R(T::*)(Ps...) const;
+
+	template<typename F, typename T>
+	static constexpr bool requirement = requires
+	{
+		{ F::invoke(std::declval<T>(), std::declval<Ps>()...) } -> std::convertible_to<R>;
+	};
+
+	using context_type = void;
+	using function_type = R(context_type*, Ps...);
+
+	template<typename F, typename T, bool Packed>
+	static R invoke(context_type* const context, Ps... args)
+	{
+		if constexpr (Packed)
+		{
+			auto const object = bit_unpack<T>(context);
+			return F::invoke(object, vsm_move(args)...);
+		}
+		else
+		{
+			return F::invoke(*static_cast<T const*>(context), vsm_move(args)...);
+		}
+	}
+};
+
+//TODO: Value categories
+
+template<typename F>
+using _any_traits_for = _any_traits<typename F::signature_type>;
+
+using _any_function = void(struct _any_parameter);
+
+template<typename... Fs>
+struct _any_functions
+{
+	template<typename T>
+	static constexpr bool requirement = (_any_traits_for<Fs>::template requirement<Fs, T> && ...);
+
+	static constexpr bool fully_const =
+		(std::is_const_v<typename _any_traits_for<Fs>::context_type> && ...);
+
+	template<typename T, bool Packed = false>
+	static _any_function* const table[sizeof...(Fs)];
+};
+
+template<typename T, bool Packed, typename... Fs>
+inline _any_function* const _any_function_table[sizeof...(Fs)] =
+{
+	reinterpret_cast<_any_function*>(_any_traits_for<Fs>::template invoke<Fs, T, Packed>)...
+};
+
+template<typename... Fs>
+template<typename T, bool Packed>
+_any_function* const _any_functions<Fs...>::table[sizeof...(Fs)] =
+{
+	reinterpret_cast<_any_function*>(_any_traits_for<Fs>::template invoke<Fs, T, Packed>)...
+};
+
+template<typename F, typename Cvref, typename... Args>
+concept _any_invocable =
+	requires (typename _any_traits_for<F>::template member_type<remove_cvref_t<Cvref>> member)
+	{
+		(std::declval<Cvref>().*member)(std::declval<Args>()...);
+	};
+
+} // namespace detail
+
+template<typename... Functions>
+class any_ref
+{
+	using functions_type = detail::_any_functions<Functions...>;
+	using context_type = select_t<functions_type::fully_const, void const, void>;
+
+	detail::_any_function* const* m_functions;
+	context_type* m_context;
 
 public:
 	template<typename T>
-	any_ref_2(T&& object)
-		: m_vptr(detail::any_table_for<std::remove_cvref_t<T>>(Interface()))
-		, m_context(const_cast<Context*>(&object))
+	constexpr any_ref(T&& object)
+		requires
+			no_instance_of<remove_cvref_t<T>, any_ref> &&
+			functions_type::template requirement<T&&>
+		: m_functions(functions_type::template table<remove_cvref_t<T>>)
+		, m_context(std::addressof(object))
 	{
 	}
 
-	template<typename Operation>
-	friend decltype(auto) any_invoke(any_ref_2 const self, auto&&... args)
+	template<typename T>
+	constexpr any_ref(std::in_place_t, T const& object)
+		requires
+			no_instance_of<T, any_ref> &&
+			functions_type::template requirement<T const&> &&
+			(sizeof(m_context) >= sizeof(T)) && std::is_trivially_copyable_v<T>
+		: m_functions(functions_type::template table<T, /* Packed: */ true>)
+		, m_context(detail::bit_pack<context_type*>(object))
 	{
-		using signature_info = detail::any_signature<Operation>;
-		static_assert(std::is_convertible_v<Context*, typename signature_info::context_type*>);
-		return reinterpret_cast<typename signature_info::signature_type*>(m_vptr[type_list_index<Interface, Operation>])(m_context, vsm_forward(args)...);
 	}
-};
 
-template<typename Interface>
-struct any_ref_1
-{
-	using type = any_ref_2<Interface, void, value_category::value>;
-};
+#if 0
+	template<non_cvref T>
+	constexpr any_ref(std::in_place_type_t<T>)
+		requires
+			// no_instance_of<T, any_ref> &&
+			std::is_empty_v<T> &&
+			functions_type::template requirement<T>
+		: m_functions(functions_type::template table<T, /* Packed: */ true>)
+	{
+	}
+#endif
 
-template<typename Interface>
-struct any_ref_1<Interface&>
-{
-	using type = any_ref_2<Interface, void, value_category::lvalue_reference>;
-};
+	template<typename... ExtraFunctions>
+	constexpr any_ref(any_ref<Functions..., ExtraFunctions...> const& other)
+		requires (sizeof...(ExtraFunctions) > 0)
+		: m_functions(other.m_functions)
+		, m_context(other.m_context)
+	{
+	}
 
-template<typename Interface>
-struct any_ref_1<Interface&&>
-{
-	using type = any_ref_2<Interface, void, value_category::rvalue_reference>;
-};
+	template<typename F, typename... Args>
+	[[nodiscard]] constexpr auto invoke(Args&&... args) const&
+		requires detail::_any_invocable<F, any_ref&, Args...>
+	{
+		auto const function = m_functions[pack_index<F, Functions...>];
+		using function_type = typename detail::_any_traits_for<F>::function_type;
+		return reinterpret_cast<function_type*>(function)(m_context, vsm_forward(args)...);
+	}
 
-template<typename Interface>
-struct any_ref_1<Interface const>
-{
-	using type = any_ref_2<Interface, void const, value_category::const_value>;
-};
+	template<typename F, typename... Args>
+	[[nodiscard]] constexpr auto invoke(Args&&... args) const&&
+		requires detail::_any_invocable<F, any_ref&&, Args...>
+	{
+		auto const function = m_functions[pack_index<F, Functions...>];
+		using function_type = typename detail::_any_traits_for<F>::function_type;
+		return reinterpret_cast<function_type*>(function)(m_context, vsm_forward(args)...);
+	}
 
-template<typename Interface>
-struct any_ref_1<Interface const&>
-{
-	using type = any_ref_2<Interface, void const, value_category::const_lvalue_reference>;
+private:
+	template<typename...>
+	friend class any_ref;
 };
-
-template<typename Interface>
-struct any_ref_1<Intertface const&&>
-{
-	using type = any_ref_2<Interface, void const, value_category::const_rvalue_reference>;
-};
-
-} // namespace detail
 
 } // namespace vsm

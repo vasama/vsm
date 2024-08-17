@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.24)
 
 project(vsm_tag_ptr)
 
@@ -11,6 +11,9 @@ vsm_add_library(vsm::tag_ptr
 
 	HEADER_DEPENDENCIES
 		vsm::core
+
+	VISUALIZERS
+		visualizers/vsm/tag_ptr.natvis
 
 	TEST_SOURCES
 		source/vsm/test/tag_ptr.cpp
