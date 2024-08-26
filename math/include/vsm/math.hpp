@@ -31,7 +31,8 @@ struct arithmetic_category<T>
 };
 
 template<typename L, typename R>
-inline constexpr bool is_same_arithmetic_category = arithmetic_category<L>::value == arithmetic_category<R>::value;
+inline constexpr bool is_same_arithmetic_category =
+	arithmetic_category<L>::value == arithmetic_category<R>::value;
 
 } // namespace detail
 

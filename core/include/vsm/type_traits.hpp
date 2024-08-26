@@ -237,7 +237,8 @@ struct monostate {};
 /* type comparison */
 
 template<typename... Ts>
-inline constexpr bool all_same_v = detail::_type_traits::all_same<(sizeof...(Ts) > 1)>::template X<Ts...>;
+inline constexpr bool all_same_v =
+	detail::_type_traits::all_same<(sizeof...(Ts) > 1)>::template value<Ts...>;
 
 template<typename... Ts>
 using all_same = std::bool_constant<all_same_v<Ts...>>;
@@ -308,5 +309,12 @@ using signed_integer_of_size = typename detail::_type_traits::integer_of_size<Si
 
 template<size_t Size>
 using unsigned_integer_of_size = typename detail::_type_traits::integer_of_size<Size>::unsigned_type;
+
+
+template<typename T, size_t Budget = 1>
+using input_t = select_t<
+	std::is_trivially_copyable_v<T> && sizeof(T) <= Budget * sizeof(void*),
+	T const,
+	T const&>;
 
 } // namespace vsm

@@ -2,6 +2,7 @@
 
 namespace vsm {
 
+//TODO: Get rid of this
 template<typename T>
 struct insert_result
 {

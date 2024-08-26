@@ -2,6 +2,7 @@
 
 #define vsm_pp_counter __COUNTER__
 
+#define vsm_pp_nothing
 #define vsm_pp_empty(...)
 
 #define vsm_pp_expand(...) __VA_ARGS__

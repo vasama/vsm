@@ -1,9 +1,9 @@
 #pragma once
 
 #include <vsm/assert.h>
+#include <vsm/concepts.hpp>
 #include <vsm/result.hpp>
 
-#include <concepts>
 #include <limits>
 #include <utility>
 
@@ -79,7 +79,7 @@ struct loses_precision_t {};
 
 
 template<std::integral To, std::unsigned_integral From>
-To saturate(From const from)
+constexpr To saturate(From const from)
 {
 	if constexpr (std::numeric_limits<To>::max() >= std::numeric_limits<From>::max())
 	{
@@ -94,7 +94,7 @@ To saturate(From const from)
 }
 
 template<std::signed_integral To, std::signed_integral From>
-To saturate(From const from)
+constexpr To saturate(From const from)
 {
 	if constexpr (
 		std::numeric_limits<To>::min() <= std::numeric_limits<From>::min() &&
@@ -113,7 +113,7 @@ To saturate(From const from)
 }
 
 template<std::unsigned_integral To, std::signed_integral From>
-To saturate(From const from)
+constexpr To saturate(From const from)
 {
 	if constexpr (std::numeric_limits<To>::max() >= std::numeric_limits<From>::max())
 	{
@@ -137,13 +137,13 @@ class saturating
 	From m_from;
 
 public:
-	explicit saturating(From const from)
+	explicit constexpr saturating(From const from)
 		: m_from(from)
 	{
 	}
 
 	template<std::integral To>
-	operator To() const
+	constexpr operator To() const
 	{
 		return saturate<To>(m_from);
 	}
@@ -151,7 +151,7 @@ public:
 
 
 template<std::integral To, std::integral From>
-To truncate(From const from)
+constexpr To truncate(From const from)
 {
 	if constexpr (detail::_may_lose_precision<To, From>())
 	{
@@ -166,13 +166,13 @@ class truncating
 	From m_from;
 
 public:
-	explicit truncating(From const from)
+	explicit constexpr truncating(From const from)
 		: m_from(from)
 	{
 	}
 
 	template<std::integral To>
-	operator To() const
+	constexpr operator To() const
 	{
 		return truncate<To>(m_from);
 	}
@@ -180,7 +180,7 @@ public:
 
 
 template<std::integral To, std::integral From, typename Error = loses_precision_t>
-vsm::result<To, Error> try_truncate(From const from, Error const& error = {})
+constexpr vsm::result<To, Error> try_truncate(From const from, Error const& error = {})
 {
 	if constexpr (detail::_may_lose_precision<To, From>())
 	{
@@ -190,6 +190,13 @@ vsm::result<To, Error> try_truncate(From const from, Error const& error = {})
 		}
 	}
 	return static_cast<To>(from);
+}
+
+
+template<vsm::enumeration Enum>
+constexpr Enum to_enum(std::underlying_type_t<Enum> const underlying)
+{
+	return static_cast<Enum>(underlying);
 }
 
 } // namespace vsm

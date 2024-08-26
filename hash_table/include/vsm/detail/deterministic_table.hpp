@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vsm/detail/hash_table_layout.hpp>
 #include <vsm/allocator.hpp>
 #include <vsm/assert.h>
 #include <vsm/insert_result.hpp>
@@ -10,42 +11,6 @@
 #include <bit>
 
 namespace vsm::detail::deterministic_table {
-
-//TODO: Deduplicate these
-template<typename T, size_t Budget = 1>
-using const_t = select_t<
-	std::is_trivially_copyable_v<T> && sizeof(T) <= Budget * sizeof(uintptr_t),
-	T const,
-	T const&>;
-
-template<typename Base, typename P>
-struct basic_policies_layout : Base
-{
-	vsm_no_unique_address P policies;
-};
-
-template<typename Base, typename A>
-struct basic_allocator_layout : Base
-{
-	vsm_no_unique_address A allocator;
-};
-
-template<typename Base, typename T, size_t C, size_t ExtraSize = 0>
-struct basic_storage_layout : Base
-{
-	using Base::Base;
-
-	std::byte mutable storage alignas(T)[C * sizeof(T) + ExtraSize];
-};
-
-template<typename Base, typename T, size_t ExtraSize>
-struct basic_storage_layout<Base, T, 0, ExtraSize> : Base
-{
-	using Base::Base;
-
-	static constexpr std::byte* storage = nullptr;
-};
-
 
 template<typename I>
 using truncated_hash = select_t<(sizeof(I) >= sizeof(size_t)), size_t, I>;
@@ -81,10 +46,10 @@ struct _table
 };
 
 template<typename I, typename P>
-using _table_policies = basic_policies_layout<_table<I>, P>;
+using _table_policies = hash_table_policies_layout<_table<I>, P>;
 
 template<typename I, typename P, typename A>
-using _table_allocator = basic_allocator_layout<_table_policies<I, P>, A>;
+using _table_allocator = hash_table_allocator_layout<_table_policies<I, P>, A>;
 
 template<typename I, typename P, typename A, size_t C>
 using _table_storage = _table_allocator<I, P, A>;
@@ -151,9 +116,8 @@ void destroy(_table_allocator<I, P, A>& table, size_t const element_size)
 		size_t const elements_size = elements_capacity * element_size;
 		size_t const allocation_size = buckets_size + elements_size;
 
-		table.allocator.deallocate(allocation(
-			reinterpret_cast<std::byte*>(table.buckets) - elements_size,
-			allocation_size));
+		void* const base = reinterpret_cast<std::byte*>(table.buckets) - elements_size;
+		table.allocator.deallocate(allocation(base, allocation_size));
 	}
 }
 
@@ -170,7 +134,7 @@ find_result<I> find_for_insert(
 	_table_policies<I, P> const& table,
 	size_t const element_size,
 	size_t const hash,
-	const_t<UserK> key)
+	input_t<UserK> key)
 {
 	P const& p = table.policies;
 
@@ -210,7 +174,7 @@ template<typename K, typename UserK, size_t ElementSize, typename I, typename P>
 void* find(
 	_table_policies<I, P> const& table,
 	size_t const hash,
-	const_t<UserK> key)
+	input_t<UserK> key)
 {
 	return find_for_insert<K, UserK>(table, ElementSize, hash, key).slot;
 }
@@ -323,7 +287,7 @@ insert_result2<void*> insert(
 	_table_allocator<I, P, A>& table,
 	size_t const element_size,
 	size_t const hash,
-	const_t<UserK> key)
+	input_t<UserK> key)
 {
 	auto r = find_for_insert<K, UserK>(table, element_size, hash, key);
 
@@ -357,6 +321,28 @@ insert_result2<void*> insert(
 	return { get_element(table.buckets, element_size, element_index), true };
 }
 
+template<typename I>
+void move_construct(_table<I>& dst, _table<I>& src)
+{
+	dst = src;
+	construct(src);
+}
+
+template<typename DestroyT, size_t ElementSize, typename I, typename P, typename A>
+void move_assign(
+	_table_allocator<I, P, A>& dst,
+	_table_allocator<I, P, A>& src,
+	size_t const element_size)
+{
+	if (&dst == &src)
+	{
+		return;
+	}
+
+	destroy<DestroyT>(dst, element_size);
+	dst = src;
+	construct(src);
+}
 
 template<typename T>
 class iterator
@@ -400,7 +386,13 @@ public:
 	friend auto operator<=>(iterator const&, iterator const&) = default;
 };
 
-template<typename T, typename Key, typename I, typename Policies, typename Allocator, size_t Capacity>
+template<
+	typename T,
+	typename Key,
+	typename I,
+	typename Policies,
+	typename Allocator,
+	size_t Capacity>
 class table
 {
 #	pragma push_macro("destroy_type")
@@ -433,8 +425,23 @@ public:
 		construct(m);
 	}
 
-	table(table&& other);
-	table& operator=(table&& other)&;
+	explicit table(any_cvref_of<Allocator> auto&& allocator)
+		: m(vsm_forward(allocator))
+	{
+		construct(m);
+	}
+
+	table(table&& other) noexcept
+		: m(vsm_as_const(other.m.allocator), vsm_as_const(other.m.policies))
+	{
+		move_construct(m, other.m);
+	}
+
+	table& operator=(table&& other) & noexcept
+	{
+		move_assign<destroy_type>(m, other.m, sizeof(T));
+		return *this;
+	}
 
 	~table()
 	{

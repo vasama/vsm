@@ -19,26 +19,26 @@ namespace vsm::detail::swiss_table {
 void memswap(void* lhs, void* rhs, size_t size);
 
 template<typename T, size_t Budget = 1>
-using const_t = select_t<std::is_trivially_copyable_v<T> && sizeof(T) <= Budget * sizeof(uintptr_t), T const, T const&>;
+using input_t = select_t<std::is_trivially_copyable_v<T> && sizeof(T) <= Budget * sizeof(uintptr_t), T const, T const&>;
 
 template<typename T>
 using mutable_t = select_t<std::is_trivially_copyable_v<T> && std::is_empty_v<T>, T, T&>;
 
 
 template<typename Base, typename Policies>
-struct basic_policies_layout : Base
+struct hash_table_policies_layout : Base
 {
 	[[no_unique_address]] Policies policies;
 };
 
 template<typename Base, typename Allocator>
-struct basic_allocator_layout : Base
+struct hash_table_allocator_layout : Base
 {
 	[[no_unique_address]] Allocator allocator;
 };
 
 template<typename Base, typename T, size_t Capacity, size_t ExtraSize = 0>
-struct basic_storage_layout : Base
+struct hash_table_storage_layout : Base
 {
 	using Base::Base;
 
@@ -46,7 +46,7 @@ struct basic_storage_layout : Base
 };
 
 template<typename Base, typename T, size_t ExtraSize>
-struct basic_storage_layout<Base, T, 0, ExtraSize> : Base
+struct hash_table_storage_layout<Base, T, 0, ExtraSize> : Base
 {
 	using Base::Base;
 
@@ -133,13 +133,13 @@ struct core
 };
 
 template<typename Policies>
-using policies_layout = basic_policies_layout<core, Policies>;
+using policies_layout = hash_table_policies_layout<core, Policies>;
 
 template<typename Policies, typename Allocator>
-using allocator_layout = basic_allocator_layout<policies_layout<Policies>, Allocator>;
+using allocator_layout = hash_table_allocator_layout<policies_layout<Policies>, Allocator>;
 
 template<typename T, typename Policies, typename Allocator, size_t Capacity>
-using storage_layout = basic_storage_layout<allocator_layout<Policies, Allocator>, T, Capacity, Capacity + group_size + 1>;
+using storage_layout = hash_table_storage_layout<allocator_layout<Policies, Allocator>, T, Capacity, Capacity + group_size + 1>;
 
 
 typedef bool resize_callback(core& table, size_t element_size, size_t hash);
@@ -421,7 +421,7 @@ bool resize_callback_1(core& table, size_t const element_size, size_t const hash
 }
 
 template<typename Key, typename UserKey, typename Policies>
-size_t find_impl(policies_layout<Policies> const& table, size_t const element_size, size_t const hash, const_t<UserKey> key)
+size_t find_impl(policies_layout<Policies> const& table, size_t const element_size, size_t const hash, input_t<UserKey> key)
 {
 	Policies const& p = table.policies;
 
@@ -457,7 +457,7 @@ size_t find_impl(policies_layout<Policies> const& table, size_t const element_si
 }
 
 template<typename Key, typename UserKey, size_t element_size, typename Policies>
-void* find(policies_layout<Policies> const& table, size_t const hash, const_t<UserKey> key)
+void* find(policies_layout<Policies> const& table, size_t const hash, input_t<UserKey> key)
 {
 	size_t const slot_index = find_impl<Key, UserKey>(table, element_size, hash, key);
 
@@ -470,7 +470,7 @@ void* find(policies_layout<Policies> const& table, size_t const hash, const_t<Us
 }
 
 template<typename Key, typename UserKey, size_t element_size, typename Policies>
-insert_result<void> insert(policies_layout<Policies>& table, size_t const hash, const_t<UserKey> key, resize_callback* const callback)
+insert_result<void> insert(policies_layout<Policies>& table, size_t const hash, input_t<UserKey> key, resize_callback* const callback)
 {
 	size_t const slot_index = find_impl<Key, UserKey>(table, element_size, hash, key);
 
@@ -483,7 +483,7 @@ insert_result<void> insert(policies_layout<Policies>& table, size_t const hash, 
 }
 
 template<typename Key, typename UserKey, size_t element_size, typename Policies>
-void* remove(policies_layout<Policies>& table, size_t const hash, const_t<UserKey> key)
+void* remove(policies_layout<Policies>& table, size_t const hash, input_t<UserKey> key)
 {
 	size_t const slot_index = find_impl<Key, UserKey>(table, element_size, hash, key);
 

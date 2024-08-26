@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vsm/detail/hash_table_layout.hpp>
 #include <vsm/insert_result.hpp>
 #include <vsm/key_selector.hpp>
 #include <vsm/memory.hpp>
@@ -16,58 +17,6 @@
 
 namespace vsm::detail::swiss_table {
 #include <vsm/detail/swiss_table.ipp>
-
-
-template<typename T, size_t Budget = 1>
-using const_t = select_t<
-	std::is_trivially_copyable_v<T> && sizeof(T) <= Budget * sizeof(uintptr_t),
-	T const,
-	T const&>;
-
-
-template<typename Base, typename P>
-struct basic_policies_layout : Base
-{
-	vsm_no_unique_address P policies;
-
-	basic_policies_layout() = default;
-
-	explicit basic_policies_layout(any_cvref_of<P> auto&& policies)
-		: policies(vsm_forward(policies))
-	{
-	}
-};
-
-template<typename Base, typename A>
-struct basic_allocator_layout : Base
-{
-	vsm_no_unique_address A allocator;
-
-	basic_allocator_layout() = default;
-
-	explicit basic_allocator_layout(any_cvref_of<A> auto&& allocator, auto&&... args)
-		: allocator(vsm_forward(allocator))
-		, Base(vsm_forward(args)...)
-	{
-	}
-};
-
-template<typename Base, typename T, size_t C, size_t ExtraSize = 0>
-struct basic_storage_layout : Base
-{
-	using Base::Base;
-
-	std::byte mutable storage alignas(T)[C * sizeof(T) + ExtraSize];
-};
-
-template<typename Base, typename T, size_t ExtraSize>
-struct basic_storage_layout<Base, T, 0, ExtraSize> : Base
-{
-	using Base::Base;
-
-	static constexpr std::byte* storage = nullptr;
-};
-
 
 enum ctrl : int8_t
 {
@@ -148,13 +97,13 @@ struct _table
 };
 
 template<typename P>
-using _table_policies = basic_policies_layout<_table, P>;
+using _table_policies = hash_table_policies_layout<_table, P>;
 
 template<typename P, typename A>
-using _table_allocator = basic_allocator_layout<_table_policies<P>, A>;
+using _table_allocator = hash_table_allocator_layout<_table_policies<P>, A>;
 
 template<typename T, typename P, typename A, size_t C>
-using _table_storage = basic_storage_layout<_table_allocator<P, A>, T, C, C + group_size + 1>;
+using _table_storage = hash_table_storage_layout<_table_allocator<P, A>, T, C, C + group_size + 1>;
 
 
 typedef bool resize_callback_type(_table& table, size_t element_size, size_t hash);
@@ -468,7 +417,7 @@ size_t find2(
 	_table_policies<P> const& table,
 	size_t const element_size,
 	size_t const hash,
-	const_t<UserK> key)
+	input_t<UserK> key)
 {
 	P const& p = table.policies;
 
@@ -504,7 +453,7 @@ size_t find2(
 }
 
 template<typename K, typename UserK, size_t element_size, typename P>
-void* find(_table_policies<P> const& table, size_t const hash, const_t<UserK> key)
+void* find(_table_policies<P> const& table, size_t const hash, input_t<UserK> key)
 {
 	size_t const slot_index = find2<K, UserK>(table, element_size, hash, key);
 
@@ -520,7 +469,7 @@ template<typename K, typename UserK, size_t element_size, typename P>
 insert_result2<void*> insert(
 	_table_policies<P>& table,
 	size_t const hash,
-	const_t<UserK> key,
+	input_t<UserK> key,
 	resize_callback_type* const callback)
 {
 	size_t const slot_index = find2<K, UserK>(table, element_size, hash, key);
@@ -534,7 +483,7 @@ insert_result2<void*> insert(
 }
 
 template<typename K, typename UserK, size_t element_size, typename P>
-void* erase(_table_policies<P>& table, size_t const hash, const_t<UserK> key)
+void* erase(_table_policies<P>& table, size_t const hash, input_t<UserK> key)
 {
 	size_t const slot_index = find2<K, UserK>(table, element_size, hash, key);
 
@@ -767,8 +716,8 @@ public:
 		construct(m);
 	}
 
-	table(table&& other);
-	table& operator=(table&& other) &;
+	table(table&& other) noexcept;
+	table& operator=(table&& other) & noexcept;
 
 	~table()
 	{

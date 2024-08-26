@@ -112,8 +112,10 @@ vsm_always_inline bool _vector_requires_dynamic(_vector_capacity<Local> const lo
 	{
 		return size > local.capacity;
 	}
-
-	return true;
+	else
+	{
+		return true;
+	}
 }
 
 template<bool Local>
