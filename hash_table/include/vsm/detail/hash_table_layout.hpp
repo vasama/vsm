@@ -1,5 +1,11 @@
 #pragma once
 
+#include <vsm/concepts.hpp>
+#include <vsm/standard.hpp>
+#include <vsm/utility.hpp>
+
+#include <cstddef>
+
 namespace vsm::detail {
 
 template<typename Base, typename P>

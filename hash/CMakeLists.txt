@@ -12,6 +12,7 @@ vsm_add_library(
 
 	SOURCES
 		source/vsm/impl/default_hash.cpp
+		source/vsm/impl/hash.cpp
 
 	HEADER_DEPENDENCIES
 		vsm::core

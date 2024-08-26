@@ -259,7 +259,7 @@ TEST_CASE("wb_tree mass test", "[intrusive][wb_tree]")
 	{
 		int const value = distribution(rng);
 		bool const inserted = std_tree.insert(value).second;
-		REQUIRE(tree_type.insert(e(value)).inserted == inserted);
+		REQUIRE(tree.insert(e(value)).inserted == inserted);
 	}
 
 	REQUIRE(std::ranges::equal(std_tree, values(tree)));
