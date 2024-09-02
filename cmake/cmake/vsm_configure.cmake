@@ -1,3 +1,5 @@
+include_guard(GLOBAL)
+
 set(vsm_detail_configure_opt_1
 	FOLDER
 )
@@ -59,35 +61,72 @@ macro(vsm_detail_configure_parse type opt_0 opt_1 opt_n)
 	endif()
 endmacro()
 
-function(vsm_detail_add_file_set target public file_set type base_dir files)
-	target_sources(
-		"${target}"
-		"${public}"
-		FILE_SET "${file_set}"
-		TYPE "${type}"
-		BASE_DIRS "${base_dir}"
-		FILES "${files}"
-	)
+function(vsm_detail_add_directory_test)
+	get_property(directory_test_set DIRECTORY PROPERTY "vsm_detail_directory_test" SET)
 
-	get_target_property(
-		"install"
-		"${target}"
-		"vsm_detail_install_${file_set}"
-	)
+	if(NOT ${directory_test_set})
+		cmake_path(
+			RELATIVE_PATH CMAKE_CURRENT_SOURCE_DIR
+			BASE_DIRECTORY PROJECT_SOURCE_DIR
+			OUTPUT_VARIABLE relative_current_source_dir)
 
-	if("${install}" STREQUAL "install-NOTFOUND")
-		set_property(
-			TARGET "${target}"
-			PROPERTY "vsm_detail_install_${file_set}" ""
+		add_test(
+			NAME "${relative_current_source_dir} configuration"
+			COMMAND
+				cmake
+					-D "DIRTEST_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
+					-D "DIRTEST_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}"
+					-P "${vsm_detail_cmake_root}/detail/directory_test.cmake"
 		)
-		install(
-			TARGETS "${target}"
-			FILE_SET "${file_set}"
-		)
+
+		file(REMOVE_RECURSE "${CMAKE_CURRENT_BINARY_DIR}/vsm_detail_directory_test")
+
+		set_property(DIRECTORY PROPERTY "vsm_detail_directory_test" ON)
 	endif()
 endfunction()
 
+function(vsm_detail_add_directory_files file_set files)
+	list(JOIN files "\n" lines)
+	file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/vsm_detail_directory_test/${file_set}.txt" "${lines}\n")
+endfunction()
+
+function(vsm_detail_add_file_set target public file_set type base_dir files)
+	if(VSM_DO_CONFIGURE)
+		target_sources(
+			"${target}"
+			"${public}"
+			FILE_SET "${file_set}"
+			TYPE "${type}"
+			BASE_DIRS "${base_dir}"
+			FILES "${files}"
+		)
+
+		get_target_property(
+			"install"
+			"${target}"
+			"vsm_detail_install_${file_set}"
+		)
+
+		if("${install}" STREQUAL "install-NOTFOUND")
+			set_property(
+				TARGET "${target}"
+				PROPERTY "vsm_detail_install_${file_set}" ""
+			)
+			install(
+				TARGETS "${target}"
+				FILE_SET "${file_set}"
+				DESTINATION "${base_dir}"
+			)
+		endif()
+	endif()
+
+	string(TOLOWER "${file_set}" directory_test_file_set)
+	vsm_detail_add_directory_files("${directory_test_file_set}" "${files}")
+endfunction()
+
 function(vsm_detail_configure target public_type)
+	vsm_detail_add_directory_test()
+
 	if(DEFINED VSM_OPT_HEADERS)
 		vsm_detail_add_file_set(
 			"${target}"
@@ -97,26 +136,23 @@ function(vsm_detail_configure target public_type)
 			"include"
 			"${VSM_OPT_HEADERS}"
 		)
-
-#		target_sources(${target}
-#			${public_type}
-#			FILE_SET HEADERS
-#			BASE_DIRS include
-#			FILES ${VSM_OPT_HEADERS}
-#		)
-#
-#		get_target_property(install_headers ${target} vsm_detail_install_headers)
-#		if("${install_headers}" STREQUAL "install_headers-NOTFOUND")
-#			set_property(TARGET ${target} PROPERTY vsm_detail_install_headers "")
-#			install(TARGETS ${target} FILE_SET HEADERS)
-#		endif()
 	endif()
 
 	if(DEFINED VSM_OPT_SOURCES)
-		target_sources(${target} PRIVATE ${VSM_OPT_SOURCES})
+		if(VSM_DO_CONFIGURE)
+			target_sources(${target} PRIVATE ${VSM_OPT_SOURCES})
+		endif()
+
+		vsm_detail_add_directory_files("sources" "${VSM_OPT_SOURCES}")
 	endif()
 
 	if(DEFINED VSM_OPT_VISUALIZERS)
+		get_target_property(
+			"install"
+			"${target}"
+			"vsm_detail_install_${file_set}"
+		)
+
 		vsm_detail_add_file_set(
 			"${target}"
 			"${public_type}"
@@ -125,83 +161,83 @@ function(vsm_detail_configure target public_type)
 			"visualizers"
 			"${VSM_OPT_VISUALIZERS}"
 		)
+
+		if(VSM_DO_CONFIGURE AND "${install}" STREQUAL "install-NOTFOUND")
+			install(
+				FILES "${vsm_detail_cmake_root}/detail/configure_visualizers.cmake"
+				DESTINATION "cmake_module")
+		endif()
 	endif()
 
-	if(DEFINED VSM_OPT_HEADER_DEPENDENCIES)
+	if(VSM_DO_CONFIGURE AND DEFINED VSM_OPT_HEADER_DEPENDENCIES)
 		target_link_libraries(${target} ${public_type} ${VSM_OPT_HEADER_DEPENDENCIES})
 	endif()
 
-	if(DEFINED VSM_OPT_SOURCE_DEPENDENCIES)
+	if(VSM_DO_CONFIGURE AND DEFINED VSM_OPT_SOURCE_DEPENDENCIES)
 		target_link_libraries(${target} PRIVATE ${VSM_OPT_SOURCE_DEPENDENCIES})
 	endif()
 
-	if(DEFINED VSM_OPT_HEADER_DEFINITIONS)
+	if(VSM_DO_CONFIGURE AND DEFINED VSM_OPT_HEADER_DEFINITIONS)
 		target_compile_definitions(${target} ${public_type} ${VSM_OPT_HEADER_DEFINITIONS})
 	endif()
 
-	if(DEFINED VSM_OPT_SOURCE_DEFINITIONS)
+	if(VSM_DO_CONFIGURE AND DEFINED VSM_OPT_SOURCE_DEFINITIONS)
 		target_compile_definitions(${target} PRIVATE ${VSM_OPT_SOURCE_DEFINITIONS})
 	endif()
 
-	if(DEFINED VSM_OPT_TEST_SOURCES)
-		get_target_property(test_target ${target} vsm_detail_test_target)
+	if(VSM_DO_CONFIGURE)
+		if(DEFINED VSM_OPT_TEST_SOURCES)
+			get_target_property(test_target ${target} vsm_detail_test_target)
 
-		if(${test_target} STREQUAL "test_target-NOTFOUND")
-			set(test_target ${target}_test)
-			set_property(TARGET ${target} PROPERTY vsm_detail_test_target ${test_target})
+			if(${test_target} STREQUAL "test_target-NOTFOUND")
+				set(test_target ${target}_test)
+				set_property(TARGET ${target} PROPERTY vsm_detail_test_target ${test_target})
 
-			if(DEFINED vsm_aggregate_test_target)
-				add_library(${test_target} OBJECT)
-				target_link_libraries(${vsm_aggregate_test_target} PRIVATE ${test_target})
-				set_target_properties(${test_target} PROPERTIES FOLDER "TestLibraries")
-			else()
-				add_executable(${test_target})
-				add_test(${target} ${test_target})
-				set_target_properties(${test_target} PROPERTIES FOLDER "Tests")
+				if(DEFINED vsm_aggregate_test_target)
+					add_library(${test_target} OBJECT)
+					target_link_libraries(${vsm_aggregate_test_target} PRIVATE ${test_target})
+					set_target_properties(${test_target} PROPERTIES FOLDER "TestComponents")
+				else()
+					add_executable(${test_target})
+					add_test(${target} ${test_target})
+					set_target_properties(${test_target} PROPERTIES FOLDER "Tests")
+				endif()
+
+				target_include_directories(${test_target} PRIVATE source)
+
+				target_link_libraries(
+					${test_target}
+
+					PRIVATE
+						${target}
+						vsm_detail_cxx_options
+						Catch2::Catch2WithMain
+				)
 			endif()
 
-			target_include_directories(${test_target} PRIVATE source)
+			target_sources(${test_target} PRIVATE ${VSM_OPT_TEST_SOURCES})
 
-			target_link_libraries(
-				${test_target}
-
-				PRIVATE
-					${target}
-					vsm_cmake_options
-					Catch2::Catch2WithMain
-			)
-		endif()
-
-		target_sources(${test_target} PRIVATE ${VSM_OPT_TEST_SOURCES})
-
-		if(DEFINED VSM_OPT_TEST_DEPENDENCIES)
-			target_link_libraries(${test_target} PRIVATE ${VSM_OPT_TEST_DEPENDENCIES})
-		endif()
-	else()
-		if(DEFINED VSM_OPT_TEST_DEPENDENCIES)
-			message(SEND_ERROR "Cannot specify test dependencies for target ${target} without test sources.")
+			if(DEFINED VSM_OPT_TEST_DEPENDENCIES)
+				target_link_libraries(${test_target} PRIVATE ${VSM_OPT_TEST_DEPENDENCIES})
+			endif()
+		else()
+			if(DEFINED VSM_OPT_TEST_DEPENDENCIES)
+				message(SEND_ERROR "Cannot specify test dependencies for target ${target} without test sources.")
+			endif()
 		endif()
 	endif()
 
-	if(DEFINED VSM_OPT_PROPERTIES)
+	if(VSM_DO_CONFIGURE AND DEFINED VSM_OPT_PROPERTIES)
 		set_target_properties(
 			${target}
 			PROPERTIES ${VSM_OPT_PROPERTIES}
 		)
 	endif()
 
-	if(DEFINED VSM_OPT_FOLDER)
+	if(VSM_DO_CONFIGURE AND DEFINED VSM_OPT_FOLDER)
 		set_target_properties(
 			${target}
 			PROPERTIES FOLDER "${VSM_OPT_FOLDER}"
-		)
-	endif()
-
-	if(DEFINED VSM_OPT_VISUALIZERS)
-		target_sources(
-			${target}
-			${public_type}
-			${VSM_OPT_VISUALIZERS}
 		)
 	endif()
 endfunction()
@@ -218,8 +254,9 @@ function(vsm_add_executable name)
 	endif()
 
 	target_include_directories(${target} PRIVATE source)
-	target_link_libraries(${target} PRIVATE vsm_cmake_options)
+	target_link_libraries(${target} PRIVATE vsm_detail_cxx_options)
 
+	set(VSM_DO_CONFIGURE ON)
 	vsm_detail_configure(${target} PUBLIC)
 endfunction()
 
@@ -255,9 +292,10 @@ function(vsm_add_library name)
 
 	if(${private_type} STREQUAL PRIVATE)
 		target_include_directories(${target} PRIVATE source)
-		target_link_libraries(${target} PRIVATE vsm_cmake_options)
+		target_link_libraries(${target} PRIVATE vsm_detail_cxx_options)
 	endif()
 
+	set(VSM_DO_CONFIGURE ON)
 	vsm_detail_configure(${target} ${public_type})
 endfunction()
 
@@ -272,44 +310,21 @@ function(vsm_configure name)
 		${ARGN}
 	)
 
-	#cmake_parse_arguments(
-	#	VSM_OPT
-	#	"PLATFORM;${vsm_detail_configure_opt_1}"
-	#	"${vsm_detail_configure_lib_opt_n}"
-	#	${ARGN}
-	#)
-	#set(one_value_keywords
-	#	PLATFORM
-	#)
-	#set(multi_value_keywords
-	#	HEADERS
-	#	SOURCES
-	#	HEADER_DEPENDENCIES
-	#	SOURCE_DEPENDENCIES
-	#	HEADER_DEFINITIONS
-	#	SOURCE_DEFINITIONS
-	#	TEST_SOURCES
-	#	TEST_DEPENDENCIES
-	#	FOLDER
-	#	VISUALIZERS
-	#)
-	#cmake_parse_arguments(VSM_OPT "" "${one_value_keywords}" "${multi_value_keywords}" ${ARGN})
-
-	if(DEFINED VSM_OPT_PLATFORM)
-		if(NOT "x${CMAKE_SYSTEM_NAME}" STREQUAL "x${VSM_OPT_PLATFORM}")
-			return()
-		endif()
-	endif()
-
 	string(REPLACE "::" "_" target ${name})
 
 	set(public_type PUBLIC)
-	set(private_type PRIVATE)
 
 	get_target_property(target_type ${target} TYPE)
 	if (${target_type} STREQUAL INTERFACE_LIBRARY)
 		set(public_type INTERFACE)
-		set(private_type INTERFACE)
+	endif()
+
+	set(VSM_DO_CONFIGURE ON)
+
+	if(DEFINED VSM_OPT_PLATFORM)
+		if(NOT "x${CMAKE_SYSTEM_NAME}" STREQUAL "x${VSM_OPT_PLATFORM}")
+			set(VSM_DO_CONFIGURE OFF)
+		endif()
 	endif()
 
 	vsm_detail_configure(${target} ${public_type})

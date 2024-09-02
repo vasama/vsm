@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.24)
 
 project(vsm_work_stealing_queue)
 
+find_package(vsm-cmake REQUIRED)
+
 vsm_find_sibling(vsm-allocator)
 vsm_find_sibling(vsm-core)
 vsm_find_sibling(vsm-intrusive_ptr)

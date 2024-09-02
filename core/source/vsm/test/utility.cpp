@@ -4,10 +4,8 @@
 
 namespace {
 
-int prvalue()
-{
-	return 0;
-}
+template<typename = void>
+int prvalue();
 
 int lvalue = 0;
 int const const_lvalue = 0;
@@ -47,7 +45,7 @@ static_assert(std::is_same_v<decltype(vsm_move(const_rvalue_ref)), int const&&>)
 
 vsm_dependent_context
 {
-	static_assert(not requires { vsm_as_const(vsm_dep_v(prvalue())); });
+	static_assert(not requires { vsm_as_const(vsm_dependent_v(prvalue())); });
 };
 
 static_assert(std::is_same_v<decltype(vsm_as_const(lvalue)), int const&>);

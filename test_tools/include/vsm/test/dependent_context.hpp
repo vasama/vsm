@@ -19,8 +19,10 @@ struct dependent_context
 	};
 
 	template<>
-	struct select<1> : std::true_type
+	struct select<1>
 	{
+		static constexpr bool value = true;
+
 		template<typename T>
 		using type = T;
 
@@ -40,15 +42,19 @@ struct dependent_context
 	using value = select<Bool && std::is_reference_v<T>>;
 };
 
+} // namespace vsm::detail
+
 #define vsm_dependent_context \
 	static ::vsm::detail::dependent_context const \
 	vsm_pp_cat(vsm_detail_dependent_context, vsm_pp_counter) = \
 		[]<bool vsm_detail_dependent_context = true>() -> auto
 
-#define vsm_dep_t(...) \
+#define vsm_dependent_t(...) \
 	::vsm::detail::dependent_context::type<vsm_detail_dependent_context, __VA_ARGS__>
 
-#define vsm_dep_v(...) \
-	(::vsm::detail::dependent_context::value<vsm_detail_dependent_context, decltype((__VA_ARGS__))>::identity(__VA_ARGS__))
-
-} // namespace vsm::detail
+#define vsm_dependent_v(...) ( \
+		::vsm::detail::dependent_context::value< \
+			vsm_detail_dependent_context, \
+			decltype((__VA_ARGS__))\
+		>::identity(__VA_ARGS__) \
+	)

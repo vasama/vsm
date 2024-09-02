@@ -20,7 +20,7 @@ struct s
 
 vsm_dependent_context // pointer
 {
-	using s = vsm_dep_t(::s);
+	using s = vsm_dependent_t(::s);
 
 	static_assert(requires (p<s*>& x)
 	{
@@ -58,7 +58,7 @@ vsm_dependent_context // pointer
 
 vsm_dependent_context // unique_ptr
 {
-	using s = vsm_dep_t(::s);
+	using s = vsm_dependent_t(::s);
 
 	using uptr = std::unique_ptr<s>;
 	
@@ -110,7 +110,7 @@ vsm_dependent_context // unique_ptr
 
 vsm_dependent_context // span
 {
-	using s = vsm_dep_t(::s);
+	using s = vsm_dependent_t(::s);
 
 	using span = std::span<s>;
 

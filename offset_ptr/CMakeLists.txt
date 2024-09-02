@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.24)
 
 project(vsm_offset_ptr)
 
+find_package(vsm-cmake REQUIRED)
+
 vsm_add_library(
 	vsm::offset_ptr
 

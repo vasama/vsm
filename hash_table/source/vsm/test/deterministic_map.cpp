@@ -22,14 +22,14 @@ using map_types = std::tuple<
 	map_template<default_allocator, 15>
 >;
 
-using std_map_type = std::unordered_map<int, int>;
+using std_map_type = std::unordered_map<size_t, size_t>;
 
 TEMPLATE_LIST_TEST_CASE(
 	"deterministic_map default constructor",
 	"[hash_table][deterministic_table][deterministic_map]",
 	map_types)
 {
-	using key_type = int;
+	using key_type = size_t;
 	using map_type = typename TestType::template type<key_type, key_type>;
 
 	map_type map;
@@ -43,20 +43,20 @@ TEMPLATE_LIST_TEST_CASE(
 	map_types)
 {
 	using key_type = uint8_t;
-	using map_type = typename TestType::template type<key_type, int>;
+	using map_type = typename TestType::template type<key_type, size_t>;
 
-	int const count = GENERATE(0, 10, 16, 20, 32);
+	size_t const count = GENERATE(as<size_t>(), 0, 10, 16, 20, 32);
 
 	map_type vsm_map;
 	std_map_type std_map;
 
 	auto& rng = Catch::sharedRng();
-	for (int i = 0; i < count; ++i)
+	for (size_t i = 0; i < count; ++i)
 	{
 	retry_with_new_key:
 		key_type const k = static_cast<key_type>(rng());
 
-		if (!std_map.try_emplace(k, static_cast<int>(i)).second)
+		if (!std_map.try_emplace(k, i).second)
 		{
 			goto retry_with_new_key;
 		}
@@ -65,7 +65,7 @@ TEMPLATE_LIST_TEST_CASE(
 	}
 	REQUIRE(vsm_map.size() == count);
 
-	for (int i = 0, max = std::numeric_limits<key_type>::max(); i <= max; ++i)
+	for (size_t i = 0, max = std::numeric_limits<key_type>::max(); i <= max; ++i)
 	{
 		key_type const k = static_cast<key_type>(i);
 	
@@ -83,7 +83,7 @@ TEMPLATE_LIST_TEST_CASE(
 	}
 
 	REQUIRE(std::ranges::equal(
-		std::views::iota(0, count),
+		std::views::iota(static_cast<size_t>(0), count),
 		vsm_map | std::views::transform([](auto const& x) { return x.value; })));
 }
 

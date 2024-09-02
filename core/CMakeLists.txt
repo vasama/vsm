@@ -2,23 +2,33 @@ cmake_minimum_required(VERSION 3.24)
 
 project(vsm_core)
 
+find_package(vsm-cmake REQUIRED)
+
 vsm_add_library(vsm::core
 	HEADERS
 		include/vsm/array.hpp
+		include/vsm/arrow.hpp
 		include/vsm/assert.h
 		include/vsm/atomic.hpp
 		include/vsm/concepts.hpp
 		include/vsm/defer.hpp
 		include/vsm/exceptions.hpp
+		include/vsm/flags.hpp
 		include/vsm/float.hpp
+		include/vsm/hash.hpp
 		include/vsm/int128.hpp
 		include/vsm/lazy.hpp
 		include/vsm/lift.hpp
+		include/vsm/memory.hpp
 		include/vsm/platform.h
 		include/vsm/preprocessor.h
 		include/vsm/relocate.hpp
 		include/vsm/standard.hpp
+		include/vsm/standard/bit.hpp
+		include/vsm/standard/stdexcept.hpp
+		include/vsm/standard/string.hpp
 		include/vsm/tag_invoke.hpp
+		include/vsm/type_list.hpp
 		include/vsm/type_traits.hpp
 		include/vsm/utility.hpp
 		include/vsm/weak.h
@@ -41,6 +51,7 @@ vsm_add_library(vsm::core
 		include/vsm/detail/platform/gcc.h
 		include/vsm/detail/platform/gnu.h
 		include/vsm/detail/platform/linux.h
+		include/vsm/detail/platform/microsoft.h
 		include/vsm/detail/platform/msvc.h
 		include/vsm/detail/platform/os.h
 		include/vsm/detail/platform/win32.h
@@ -72,6 +83,7 @@ if(DEFINED vsm_aggregate_test_target)
 
 		TEST_SOURCES
 			source/vsm/test/atomic.cpp
+			source/vsm/test/flags.cpp
 			source/vsm/test/float.cpp
 			source/vsm/test/relocate.cpp
 			source/vsm/test/utility.cpp

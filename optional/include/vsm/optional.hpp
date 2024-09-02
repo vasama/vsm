@@ -295,7 +295,7 @@ public:
 	[[nodiscard]] constexpr T value_or(this U&& self, std::convertible_to<T> auto&& default_value)
 	{
 		return base::has_value()
-			? static_cast<copy_cvref_t<U>&&>(base::m_value)
+			? static_cast<copy_cvref_t<U, T>&&>(base::m_value)
 			: T(vsm_forward(default_value));
 	}
 

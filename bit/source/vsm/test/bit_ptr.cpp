@@ -2,6 +2,8 @@
 
 #include <catch2/catch_all.hpp>
 
+#include <random>
+
 using namespace vsm;
 
 TEST_CASE("bit_ptr unsigned arithmetic", "[bit][bit_ptr]")
@@ -54,7 +56,7 @@ TEST_CASE("bit_ptr iteration", "[bit][bit_ptr]")
 {
 	uint32_t word = 0;
 
-	std::uniform_int_distribution<uint32_t> d(0, UINT32_MAX);
+	Catch::uniform_integer_distribution<uint32_t> d(0, UINT32_MAX);
 	uint32_t const random_word = d(Catch::sharedRng());
 
 	auto const beg = bit_ptr(&word, 0);

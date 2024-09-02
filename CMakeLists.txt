@@ -4,23 +4,25 @@ project(vsm)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-# Add the vsm-cmake module include directory to the module path.
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/cmake")
+# Add the bootstrap directory to the module path for find_package:
+#list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/bootstrap")
 
-include(vsm)
+find_package(
+	vsm-cmake REQUIRED
+	NO_DEFAULT_PATH
+	PATHS "${CMAKE_CURRENT_LIST_DIR}/cmake/bootstrap")
 
 vsm_add_aggregate_test(vsm_test)
 
 add_subdirectory(algorithm)
 add_subdirectory(allocator)
+add_subdirectory(allocator_core)
 add_subdirectory(any)
 add_subdirectory(bit)
 add_subdirectory(casting)
 add_subdirectory(core)
 add_subdirectory(container_core)
-#add_subdirectory(error_code)
 add_subdirectory(execution)
-add_subdirectory(flags)
 add_subdirectory(function)
 add_subdirectory(hash)
 add_subdirectory(hash_table)
@@ -36,7 +38,7 @@ add_subdirectory(pascal_string)
 add_subdirectory(prop_cv)
 add_subdirectory(result)
 add_subdirectory(shared_string)
-add_subdirectory(shared_vector)
+#add_subdirectory(shared_vector)
 add_subdirectory(static_string)
 add_subdirectory(striding)
 add_subdirectory(tag_ptr)

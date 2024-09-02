@@ -225,7 +225,7 @@ TEST_CASE("avl_tree mass test", "[intrusive][avl_tree]")
 	elements e;
 
 	auto&& rng = Catch::sharedRng();
-	std::uniform_int_distribution distribution = {};
+	Catch::uniform_integer_distribution distribution(0, std::numeric_limits<int>::max());
 
 	tree_type tree;
 	std::set<int> std_tree;

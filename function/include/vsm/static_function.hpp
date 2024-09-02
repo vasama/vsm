@@ -26,7 +26,8 @@ public:
 	{
 		using type = std::decay_t<F>;
 		static_assert(alignof(type) <= alignof(std::max_align_t), "not implemented");
-		this->construct<type, typename base_type::template view_type<type>>(vsm_forward(f));
+		this->template construct<type, typename base_type::template view_type<type>>(
+			vsm_forward(f));
 	}
 
 	template<typename T, typename... Args>
@@ -38,7 +39,8 @@ public:
 	{
 		using type = std::decay_t<T>;
 		static_assert(alignof(type) <= alignof(std::max_align_t), "not implemented");
-		this->construct<type, typename base_type::template view_type<type>>(vsm_forward(args)...);
+		this->template construct<type, typename base_type::template view_type<type>>(
+			vsm_forward(args)...);
 	}
 
 	using base_type::operator bool;

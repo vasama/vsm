@@ -41,6 +41,14 @@ struct _shared_vector
 		{
 		}
 
+		storage(storage const&) = delete;
+		storage& operator=(storage const&) = delete;
+
+		~storage() = default;
+		~storage() requires (!std::is_trivially_destructible_v<T>)
+		{
+		}
+
 
 		static storage* from_data(T* const data)
 		{

@@ -34,7 +34,7 @@ static std::pair<hook**, hook**> find_last(hook** const root, size_t const size)
 
 	if (size > 1)
 	{
-		for (size_t i = high_bit_index - std::countl_zero(size); i-- > 0;)
+		for (size_t i = high_bit_index - static_cast<size_t>(std::countl_zero(size)); i-- > 0;)
 		{
 			parent = (*child)->children;
 			child = parent + (size >> i & 1);
@@ -117,8 +117,8 @@ static void percolate_to_root(
 	size_t size = 0;
 	if (hook const* node = self.m_root)
 	{
-		int8_t min_height = std::numeric_limits<int8_t>::max();
-		int8_t max_height = 0;
+		uint8_t min_height = std::numeric_limits<uint8_t>::max();
+		uint8_t max_height = 0;
 
 		struct frame
 		{
@@ -129,9 +129,9 @@ static void percolate_to_root(
 		frame stack[sizeof(size_t) * CHAR_BIT];
 		static_assert(std::size(stack) <= 1 << 6);
 
-		int8_t height = 0;
+		uint8_t height = 0;
 		stack[0].visit = 0;
-		int8_t r_height = 0;
+		uint8_t r_height = 0;
 
 		while (height >= 0)
 		{
@@ -140,7 +140,7 @@ static void percolate_to_root(
 
 			for (uint8_t visit; (visit = frame.visit++) < 2;)
 			{
-				frame.l_height = std::exchange(r_height, static_cast<int8_t>(0));
+				frame.l_height = std::exchange(r_height, static_cast<uint8_t>(0));
 
 				if (const hook* const child = node->children[visit])
 				{
@@ -155,7 +155,7 @@ static void percolate_to_root(
 				}
 			}
 
-			int8_t const l_height = frame.l_height;
+			uint8_t const l_height = frame.l_height;
 			if (l_height < r_height)
 			{
 				return false;
@@ -167,7 +167,7 @@ static void percolate_to_root(
 				max_height = std::max(max_height, height);
 			}
 
-			r_height = std::max(l_height, r_height) + 1;
+			r_height = static_cast<uint8_t>(std::max(l_height, r_height) + 1);
 
 			node = reinterpret_cast<const hook*>(node->parent);
 			--height;

@@ -17,7 +17,8 @@ struct _function_call<Capacity, R(Ps...){left(cv + ref)}{left(noex)}>
 	template<typename U>
 	static constexpr bool is_invocable ={trait};
 
-	R operator()(std::convertible_to<Ps> auto&&... args){left(cv + ref)}{left(noex)}
+	template<std::convertible_to<Ps>... Args>
+	R operator()(Args&&... args){left(cv + ref)}{left(noex)}
 	{{
 		return this->invoke(vsm_forward(args)...);
 	}}

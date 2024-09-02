@@ -9,7 +9,7 @@ using namespace vsm;
 
 namespace {
 
-void check_element(auto const& map, int const k, int const v)
+void check_element(auto const& map, size_t const k, size_t const v)
 {
 	auto const e = map.find(k);
 	REQUIRE(e != nullptr);
@@ -29,11 +29,11 @@ using map_types = std::tuple<
 	map_template<default_allocator, 15>
 >;
 
-using std_map_type = std::unordered_map<int, int>;
+using std_map_type = std::unordered_map<size_t, size_t>;
 
 TEMPLATE_LIST_TEST_CASE("swiss_map default constructor", "[hash_table][swiss_table][swiss_map]", map_types)
 {
-	using key_type = int;
+	using key_type = size_t;
 	using map_type = typename TestType::template type<key_type, key_type>;
 
 	map_type map;
@@ -44,20 +44,20 @@ TEMPLATE_LIST_TEST_CASE("swiss_map default constructor", "[hash_table][swiss_tab
 TEMPLATE_LIST_TEST_CASE("swiss_map insert & find", "[hash_table][swiss_table][swiss_map]", map_types)
 {
 	using key_type = uint8_t;
-	using map_type = typename TestType::template type<key_type, int>;
+	using map_type = typename TestType::template type<key_type, size_t>;
 
-	int const count = GENERATE(0, 10, 16, 20, 32);
+	size_t const count = GENERATE(as<size_t>(), 0, 10, 16, 20, 32);
 
 	map_type vsm_map;
 	std_map_type std_map;
 
 	auto& rng = Catch::sharedRng();
-	for (int i = 0; i < count; ++i)
+	for (size_t i = 0; i < count; ++i)
 	{
 	retry_with_new_key:
 		key_type const k = static_cast<key_type>(rng());
 
-		if (!std_map.try_emplace(k, static_cast<int>(i)).second)
+		if (!std_map.try_emplace(k, i).second)
 		{
 			goto retry_with_new_key;
 		}
@@ -66,7 +66,7 @@ TEMPLATE_LIST_TEST_CASE("swiss_map insert & find", "[hash_table][swiss_table][sw
 	}
 	REQUIRE(vsm_map.size() == count);
 
-	for (int i = 0, max = std::numeric_limits<key_type>::max(); i <= max; ++i)
+	for (size_t i = 0, max = std::numeric_limits<key_type>::max(); i <= max; ++i)
 	{
 		key_type const k = static_cast<key_type>(i);
 	
@@ -86,8 +86,19 @@ TEMPLATE_LIST_TEST_CASE("swiss_map insert & find", "[hash_table][swiss_table][sw
 
 TEST_CASE("swiss_map string_view", "[hash_table][swiss_table][swiss_map]")
 {
-	swiss_map<std::string_view, int> m;
-	CHECK(m.insert("blah", 42).inserted);
+	swiss_map<std::string_view, size_t> m;
+	//TODO: DEBUG
+	{
+		using table = detail::swiss_table::table<
+			key_value_pair<std::string_view, size_t>,
+			std::string_view,
+			hash_table_policies<default_key_selector, default_hasher, std::equal_to<>>,
+			default_allocator,
+			0>;
+
+		static_assert(detail::hash_table_key<char const(&)[5], table>);
+	}
+	CHECK(m.insert("blah", 42u).inserted);
 }
 
 } // namespace

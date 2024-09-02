@@ -2,23 +2,14 @@ cmake_minimum_required(VERSION 3.24)
 
 project(vsm_linear)
 
-add_library(vsm_linear INTERFACE)
+find_package(vsm-cmake REQUIRED)
 
-target_sources(vsm_linear
-	INTERFACE
-	FILE_SET HEADERS
-	BASE_DIRS include
-	FILES
+vsm_find_sibling(vsm-core)
+vsm_find_sibling(vsm-test_tools)
+
+vsm_add_library(
+	vsm::linear
+
+	HEADERS
 		include/vsm/linear.hpp
 )
-
-target_include_directories(vsm_linear
-	INTERFACE
-		include
-)
-
-install(TARGETS vsm_linear FILE_SET HEADERS)
-
-if(NOT PROJECT_IS_TOP_LEVEL)
-	add_library(vsm::linear ALIAS vsm_linear)
-endif()

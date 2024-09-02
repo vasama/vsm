@@ -122,7 +122,7 @@ TEST_CASE("heap mass test", "[intrusive][heap]")
 	elements e;
 
 	auto&& rng = Catch::sharedRng();
-	auto distribution = std::uniform_int_distribution();
+	Catch::uniform_integer_distribution distribution(0, std::numeric_limits<int>::max());
 
 	for (size_t i = 0; i < 10000; ++i)
 	{

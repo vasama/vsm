@@ -4,6 +4,7 @@ from os.path import join
 
 class package(ConanFile):
 	no_copy_source = True
+	package_type = "build-scripts"
 
 	name = "vsm_cmake"
 	version = "0.1"
@@ -23,4 +24,6 @@ class package(ConanFile):
 		self.cpp_info.libdirs = []
 		self.cpp_info.builddirs.append("cmake")
 		self.cpp_info.set_property("cmake_file_name", "vsm-cmake")
+		#TODO: Should not define a CMake target at all.
 		self.cpp_info.set_property("cmake_target_name", "vsm::cmake")
+		self.cpp_info.set_property("cmake_build_modules", ["cmake/vsm.cmake"])

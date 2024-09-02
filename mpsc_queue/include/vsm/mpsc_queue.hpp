@@ -21,31 +21,31 @@ class mpsc_queue_consumer<T*, Allocator>
 
 		atomic<queue_block*> m_next;
 		detail::_mpsc_queue m_queue;
-		
+
 		size_t const m_size;
 		T* m_data[];
-		
-		
+
+
 		explicit queue_block(size_t const size)
 			: m_size(size)
 		{
 			std::uninitialized_default_construct_n(m_data, size);
 		}
-		
+
 		queue_block(queue_block const&) = delete;
 		queue_block& operator=(queue_block const&) = delete;
-		
+
 		~queue_block()
 		{
 			queue_block_ptr::acquire(m_next.load(std::memory_order_relaxed));
 		}
-		
-		
+
+
 		queue_block* get_next() const
 		{
 			return m_next.load(std::memory_order_acquire);
 		}
-		
+
 		queue_block* set_or_get_next(queue_block_ptr&& next)
 		{
 			queue_block* desired = nullptr;
@@ -82,7 +82,7 @@ public:
 		: m_bottom(make_block(round_up_to_power_of_two(initial_capacity)))
 	{
 	}
-	
+
 	mpsc_queue_consumer(mpsc_queue_consumer&&) = default;
 	mpsc_queue_consumer& operator=(mpsc_queue_consumer&&) = default;
 
@@ -108,14 +108,14 @@ private:
 		while (true)
 		{
 			queue_block* const next = m_bottom->get_next();
-			
+
 			if (next == nullptr)
 			{
 				return nullptr;
 			}
-			
+
 			m_bottom = next;
-			
+
 			if (T* const ptr = next->pop_one())
 			{
 				return ptr;
@@ -162,16 +162,16 @@ private:
 	{
 		vsm_assert(!data.empty());
 		vsm_assert(false);
-		
+
 		size_t const min_size = round_up_to_power_of_two(data.size());
 
 		for (queue_block* top = m_top.get();;)
 		{
 			size_t const new_size = std::max(min_size, top->m_size * 2);
-			
+
 			queue_block_ptr new_top = consumer_type::make_block(new_size, data);
 			top = top->get_or_set_next(vsm_move(new_top));
-			
+
 			if (top != nullptr)
 			{
 			}

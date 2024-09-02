@@ -3,6 +3,7 @@
 #include <vsm/concepts.hpp>
 #include <vsm/utility.hpp>
 
+#include <compare>
 #include <memory>
 #include <span>
 
@@ -46,7 +47,9 @@ struct _prop_cv_traits
 {
 	using get_type = typename std::pointer_traits<P>::element_type*;
 	using get_const_type = typename std::pointer_traits<P>::element_type const*;
+
 	using difference_type = typename std::pointer_traits<P>::difference_type;
+	using size_type = difference_type;
 
 	static get_type get(P const& ptr)
 	{
@@ -64,7 +67,9 @@ struct _prop_cv_traits<P>
 {
 	using get_type = P;
 	using get_const_type = _prop_cv_rebind_const<P>;
+
 	using difference_type = typename std::pointer_traits<P>::difference_type;
+	using size_type = difference_type;
 
 	static_assert(std::is_nothrow_copy_constructible_v<get_type>);
 	static_assert(std::is_nothrow_copy_constructible_v<get_const_type>);
@@ -89,6 +94,8 @@ struct prop_cv_traits<std::span<T>>
 {
 	using get_type = std::span<T>;
 	using get_const_type = std::span<T const>;
+
+	using size_type = typename std::span<T>::size_type;
 	using difference_type = typename std::span<T>::difference_type;
 
 	static get_type get(std::span<T> const& span)
@@ -114,6 +121,8 @@ class prop_cv
 
 	using get_type = typename traits::get_type;
 	using get_const_type = typename traits::get_const_type;
+
+	using size_type = typename traits::size_type;
 	using difference_type = typename traits::difference_type;
 
 	Underlying m_value;
@@ -157,78 +166,91 @@ public:
 	prop_cv& operator=(prop_cv const& other) & = delete;
 
 
-	constexpr Underlying& underlying() &
+	[[nodiscard]] constexpr Underlying& underlying() &
 	{
 		return m_value;
 	}
 
-	constexpr Underlying&& underlying() &&
+	[[nodiscard]] constexpr Underlying&& underlying() &&
 	{
 		return vsm_move(m_value);
 	}
 
 
-	constexpr get_type get()
+	[[nodiscard]] constexpr get_type get()
 	{
 		return traits::get(vsm_as_const(m_value));
 	}
 
-	constexpr get_const_type get() const
+	[[nodiscard]] constexpr get_const_type get() const
 	{
 		return traits::get_const(vsm_as_const(m_value));
 	}
 
 
-	constexpr decltype(auto) operator*()
+	[[nodiscard]] constexpr decltype(auto) operator*()
 		requires requires (underlying_type const& p) { *p; }
 	{
 		return *get();
 	}
 
-	constexpr decltype(auto) operator*() const
+	[[nodiscard]] constexpr decltype(auto) operator*() const
 		requires requires (underlying_type const& p) { *p; }
 	{
 		return *get();
 	}
 
-	constexpr decltype(auto) operator->()
+	[[nodiscard]] constexpr decltype(auto) operator->()
 		requires detail::_prop_cv_to_address<underlying_type const&>
 	{
 		return get();
 	}
 
-	constexpr decltype(auto) operator->() const
+	[[nodiscard]] constexpr decltype(auto) operator->() const
 		requires detail::_prop_cv_to_address<underlying_type const&>
 	{
 		return get();
 	}
 
-	constexpr decltype(auto) operator[](difference_type const& index)
+	[[nodiscard]] constexpr decltype(auto) operator[](size_type const index)
 		requires requires (underlying_type const& p) { p[index]; }
 	{
 		return get()[index];
 	}
 
-	constexpr decltype(auto) operator[](difference_type const& index) const
+	[[nodiscard]] constexpr decltype(auto) operator[](size_type const index) const
 		requires requires (underlying_type const& p) { p[index]; }
 	{
 		return get()[index];
 	}
 
 
-	friend auto operator<=>(prop_cv const&, prop_cv const&) = default;
+#if __INTELLISENSE__
+// https://developercommunity.visualstudio.com/t/rejects-valid-EDG-defaulted-constexpr/10735255
+	[[nodiscard]] friend constexpr auto operator<=>(prop_cv const&, prop_cv const&);
+#else
+	[[nodiscard]] friend auto operator<=>(prop_cv const&, prop_cv const&) = default;
+#endif
 
-	friend constexpr bool operator==(prop_cv const& p, auto const& other)
-		requires requires { p.m_value == other; }
+	template<not_same_as<Underlying> Rhs>
+	[[nodiscard]] friend constexpr auto operator<=>(prop_cv const& lhs, prop_cv<Rhs> const& rhs)
+		requires requires { lhs.m_value == rhs.m_value; }
 	{
-		return p.m_value == other;
+		return lhs.m_value == rhs.m_value;
 	}
 
-	friend constexpr bool operator<=>(prop_cv const& p, auto const& other)
-		requires requires { p.m_value <=> other; }
+	template<not_same_as<prop_cv> Rhs>
+	[[nodiscard]] friend constexpr auto operator<=>(prop_cv const& lhs, Rhs const& rhs)
+		requires requires { lhs.m_value == rhs; }
 	{
-		return p.m_value <=> other;
+		return lhs.m_value == rhs;
 	}
+
+#undef vsm_detail_prop_cv_default
+
+private:
+	template<typename>
+	friend class prop_cv;
 };
 
 } // namespace vsm

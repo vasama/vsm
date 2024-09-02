@@ -2,7 +2,11 @@ cmake_minimum_required(VERSION 3.24)
 
 project(vsm_inspect)
 
-vsm_add_library(vsm::inspect
+find_package(vsm-cmake REQUIRED)
+
+vsm_add_library(
+	vsm::inspect
+
 	HEADERS
 		include/vsm/inspect.hpp
 

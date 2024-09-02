@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.24)
 
 project(vsm_hash_table)
 
+find_package(vsm-cmake REQUIRED)
+
 vsm_find_sibling(vsm-allocator)
 vsm_find_sibling(vsm-container_core)
 vsm_find_sibling(vsm-core)

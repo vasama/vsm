@@ -2,10 +2,14 @@ cmake_minimum_required(VERSION 3.24)
 
 project(vsm_result)
 
+find_package(vsm-cmake REQUIRED)
+
 vsm_find_sibling(vsm-core)
 vsm_find_sibling(vsm-test_tools)
 
-vsm_add_library(vsm::result
+vsm_add_library(
+	vsm::result
+
 	HEADERS
 		include/vsm/result.hpp
 

@@ -2,9 +2,13 @@ cmake_minimum_required(VERSION 3.24)
 
 project(vsm_optional)
 
+find_package(vsm-cmake REQUIRED)
+
 vsm_find_sibling(vsm-core)
 
-vsm_add_library(vsm::optional
+vsm_add_library(
+	vsm::optional
+
 	HEADERS
 		include/vsm/optional.hpp
 

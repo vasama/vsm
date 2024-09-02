@@ -15,13 +15,20 @@ using namespace vsm::test;
 
 namespace {
 
+[[maybe_unused]]
+static void* offset_ptr(void* const ptr, size_t const offset)
+{
+	return static_cast<unsigned char*>(ptr) + offset;
+}
+
+[[maybe_unused]]
 static void* offset_ptr(void* const ptr, ptrdiff_t const offset)
 {
 	return static_cast<unsigned char*>(ptr) + offset;
 }
 
 
-static ptrdiff_t const page_size = static_cast<ptrdiff_t>(virtual_page_size());
+static size_t const page_size = virtual_page_size();
 
 struct allocation_info
 {
@@ -30,6 +37,11 @@ struct allocation_info
 	bool reversed;
 	bool maximized;
 	size_t user_size;
+
+#if __INTELLISENSE__
+	// https://developercommunity.visualstudio.com/t/EDG-rejects-parenthesized-aggregate-init/10732572
+	allocation_info(auto...);
+#endif
 };
 
 struct allocation_scope_info
@@ -80,9 +92,7 @@ vsm::allocation detail::allocate(size_t const user_size)
 	size_t const page_count = (user_size + page_size - 1) / page_size;
 
 	void* const address = virtual_allocate((page_count + 2) * page_size);
-	void* const commit_address = offset_ptr(
-		address,
-		static_cast<ptrdiff_t>(page_size));
+	void* const commit_address = offset_ptr(address, page_size);
 
 	size_t const commit_size = page_count * page_size;
 	virtual_commit(commit_address, commit_size);
@@ -91,13 +101,8 @@ vsm::allocation detail::allocate(size_t const user_size)
 	size_t const user_offset = scope->reversed * canary_size;
 	size_t const canary_offset = !scope->reversed * user_size;
 
-	void* const user_address = offset_ptr(
-		commit_address,
-		static_cast<ptrdiff_t>(user_offset));
-
-	void* const canary_address = offset_ptr(
-		commit_address,
-		static_cast<ptrdiff_t>(canary_offset));
+	void* const user_address = offset_ptr(commit_address, user_offset);
+	void* const canary_address = offset_ptr(commit_address, canary_offset);
 
 	vsm_printf("%p %08x ACQ\n", user_address, static_cast<unsigned>(user_size));
 

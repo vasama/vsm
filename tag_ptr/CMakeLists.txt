@@ -2,10 +2,14 @@ cmake_minimum_required(VERSION 3.24)
 
 project(vsm_tag_ptr)
 
+find_package(vsm-cmake REQUIRED)
+
 vsm_find_sibling(vsm-core)
 vsm_find_sibling(vsm-test_tools)
 
-vsm_add_library(vsm::tag_ptr
+vsm_add_library(
+	vsm::tag_ptr
+
 	HEADERS
 		include/vsm/tag_ptr.hpp
 

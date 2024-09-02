@@ -28,4 +28,3 @@ TEST_CASE("remove_unstable", "[algorithm]")
 }
 
 } // namespace
-

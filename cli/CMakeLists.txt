@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.24)
 
 project(vsm_cli)
 
+find_package(vsm-cmake REQUIRED)
+
 vsm_add_library(
 	vsm::cli
 

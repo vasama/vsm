@@ -12,7 +12,9 @@ struct struct_type
 {
 	int x;
 
-	int function(this struct_type const& self, int const y)
+	//TODO: Convert this back to explicit this function. It's static right now only as a workaround
+	//      for this Clang bug: https://github.com/llvm/llvm-project/issues/106660
+	static int function(struct_type const& self, int const y)
 	{
 		return self.x + y;
 	}
@@ -26,8 +28,6 @@ TEST_CASE("function_view borrows callable object", "[function_view]")
 	{
 		return x * y;
 	};
-
-	detail::function_view_impl<0, 0, int, int> ff = callable;
 
 	view_type const f = callable;
 

@@ -220,13 +220,13 @@ void _vector_move_construct(
 		return;
 	}
 
-	size_t const size = src_mid - src_beg;
+	size_t const size = static_cast<size_t>(src_mid - src_beg);
 
 	if (_vector_dynamic<SrcLocal>(src, src_beg))
 	{
 		std::byte* const src_end = src.end;
 
-		if (_vector_requires_dynamic(local, src_end - src_beg))
+		if (_vector_requires_dynamic(local, static_cast<size_t>(src_end - src_beg)))
 		{
 			self.beg = src_beg;
 			self.mid = src_mid;
@@ -657,8 +657,8 @@ void _vector_shrink(_vector_allocator<A>& self, _vector_capacity<Local> const lo
 	}
 
 	std::byte* const beg = self.beg;
-	size_t const capacity = end - beg;
-	size_t const new_capacity = mid - beg;
+	size_t const capacity = static_cast<size_t>(end - beg);
+	size_t const new_capacity = static_cast<size_t>(mid - beg);
 
 	std::byte* new_beg;
 	if constexpr (Local)
@@ -1020,7 +1020,8 @@ public:
 
 	[[nodiscard]] vsm_always_inline size_t size() const
 	{
-		return reinterpret_cast<T const*>(m.mid) - reinterpret_cast<T const*>(m.beg);
+		return static_cast<size_t>(
+			reinterpret_cast<T const*>(m.mid) - reinterpret_cast<T const*>(m.beg));
 	}
 
 	[[nodiscard]] vsm_always_inline size_t max_size() const
@@ -1037,7 +1038,8 @@ public:
 
 	[[nodiscard]] vsm_always_inline size_t capacity() const
 	{
-		return reinterpret_cast<T const*>(m.end) - reinterpret_cast<T const*>(m.beg);
+		return static_cast<size_t>(
+			reinterpret_cast<T const*>(m.end) - reinterpret_cast<T const*>(m.beg));
 	}
 
 	vsm_always_inline void shrink_to_fit()
@@ -1750,13 +1752,11 @@ public:
 		m.end = beg + capacity * sizeof(T);
 	}
 
-	template<typename T, typename Allocator, size_t Capacity>
 	friend vsm_always_inline bool operator==(small_vector const& lhs, small_vector const& rhs)
 	{
 		return equal<T>(lhs.m, rhs.m);
 	}
 
-	template<typename T, typename Allocator, size_t Capacity>
 	friend vsm_always_inline auto operator<=>(small_vector const& lhs, small_vector const& rhs)
 	{
 		return compare<T>(lhs.m, rhs.m);

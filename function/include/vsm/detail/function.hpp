@@ -52,7 +52,7 @@ inline void _function_destroy_trivial(void*)
 
 //TODO: Deal with this warning
 vsm_msvc_warning(push)
-vsm_msvc_warning(disable: 4268)
+//vsm_msvc_warning(disable: 4268)
 
 template<bool N, typename R, typename... Ps>
 struct _function_table
@@ -60,15 +60,10 @@ struct _function_table
 	R(*invoke)(void* object, Ps... args) noexcept(N);
 	void(*relocate)(void* src, void* dst);
 	void(*destroy)(void* object);
-
-	template<typename T>
-	static _function_table const instance;
 };
 
-template<bool N, typename R, typename... Ps>
-template<typename T>
-_function_table<N, R, Ps...> const
-_function_table<N, R, Ps...>::instance =
+template<typename T, bool N, typename R, typename... Ps>
+inline constexpr _function_table<N, R, Ps...> _function_table_v =
 {
 	_function_invoke<T, N, R, Ps...>,
 
@@ -153,7 +148,7 @@ struct _function_base
 	template<typename T, typename Q, typename... Args>
 	void construct(Args&&... args)
 	{
-		m_table = &table_type::template instance<Q>;
+		m_table = &_function_table_v<Q, N, R, Ps...>;
 		::new (m_storage.storage) T(vsm_forward(args)...);
 	}
 
@@ -162,7 +157,8 @@ struct _function_base
 		return m_storage != nullptr;
 	}
 
-	R invoke(std::convertible_to<Ps> auto&&... args) const noexcept(N)
+	template<std::convertible_to<Ps>... Args>
+	R invoke(Args&&... args) const noexcept(N)
 	{
 		vsm_assert(m_table != nullptr);
 		return m_table->invoke(
@@ -190,7 +186,8 @@ struct _function_call<Capacity, R(Ps...)>
 		std::is_invocable_r_v<R, U, Ps...> &&
 		std::is_invocable_r_v<R, U&, Ps...>;
 
-	R operator()(std::convertible_to<Ps> auto&&... args)
+	template<std::convertible_to<Ps>... Args>
+	R operator()(Args&&... args)
 	{
 		return this->invoke(vsm_forward(args)...);
 	}
@@ -210,7 +207,8 @@ struct _function_call<Capacity, R(Ps...) &>
 	static constexpr bool is_invocable =
 		std::is_invocable_r_v<R, U&, Ps...>;
 
-	R operator()(std::convertible_to<Ps> auto&&... args) &
+	template<std::convertible_to<Ps>... Args>
+	R operator()(Args&&... args) &
 	{
 		return this->invoke(vsm_forward(args)...);
 	}
@@ -230,7 +228,8 @@ struct _function_call<Capacity, R(Ps...) &&>
 	static constexpr bool is_invocable =
 		std::is_invocable_r_v<R, U, Ps...>;
 
-	R operator()(std::convertible_to<Ps> auto&&... args) &&
+	template<std::convertible_to<Ps>... Args>
+	R operator()(Args&&... args) &&
 	{
 		return this->invoke(vsm_forward(args)...);
 	}
@@ -251,7 +250,8 @@ struct _function_call<Capacity, R(Ps...) const>
 		std::is_invocable_r_v<R, U const, Ps...> &&
 		std::is_invocable_r_v<R, U const&, Ps...>;
 
-	R operator()(std::convertible_to<Ps> auto&&... args) const
+	template<std::convertible_to<Ps>... Args>
+	R operator()(Args&&... args) const
 	{
 		return this->invoke(vsm_forward(args)...);
 	}
@@ -271,7 +271,8 @@ struct _function_call<Capacity, R(Ps...) const&>
 	static constexpr bool is_invocable =
 		std::is_invocable_r_v<R, U const&, Ps...>;
 
-	R operator()(std::convertible_to<Ps> auto&&... args) const&
+	template<std::convertible_to<Ps>... Args>
+	R operator()(Args&&... args) const&
 	{
 		return this->invoke(vsm_forward(args)...);
 	}
@@ -291,7 +292,8 @@ struct _function_call<Capacity, R(Ps...) const&&>
 	static constexpr bool is_invocable =
 		std::is_invocable_r_v<R, U const, Ps...>;
 
-	R operator()(std::convertible_to<Ps> auto&&... args) const&&
+	template<std::convertible_to<Ps>... Args>
+	R operator()(Args&&... args) const&&
 	{
 		return this->invoke(vsm_forward(args)...);
 	}
@@ -312,7 +314,8 @@ struct _function_call<Capacity, R(Ps...) noexcept>
 		std::is_nothrow_invocable_r_v<R, U, Ps...> &&
 		std::is_nothrow_invocable_r_v<R, U&, Ps...>;
 
-	R operator()(std::convertible_to<Ps> auto&&... args) noexcept
+	template<std::convertible_to<Ps>... Args>
+	R operator()(Args&&... args) noexcept
 	{
 		return this->invoke(vsm_forward(args)...);
 	}
@@ -332,7 +335,8 @@ struct _function_call<Capacity, R(Ps...) & noexcept>
 	static constexpr bool is_invocable =
 		std::is_nothrow_invocable_r_v<R, U&, Ps...>;
 
-	R operator()(std::convertible_to<Ps> auto&&... args) & noexcept
+	template<std::convertible_to<Ps>... Args>
+	R operator()(Args&&... args) & noexcept
 	{
 		return this->invoke(vsm_forward(args)...);
 	}
@@ -352,7 +356,8 @@ struct _function_call<Capacity, R(Ps...) && noexcept>
 	static constexpr bool is_invocable =
 		std::is_nothrow_invocable_r_v<R, U, Ps...>;
 
-	R operator()(std::convertible_to<Ps> auto&&... args) && noexcept
+	template<std::convertible_to<Ps>... Args>
+	R operator()(Args&&... args) && noexcept
 	{
 		return this->invoke(vsm_forward(args)...);
 	}
@@ -373,7 +378,8 @@ struct _function_call<Capacity, R(Ps...) const noexcept>
 		std::is_nothrow_invocable_r_v<R, U const, Ps...> &&
 		std::is_nothrow_invocable_r_v<R, U const&, Ps...>;
 
-	R operator()(std::convertible_to<Ps> auto&&... args) const noexcept
+	template<std::convertible_to<Ps>... Args>
+	R operator()(Args&&... args) const noexcept
 	{
 		return this->invoke(vsm_forward(args)...);
 	}
@@ -393,7 +399,8 @@ struct _function_call<Capacity, R(Ps...) const& noexcept>
 	static constexpr bool is_invocable =
 		std::is_nothrow_invocable_r_v<R, U const&, Ps...>;
 
-	R operator()(std::convertible_to<Ps> auto&&... args) const& noexcept
+	template<std::convertible_to<Ps>... Args>
+	R operator()(Args&&... args) const& noexcept
 	{
 		return this->invoke(vsm_forward(args)...);
 	}
@@ -413,7 +420,8 @@ struct _function_call<Capacity, R(Ps...) const&& noexcept>
 	static constexpr bool is_invocable =
 		std::is_nothrow_invocable_r_v<R, U const, Ps...>;
 
-	R operator()(std::convertible_to<Ps> auto&&... args) const&& noexcept
+	template<std::convertible_to<Ps>... Args>
+	R operator()(Args&&... args) const&& noexcept
 	{
 		return this->invoke(vsm_forward(args)...);
 	}

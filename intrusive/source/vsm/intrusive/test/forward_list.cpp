@@ -10,6 +10,8 @@ using namespace vsm;
 using namespace vsm::intrusive;
 using namespace vsm::intrusive::test;
 
+vsm_clang_diagnostic(ignored "-Wself-move")
+
 namespace {
 
 using list_type = vsm::intrusive::forward_list<element>;

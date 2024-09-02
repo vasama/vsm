@@ -49,13 +49,13 @@ struct member_t
 };
 
 
-template<non_cvref To, non_cvref From>
+template<typename To, typename From>
 struct is_traits;
 
-template<non_cvref To, non_cvref From>
+template<typename To, typename From>
 struct cast_traits;
 
-template<non_cvref To, non_cvref From>
+template<typename To, typename From>
 struct try_cast_traits;
 
 namespace detail {

@@ -24,7 +24,7 @@ public:
 
 		if (m_size.fetch_add(1, std::memory_order_acquire) > mask)
 		{
-			m_size.fetch_sub(1, std::memory_order_release);
+			(void)m_size.fetch_sub(1, std::memory_order_release);
 			return false;
 		}
 		

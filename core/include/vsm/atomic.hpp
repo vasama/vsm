@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vsm/concepts.hpp>
 #include <vsm/detail/categories.hpp>
 #include <vsm/platform.h>
 #include <vsm/preprocessor.h>
@@ -13,8 +14,15 @@
 
 #include <atomic>
 #include <concepts>
+#include <utility>
 
 namespace vsm {
+namespace detail {
+
+template<typename T>
+concept _atomic_ptr = std::is_pointer_v<T> && std::is_object_v<std::remove_pointer_t<T>>;
+
+} // namespace detail
 
 /// @brief Stripped down version of std::atomic_ref<@tparam T>.
 /// All atomic operations are guaranteed to be lock free.
@@ -51,35 +59,48 @@ public:
 		return base::store(new_value, order);
 	}
 
-	[[nodiscard]] vsm_always_inline T exchange(T const& new_value, std::memory_order const order) const noexcept
+	[[nodiscard]] vsm_always_inline T exchange(
+		T const& new_value,
+		std::memory_order const order) const noexcept
 	{
 		return base::exchange(new_value, order);
 	}
 
 	[[nodiscard]] vsm_always_inline bool compare_exchange_weak(
-		T& expected, T const& desired, std::memory_order const success, std::memory_order const failure) const noexcept
+		T& expected,
+		T const& desired,
+		std::memory_order const success,
+		std::memory_order const failure) const noexcept
 	{
 		return base::compare_exchange_weak(expected, desired, success, failure);
 	}
 
 	[[nodiscard]] vsm_always_inline bool compare_exchange_strong(
-		T& expected, T const& desired, std::memory_order const success, std::memory_order const failure) const noexcept
+		T& expected,
+		T const& desired,
+		std::memory_order const success,
+		std::memory_order const failure) const noexcept
 	{
 		return base::compare_exchange_strong(expected, desired, success, failure);
 	}
 
 
-#define vsm_detail_fetch_mutate(operation) \
-	[[nodiscard]] vsm_always_inline decltype(auto) operation(auto const& operand, std::memory_order const order) const noexcept \
+#define vsm_detail_fetch_mutate(operation, type, constraint) \
+	[[nodiscard]] vsm_always_inline decltype(auto) operation( \
+		type const operand, \
+		std::memory_order const order) const noexcept \
+		requires constraint<T> \
 	{ \
 		return base::operation(operand, order); \
 	} \
 
-	vsm_detail_fetch_mutate(fetch_add)
-	vsm_detail_fetch_mutate(fetch_sub)
-	vsm_detail_fetch_mutate(fetch_and)
-	vsm_detail_fetch_mutate(fetch_or)
-	vsm_detail_fetch_mutate(fetch_xor)
+	vsm_detail_fetch_mutate(fetch_add, T, std::integral)
+	vsm_detail_fetch_mutate(fetch_add, ptrdiff_t, detail::_atomic_ptr)
+	vsm_detail_fetch_mutate(fetch_sub, T, std::integral)
+	vsm_detail_fetch_mutate(fetch_sub, ptrdiff_t, detail::_atomic_ptr)
+	vsm_detail_fetch_mutate(fetch_and, T, std::integral)
+	vsm_detail_fetch_mutate(fetch_or, T, std::integral)
+	vsm_detail_fetch_mutate(fetch_xor, T, std::integral)
 #undef vsm_detail_fetch_mutate
 };
 
@@ -108,9 +129,23 @@ public:
 	{
 	}
 
+	atomic(T const value) noexcept
+		requires std::is_fundamental_v<T>
+		: m_storage(value)
+	{
+	}
+
 	template<std::convertible_to<T> U = T>
 	atomic(U&& value) noexcept
+		requires (!std::is_fundamental_v<T>)
 		: m_storage(vsm_forward(value))
+	{
+	}
+
+	template<typename... Args>
+	explicit atomic(std::in_place_t, Args&&... args)
+		requires std::constructible_from<T, Args...>
+		: m_storage(vsm_forward(args)...)
 	{
 	}
 
@@ -133,35 +168,48 @@ public:
 		return ref_type(m_storage).store(new_value, order);
 	}
 
-	[[nodiscard]] vsm_always_inline T exchange(T const& new_value, std::memory_order const order) & noexcept
+	[[nodiscard]] vsm_always_inline T exchange(
+		T const& new_value,
+		std::memory_order const order) & noexcept
 	{
 		return ref_type(m_storage).exchange(new_value, order);
 	}
 
 	[[nodiscard]] vsm_always_inline bool compare_exchange_weak(
-		T& expected, T const& desired, std::memory_order const success, std::memory_order const failure) & noexcept
+		T& expected,
+		T const& desired,
+		std::memory_order const success,
+		std::memory_order const failure) & noexcept
 	{
 		return ref_type(m_storage).compare_exchange_weak(expected, desired, success, failure);
 	}
 
 	[[nodiscard]] vsm_always_inline bool compare_exchange_strong(
-		T& expected, T const& desired, std::memory_order const success, std::memory_order const failure) & noexcept
+		T& expected,
+		T const& desired,
+		std::memory_order const success,
+		std::memory_order const failure) & noexcept
 	{
 		return ref_type(m_storage).compare_exchange_strong(expected, desired, success, failure);
 	}
 
 
-#define vsm_detail_fetch_mutate(operation) \
-	[[nodiscard]] vsm_always_inline decltype(auto) operation(auto const& operand, std::memory_order const order) & noexcept \
+#define vsm_detail_fetch_mutate(operation, type, constraint) \
+	[[nodiscard]] vsm_always_inline decltype(auto) operation( \
+		type const operand, \
+		std::memory_order const order) & noexcept \
+		requires constraint<T> \
 	{ \
 		return ref_type(m_storage).operation(operand, order); \
 	} \
 
-	vsm_detail_fetch_mutate(fetch_add)
-	vsm_detail_fetch_mutate(fetch_sub)
-	vsm_detail_fetch_mutate(fetch_and)
-	vsm_detail_fetch_mutate(fetch_or)
-	vsm_detail_fetch_mutate(fetch_xor)
+	vsm_detail_fetch_mutate(fetch_add, T, std::integral)
+	vsm_detail_fetch_mutate(fetch_add, ptrdiff_t, detail::_atomic_ptr)
+	vsm_detail_fetch_mutate(fetch_sub, T, std::integral)
+	vsm_detail_fetch_mutate(fetch_sub, ptrdiff_t, detail::_atomic_ptr)
+	vsm_detail_fetch_mutate(fetch_and, T, std::integral)
+	vsm_detail_fetch_mutate(fetch_or, T, std::integral)
+	vsm_detail_fetch_mutate(fetch_xor, T, std::integral)
 #undef vsm_detail_fetch_mutate
 
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vsm/concepts.hpp>
 #include <vsm/default_hash.hpp>
 #include <vsm/detail/hash_table.hpp>
 #include <vsm/standard/stdexcept.hpp>
@@ -11,11 +12,13 @@
 
 namespace vsm {
 
-template<typename Table>
+template<non_cvref Table>
 class basic_hash_set : public Table
 {
 public:
-	using element_type = typename Table::element_type;
+	using element_type          = typename Table::element_type;
+	using key_type              = element_type;
+	using value_type            = element_type;
 
 private:
 	using ordered_iterator_or_void = select_t<Table::is_ordered, typename Table::iterator, void>;

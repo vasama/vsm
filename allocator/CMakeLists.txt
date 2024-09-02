@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.24)
 
 project(vsm_allocator)
 
+find_package(vsm-cmake REQUIRED)
+
+vsm_find_sibling(vsm-allocator_core)
 vsm_find_sibling(vsm-any)
 vsm_find_sibling(vsm-test_tools)
 
@@ -13,11 +16,11 @@ vsm_add_library(vsm::allocator
 		include/vsm/new_allocator.hpp
 
 	HEADER_DEPENDENCIES
+		vsm::allocator_core
 		vsm::any
 		vsm::core
 
 	TEST_SOURCES
-		source/vsm/test/allocator.cpp
 		source/vsm/test/any_allocator.cpp
 
 	TEST_DEPENDENCIES

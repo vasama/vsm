@@ -4,6 +4,6 @@ vsm_dependent_context
 {
 	struct s {};
 
-	static_assert(not requires { typename vsm_dep_t(s)::type; });
-	static_assert(not requires { vsm_dep_v(s()) + vsm_dep_v(s()); });
+	static_assert(not requires { typename vsm_dependent_t(s)::type; });
+	static_assert(not requires { vsm_dependent_v(s()) + vsm_dependent_v(s()); });
 };

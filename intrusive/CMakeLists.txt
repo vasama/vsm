@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.24)
 
 project(vsm_intrusive)
 
+find_package(vsm-cmake REQUIRED)
+
 vsm_find_sibling(vsm-core)
 vsm_find_sibling(vsm-container_core)
 vsm_find_sibling(vsm-tag_ptr)

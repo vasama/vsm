@@ -11,11 +11,11 @@ namespace {
 
 struct trivial
 {
-	int value;
+	size_t value;
 
 	trivial() = default;
 
-	trivial(int value)
+	trivial(size_t value)
 		: value(value)
 	{
 	}
@@ -23,14 +23,14 @@ struct trivial
 
 struct non_trivial : test::counted
 {
-	int value;
+	size_t value;
 	
 	non_trivial()
 		: value(0)
 	{
 	}
 
-	non_trivial(int value)
+	non_trivial(size_t value)
 		: value(value)
 	{
 	}
@@ -92,13 +92,13 @@ TEMPLATE_LIST_TEST_CASE("vector swap", "[container][vector]", vector_types)
 			TestType vector;
 			for (size_t i = 0; i < size; ++i)
 			{
-				vector.emplace_back(static_cast<int>(i));
+				vector.emplace_back(static_cast<size_t>(i));
 			}
 			return vector;
 		};
 
-		size_t const l_size = GENERATE(0, 1, 11, 21);
-		size_t const r_size = GENERATE(0, 1, 11, 21);
+		size_t const l_size = GENERATE(as<size_t>(), 0, 1, 11, 21);
+		size_t const r_size = GENERATE(as<size_t>(), 0, 1, 11, 21);
 
 		TestType l = generate_vector(l_size);
 		TestType r = generate_vector(r_size);
@@ -112,12 +112,12 @@ TEMPLATE_LIST_TEST_CASE("vector swap", "[container][vector]", vector_types)
 		{
 			if (i < l.size())
 			{
-				REQUIRE(l[i].value == static_cast<int>(i));
+				REQUIRE(l[i].value == static_cast<size_t>(i));
 			}
 
 			if (i < r.size())
 			{
-				REQUIRE(r[i].value == static_cast<int>(i));
+				REQUIRE(r[i].value == static_cast<size_t>(i));
 			}
 		}
 	}
@@ -132,9 +132,9 @@ TEMPLATE_LIST_TEST_CASE("vector push_back & emplace_back", "[container][vector]"
 
 		bool const use_emplace = GENERATE(0, 1);
 
-		for (int i = 0; i < 40; ++i)
+		for (size_t i = 0; i < 40; ++i)
 		{
-			int const v = i + 1;
+			size_t const v = i + 1;
 	
 			use_emplace
 				? (void)vec.emplace_back(v)
@@ -143,7 +143,7 @@ TEMPLATE_LIST_TEST_CASE("vector push_back & emplace_back", "[container][vector]"
 			REQUIRE(vec.size() == v);
 		}
 
-		for (int i = 0; i < 40; ++i)
+		for (size_t i = 0; i < 40; ++i)
 	{
 		REQUIRE(vec[i].value == i + 1);
 	}
@@ -154,14 +154,14 @@ TEMPLATE_LIST_TEST_CASE("vector push_back & emplace_back", "[container][vector]"
 TEMPLATE_LIST_TEST_CASE("vector insert & emplace", "[container][vector]", vector_types)
 {
 	TestType vsm_vec;
-	std::vector<int> std_vec;
+	std::vector<size_t> std_vec;
 
-	bool const use_emplace = GENERATE(0, 1);
-	int const position = GENERATE(0, 1, 2);
+	bool const use_emplace = GENERATE(as<size_t>(), 0, 1);
+	size_t const position = GENERATE(as<size_t>(), 0, 1, 2);
 
-	for (int i = 0; i < 40; ++i)
+	for (size_t i = 0; i < 40; ++i)
 	{
-		int const v = i + 1;
+		size_t const v = i + 1;
 
 		decltype(vsm_vec.begin()) vsm_it;
 		decltype(std_vec.begin()) std_it;
@@ -177,8 +177,8 @@ TEMPLATE_LIST_TEST_CASE("vector insert & emplace", "[container][vector]", vector
 			break;
 
 		case 1:
-			vsm_it = vsm_vec.begin() + vsm_vec.size() / 2;
-			std_it = std_vec.begin() + std_vec.size() / 2;
+			vsm_it = vsm_vec.begin() + static_cast<ptrdiff_t>(vsm_vec.size() / 2);
+			std_it = std_vec.begin() + static_cast<ptrdiff_t>(std_vec.size() / 2);
 			break;
 
 		case 2:
@@ -201,24 +201,24 @@ TEMPLATE_LIST_TEST_CASE("vector resize", "[container][vector]", vector_types)
 {
 	TestType vec;
 
-	int const initial_size = GENERATE(0, 10, 20, 30);
+	size_t const initial_size = GENERATE(as<size_t>(), 0, 10, 20, 30);
 
-	for (int i = 0; i < initial_size; ++i)
+	for (size_t i = 0; i < initial_size; ++i)
 	{
 		vec.emplace_back(i + 1);
 	}
 
-	int const new_size = GENERATE(0, 5, 15, 25, 35);
+	size_t const new_size = GENERATE(as<size_t>(), 0, 5, 15, 25, 35);
 
 	vec.resize(new_size);
 	REQUIRE(vec.size() == new_size);
 
-	for (int i = 0; i < std::min(initial_size, new_size); ++i)
+	for (size_t i = 0; i < std::min(initial_size, new_size); ++i)
 	{
 		REQUIRE(vec[i].value == i + 1);
 	}
 
-	for (int i = initial_size; i < new_size; ++i)
+	for (size_t i = initial_size; i < new_size; ++i)
 	{
 		REQUIRE(vec[i].value == 0);
 	}

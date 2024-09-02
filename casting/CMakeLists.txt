@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.24)
 
 project(vsm_container_core)
 
+find_package(vsm-cmake REQUIRED)
+
 vsm_find_sibling(vsm-core)
 
 vsm_add_library(

@@ -33,7 +33,7 @@ struct _wb
 		hook** parent;
 
 		// Weight of the subtree rooted at this node, including this node.
-		uintptr_t weight;
+		size_t weight;
 	};
 
 	template<typename T, typename Tag>

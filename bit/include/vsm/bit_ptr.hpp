@@ -12,6 +12,8 @@
 
 namespace vsm {
 
+static_assert(CHAR_BIT == 8);
+
 #  if vsm_word_bits <= 12
 using bit_size_t = uint_least16_t;
 using bit_ptrdiff_t = int_least16_t;
@@ -29,15 +31,11 @@ using bit_ptrdiff_t = ptrdiff_t;
 namespace detail {
 
 template<typename T>
-concept _bit_word =
-	std::unsigned_integral<T> &&
-	not_same_as<T, bool>;
+concept _bit_word = std::unsigned_integral<T> && not_same_as<T, bool>;
 
-#ifndef __INTELLISENSE__
+#if !__INTELLISENSE__
 template<typename T>
-concept _bit_offset =
-	std::unsigned_integral<T> &&
-	requires (T x) { bit_size_t{ x }; };
+concept _bit_offset = std::unsigned_integral<T> && requires (T const x) { bit_size_t{ x }; };
 #endif
 
 } // namespace detail
@@ -73,6 +71,7 @@ public:
 	{
 	}
 
+	bit_ptr(bit_ptr const&) = default;
 	bit_ptr& operator=(bit_ptr const&) & = default;
 
 
@@ -81,7 +80,7 @@ public:
 		return bit_ref<Word>(*m_ptr, m_pos);
 	}
 
-#ifndef __INTELLISENSE__
+#if !__INTELLISENSE__
 	[[nodiscard]] constexpr bit_ref<Word> operator[](detail::_bit_offset auto const offset) const
 	{
 		auto ptr = m_ptr;
@@ -126,8 +125,8 @@ public:
 		return r;
 	}
 
-#ifndef __INTELLISENSE__
-	constexpr bit_ptr& operator+=(detail::_bit_offset auto const offset)&
+#if !__INTELLISENSE__
+	constexpr bit_ptr& operator+=(detail::_bit_offset auto const offset) &
 	{
 		add_unsigned(m_ptr, m_pos, offset);
 		return *this;
@@ -140,8 +139,8 @@ public:
 		return *this;
 	}
 
-#ifndef __INTELLISENSE__
-	constexpr bit_ptr& operator-=(detail::_bit_offset auto const offset)&
+#if !__INTELLISENSE__
+	constexpr bit_ptr& operator-=(detail::_bit_offset auto const offset) &
 	{
 		sub_unsigned(m_ptr, m_pos, offset);
 		return *this;
@@ -154,7 +153,7 @@ public:
 		return *this;
 	}
 
-#ifndef __INTELLISENSE__
+#if !__INTELLISENSE__
 	[[nodiscard]] friend constexpr bit_ptr operator+(bit_ptr ptr, detail::_bit_offset auto const offset)
 	{
 		add_unsigned(ptr.m_ptr, ptr.m_pos, offset);
@@ -168,7 +167,7 @@ public:
 		return ptr;
 	}
 
-#ifndef __INTELLISENSE__
+#if !__INTELLISENSE__
 	[[nodiscard]] friend constexpr bit_ptr operator+(detail::_bit_offset auto const offset, bit_ptr ptr)
 	{
 		add_unsigned(ptr.m_ptr, ptr.m_pos, offset);
@@ -182,7 +181,7 @@ public:
 		return ptr;
 	}
 
-#ifndef __INTELLISENSE__
+#if !__INTELLISENSE__
 	[[nodiscard]] friend constexpr bit_ptr operator-(bit_ptr ptr, detail::_bit_offset auto const offset)
 	{
 		sub_unsigned(ptr.m_ptr, ptr.m_pos, offset);
@@ -198,7 +197,9 @@ public:
 
 	[[nodiscard]] friend constexpr bit_ptrdiff_t operator-(bit_ptr const& lhs, bit_ptr const& rhs)
 	{
-		return static_cast<bit_ptrdiff_t>(lhs.m_ptr - rhs.m_ptr) * word_bits + (lhs.m_pos - rhs.m_pos);
+		return
+			static_cast<bit_ptrdiff_t>(lhs.m_ptr - rhs.m_ptr) *
+			static_cast<bit_ptrdiff_t>(word_bits + (lhs.m_pos - rhs.m_pos));
 	}
 
 	[[nodiscard]] auto operator<=>(bit_ptr const&) const = default;
@@ -270,7 +271,7 @@ public:
 		vsm_assert(offset < word_bits);
 	}
 
-	template<not_same_as U>
+	template<not_same_as<Word> U>
 		requires std::convertible_to<U*, Word*>
 	constexpr bit_ref(bit_ref<U> const& other)
 		: m_ref(other.m_ref)

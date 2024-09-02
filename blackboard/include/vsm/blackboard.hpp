@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vsm/hash_map.hpp>
+#include <vsm/swiss_map.hpp>
 
 #include <concepts>
 #include <memory>
@@ -28,7 +28,7 @@ struct blackboard_data : blackboard_data_base
 
 class blackboard
 {
-	hash_map<void const*, std::unique_ptr<blackboard_data_base>> m_data;
+	swiss_map<void const*, std::unique_ptr<blackboard_data_base>> m_data;
 
 public:
 	template<typename T, std::convertible_to<T> U = T>

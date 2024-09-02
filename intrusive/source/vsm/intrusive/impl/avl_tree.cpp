@@ -139,18 +139,18 @@ static void rebalance(ptr<hook>* const root, ptr<hook>* node, bool l, bool const
 		frame stack[sizeof(size_t) * CHAR_BIT];
 		static_assert(std::size(stack) <= 1 << 6);
 
-		int8_t height = 0;
+		uint8_t height = 0;
 		stack[0].visit = 0;
-		int8_t r_height = 0;
+		uint8_t r_height = 0;
 
 		while (height >= 0)
 		{
 		next_iteration:
 			frame& frame = stack[height];
 
-			for (int8_t visit; (visit = frame.visit++) < 2;)
+			for (uint8_t visit; (visit = frame.visit++) < 2;)
 			{
-				frame.l_height = std::exchange(r_height, static_cast<int8_t>(0));
+				frame.l_height = std::exchange(r_height, static_cast<uint8_t>(0));
 
 				if (hook const* const child = node->children[visit].ptr())
 				{
@@ -170,7 +170,7 @@ static void rebalance(ptr<hook>* const root, ptr<hook>* node, bool l, bool const
 				}
 			}
 
-			int8_t const l_height = frame.l_height;
+			uint8_t const l_height = frame.l_height;
 
 			if (std::abs(l_height - r_height) > 1)
 			{
@@ -185,7 +185,7 @@ static void rebalance(ptr<hook>* const root, ptr<hook>* node, bool l, bool const
 				return false;
 			}
 
-			r_height = std::max(l_height, r_height) + 1;
+			r_height = static_cast<uint8_t>(std::max(l_height, r_height) + 1);
 
 			node = vsm_detail_avl_hook_from_children(node->parent);
 			--height;

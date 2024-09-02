@@ -93,7 +93,7 @@ TEST_CASE("", "[work_stealing_queue]")
 		deque.push_back(i);
 	}
 
-	std::uniform_int_distribution<int> d(0, 1);
+	Catch::uniform_integer_distribution<int> d(0, 1);
 	for (int i = 0; i < count; ++i)
 	{
 		if (d(Catch::sharedRng()))

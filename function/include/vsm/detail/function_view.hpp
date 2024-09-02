@@ -46,7 +46,7 @@ struct get_function_context_cpo {};
 
 
 template<bool N, typename T, typename R, typename... Ps>
-constexpr R invoke_object(function_context const context, Ps... args) noexcept(N)
+vsm_detail_function_ptr_constexpr R invoke_object(function_context const context, Ps... args) noexcept(N)
 {
 	return const_cast<T&>(*static_cast<T const*>(context.object))(vsm_move(args)...);
 }
@@ -58,13 +58,13 @@ vsm_detail_function_ptr_constexpr R invoke_function(function_context const conte
 }
 
 template<bool N, auto F, typename R, typename... Ps>
-constexpr R invoke_nontype_unused(function_context const context, Ps... args) noexcept(N)
+vsm_detail_function_ptr_constexpr R invoke_nontype_unused(function_context const context, Ps... args) noexcept(N)
 {
 	return F(vsm_move(args)...);
 }
 
 template<bool N, auto F, typename T, typename R, typename... Ps>
-constexpr R invoke_nontype_object(function_context const context, Ps... args) noexcept(N)
+vsm_detail_function_ptr_constexpr R invoke_nontype_object(function_context const context, Ps... args) noexcept(N)
 {
 	return F(const_cast<T&>(*static_cast<T const*>(context.object)), vsm_move(args)...);
 }

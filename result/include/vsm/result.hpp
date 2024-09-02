@@ -84,6 +84,11 @@ result<void, E> discard_value(result<T, E> const& result)
 		: vsm::result<void, E>(result_error, result.error());
 }
 
+inline std::error_code make_error_code(std::errc const e)
+{
+	return std::error_code(static_cast<int>(e), std::generic_category());
+}
+
 
 template<typename T>
 class success

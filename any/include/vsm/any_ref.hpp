@@ -9,19 +9,21 @@
 namespace vsm {
 namespace detail {
 
-template<typename Container, typename Value>
+template<
+	typename Container,
+	typename Value,
+	bool = (sizeof(Container) > sizeof(Value))>
 	requires (sizeof(Container) >= sizeof(Value))
 struct bit_pack_t
 {
 	Value value;
-	unsigned char padding[sizeof(Container) - sizeof(Value)];
 };
 
 template<typename Container, typename Value>
-	requires (sizeof(Container) == sizeof(Value))
-struct bit_pack_t<Container, Value>
+struct bit_pack_t<Container, Value, true>
 {
 	Value value;
+	unsigned char padding[sizeof(Container) - sizeof(Value)];
 };
 
 template<typename Container, typename Value>
@@ -54,6 +56,8 @@ struct _any_traits<R(Ps...)>
 	template<typename T>
 	using member_type = R(T::*)(Ps...);
 
+	void _i(Ps...);
+
 	template<typename F, typename T>
 	static constexpr bool requirement = requires
 	{
@@ -83,6 +87,8 @@ struct _any_traits<R(Ps...) const>
 {
 	template<typename T>
 	using member_type = R(T::*)(Ps...) const;
+
+	void _i(Ps...) const;
 
 	template<typename F, typename T>
 	static constexpr bool requirement = requires
@@ -143,9 +149,11 @@ _any_function* const _any_functions<Fs...>::table[sizeof...(Fs)] =
 
 template<typename F, typename Cvref, typename... Args>
 concept _any_invocable =
-	requires (typename _any_traits_for<F>::template member_type<remove_cvref_t<Cvref>> member)
+	// requires (typename _any_traits_for<F>::template member_type<remove_cvref_t<Cvref>> member)
+	requires
 	{
-		(std::declval<Cvref>().*member)(std::declval<Args>()...);
+		// (std::declval<Cvref>().*member)(std::declval<Args>()...);
+		std::declval<copy_cvref_t<Cvref, _any_traits_for<F>>>()._i(std::declval<Args>()...);
 	};
 
 } // namespace detail

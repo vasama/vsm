@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vsm/detail/hash_table_layout.hpp>
+#include <vsm/detail/hash_table.hpp>
 #include <vsm/insert_result.hpp>
 #include <vsm/key_selector.hpp>
 #include <vsm/memory.hpp>
@@ -40,24 +40,28 @@ struct group
 
 	uint32_t match(ctrl const h2) const
 	{
-		return _mm_movemask_epi8(_mm_cmpeq_epi8(_mm_set1_epi8(h2), m_ctrl));
+		return static_cast<uint32_t>(_mm_movemask_epi8(_mm_cmpeq_epi8(_mm_set1_epi8(h2), m_ctrl)));
 	}
 
 	uint32_t match_empty() const
 	{
-		return _mm_movemask_epi8(_mm_sign_epi8(m_ctrl, m_ctrl));
+		return static_cast<uint32_t>(_mm_movemask_epi8(_mm_sign_epi8(m_ctrl, m_ctrl)));
 	}
 
 	uint32_t match_free() const
 	{
-		return _mm_movemask_epi8(_mm_cmpgt_epi8(_mm_set1_epi8(ctrl_end), m_ctrl));
+		return static_cast<uint32_t>(
+			_mm_movemask_epi8(_mm_cmpgt_epi8(_mm_set1_epi8(ctrl_end), m_ctrl)));
 	}
 
 	size_t count_leading_free() const
 	{
 		__m128i const end = _mm_set1_epi8(ctrl_end);
-		uint32_t const mask = _mm_movemask_epi8(_mm_cmpgt_epi8(end, m_ctrl));
-		return mask == 0 ? group_size : std::countr_one(mask);
+		uint32_t const mask = static_cast<uint32_t>(_mm_movemask_epi8(_mm_cmpgt_epi8(end, m_ctrl)));
+
+		return mask == 0
+			? group_size
+			: static_cast<size_t>(std::countr_one(mask));
 	}
 };
 
@@ -434,7 +438,7 @@ size_t find2(
 
 		for (uint32_t mask = group.match(h2); mask != 0; mask &= mask - 1)
 		{
-			size_t const slot_index = probe.get_offset(std::countr_zero(mask));
+			size_t const slot_index = probe.get_offset(static_cast<size_t>(std::countr_zero(mask)));
 			void* const slot = slots + slot_index * element_size;
 
 			if (vsm_likely(p.comparator(key, p.key_selector(get_key(slot)))))
@@ -819,7 +823,7 @@ public:
 		return 1;
 	}
 
-	[[nodiscard]] void erase(const_single_iterator const iterator)
+	void erase(const_single_iterator const iterator)
 	{
 		iterator->~T();
 

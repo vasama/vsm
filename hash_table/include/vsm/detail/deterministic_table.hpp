@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vsm/detail/hash_table_layout.hpp>
+#include <vsm/detail/hash_table.hpp>
 #include <vsm/allocator.hpp>
 #include <vsm/assert.h>
 #include <vsm/insert_result.hpp>

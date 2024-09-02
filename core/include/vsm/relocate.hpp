@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vsm/assert.h>
 #include <vsm/concepts.hpp>
 #include <vsm/defer.hpp>
 #include <vsm/exceptions.hpp>
@@ -188,10 +189,18 @@ OutputIterator uninitialized_relocate(
 		{
 			std::integral auto const n = src_end - c_src_beg;
 
+			using integral_type = std::remove_const_t<decltype(n)>;
+			using unsigned_type = std::make_unsigned_t<integral_type>;
+
+			if constexpr (std::is_signed_v<integral_type>)
+			{
+				vsm_assert(n >= static_cast<integral_type>(0));
+			}
+
 			std::memmove(
 				std::to_address(out_beg),
 				std::addressof(*c_src_beg),
-				n * sizeof(output_type));
+				static_cast<unsigned_type>(n) * sizeof(output_type));
 
 			return out_beg + n;
 		}
@@ -207,6 +216,8 @@ OutputIterator uninitialized_relocate(
 
 		vsm_except_try
 		{
+			vsm_clang_diagnostic(push)
+			vsm_clang_diagnostic(ignored "-Wfor-loop-analysis")
 			for (; c_src_beg != src_end; ++src_beg, (void)++out_pos)
 			{
 				if constexpr (use_trivial_copy)
@@ -223,6 +234,7 @@ OutputIterator uninitialized_relocate(
 					std::destroy_at(p);
 				}
 			}
+			vsm_clang_diagnostic(pop)
 			return out_pos;
 		}
 		vsm_except_catch(...)
@@ -244,6 +256,11 @@ std::pair<SourceIterator, OutputIterator> uninitialized_relocate_n(
 	SizeT n,
 	OutputIterator const out_beg)
 {
+	if constexpr (std::is_signed_v<SizeT>)
+	{
+		vsm_assert(n >= static_cast<SizeT>(0));
+	}
+
 	using source_type = std::iterator_traits<SourceIterator>::value_type;
 	using output_type = std::iterator_traits<OutputIterator>::value_type;
 
@@ -261,17 +278,15 @@ std::pair<SourceIterator, OutputIterator> uninitialized_relocate_n(
 	{
 		if (c_n != 0)
 		{
+			using unsigned_type = std::make_unsigned_t<SizeT>;
+
 			std::memmove(
 				std::to_address(out_beg),
 				std::addressof(*c_src_beg),
-				c_n * sizeof(output_type));
+				static_cast<unsigned_type>(c_n) * sizeof(output_type));
+		}
 
-			return { src_beg + c_n, out_beg + c_n };
-		}
-		else
-		{
-			return { src_beg, out_beg };
-		}
+		return { src_beg + c_n, out_beg + c_n };
 	}
 	else
 	{
@@ -280,6 +295,8 @@ std::pair<SourceIterator, OutputIterator> uninitialized_relocate_n(
 
 		vsm_except_try
 		{
+			vsm_clang_diagnostic(push)
+			vsm_clang_diagnostic(ignored "-Wfor-loop-analysis")
 			for (; c_n > 0; --n, (void)++out_pos)
 			{
 				if constexpr (use_trivial_copy)
@@ -296,6 +313,7 @@ std::pair<SourceIterator, OutputIterator> uninitialized_relocate_n(
 					std::destroy_at(p);
 				}
 			}
+			vsm_clang_diagnostic(pop)
 			return { c_src_beg, c_out_pos };
 		}
 		vsm_except_catch(...)
@@ -335,10 +353,18 @@ OutputIterator uninitialized_relocate_backward(
 		{
 			std::integral auto const n = c_src_end - src_beg;
 
+			using integral_type = std::remove_const_t<decltype(n)>;
+			using unsigned_type = std::make_unsigned_t<integral_type>;
+
+			if constexpr (std::is_signed_v<integral_type>)
+			{
+				vsm_assert(n >= static_cast<integral_type>(0));
+			}
+
 			std::memmove(
 				std::to_address(out_end) - n,
 				std::addressof(*src_beg),
-				n * sizeof(output_type));
+				static_cast<unsigned_type>(n) * sizeof(output_type));
 
 			return out_end - n;
 		}

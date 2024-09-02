@@ -16,6 +16,8 @@
 #	endif
 #endif
 
+#include <exception>
+
 #if vsm_config_exceptions
 
 #	define vsm_except_try \

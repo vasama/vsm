@@ -9,15 +9,15 @@ namespace vsm::detail {
 
 #pragma push_macro("cmpxchg16")
 
-#if vsm_compiler_msvc
+#ifdef _MSC_VER
 #	pragma intrinsic(_InterlockedCompareExchange128)
 
 #	define cmpxchg16(object, expected, desired) \
 		_InterlockedCompareExchange128( \
-			(long long*)&(object), \
-			((long long const*)(&(desired)))[1], \
-			((long long const*)(&(desired)))[0], \
-			(long long*)&(expected) \
+			(long long*)std::addressof(object), \
+			((long long const*)(std::addressof(desired)))[1], \
+			((long long const*)(std::addressof(desired)))[0], \
+			(long long*)std::addressof(expected) \
 		)
 #else
 template<typename T>
@@ -50,9 +50,12 @@ public:
 	static constexpr size_t required_alignment = 16;
 
 	explicit atomic_ref_base(T& object)
-		: m_object(&object)
+		: m_object(std::addressof(object))
 	{
 	}
+
+	vsm_clang_diagnostic(push)
+	vsm_clang_diagnostic(ignored "-Wold-style-cast")
 
 
 	T load([[maybe_unused]] std::memory_order const memory_order) const noexcept
@@ -80,7 +83,8 @@ public:
 	}
 
 	bool compare_exchange_weak(
-		T& expected, T const desired,
+		T& expected,
+		T const desired,
 		[[maybe_unused]] std::memory_order const success,
 		[[maybe_unused]] std::memory_order const failure) const noexcept
 	{
@@ -88,12 +92,15 @@ public:
 	}
 
 	bool compare_exchange_strong(
-		T& expected, T const desired,
+		T& expected,
+		T const desired,
 		[[maybe_unused]] std::memory_order const success,
 		[[maybe_unused]] std::memory_order const failure) const noexcept
 	{
 		return cmpxchg16(*m_object, expected, desired);
 	}
+
+	vsm_clang_diagnostic(pop)
 };
 
 #define vsm_detail_atomic_ref_base(T) \

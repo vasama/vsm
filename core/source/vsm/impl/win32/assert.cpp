@@ -8,6 +8,8 @@
 
 #include <Windows.h>
 
+vsm_clang_diagnostic(ignored "-Wmissing-prototypes")
+
 extern "C"
 void __cdecl _assert(char const* message, char const* filename, unsigned line);
 

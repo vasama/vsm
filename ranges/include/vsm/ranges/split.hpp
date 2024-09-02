@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vsm/box.hpp>
+#include <vsm/arrow.hpp>
 #include <vsm/standard.hpp>
 
 #include <ranges>
@@ -37,9 +37,9 @@ public:
 		return subrange_type{ m_beg, m_next };
 	}
 
-	constexpr vsm::box<subrange_type> operator->() const
+	constexpr arrow<subrange_type> operator->() const
 	{
-		return vsm::box<subrange_type>{{ m_beg, m_next }};
+		return arrow<subrange_type>{{ m_beg, m_next }};
 	}
 
 	constexpr split_adjacent_iterator& operator++() &

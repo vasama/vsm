@@ -13,10 +13,13 @@ struct nontype_base_t {};
 } // namespace detail
 
 template<auto Value>
-struct nontype_t : detail::nontype_base_t{};
+struct nontype_t : detail::nontype_base_t
+{
+	explicit nontype_t() = default;
+};
 
 template<auto Value>
-inline constexpr nontype_t<Value> nontype = {};
+inline constexpr nontype_t<Value> nontype{};
 
 
 namespace detail {
@@ -129,7 +132,8 @@ public:
 
 
 	//TODO: && signature should only be && invocable
-	vsm_detail_function_ptr_constexpr R operator()(std::convertible_to<Ps> auto&&... args) const noexcept(N)
+	template<std::convertible_to<Ps>... Args>
+	vsm_detail_function_ptr_constexpr R operator()(Args&&... args) const noexcept(N)
 	{
 		return m_invoke(m_context, vsm_forward(args)...);
 	}

@@ -28,7 +28,7 @@ size_t swiss_table::find_free_slot(
 
 		if (uint32_t const mask = group.match_free())
 		{
-			return probe.get_offset(std::countr_zero(mask));
+			return probe.get_offset(static_cast<size_t>(std::countr_zero(mask)));
 		}
 
 		vsm_assert(probe.index < capacity);
@@ -64,7 +64,7 @@ void* swiss_table::insert2(
 	{
 		if (!callback(table, element_size, hash))
 		{
-			return { nullptr };
+			return nullptr;
 		}
 
 		ctrls = get_ctrls(table.slots, element_size, table.capacity);
@@ -87,10 +87,13 @@ void swiss_table::erase_slot(_table& table, size_t const element_size, size_t co
 	uint32_t const left_mask = group(ctrls + left_index).match_empty();
 	uint32_t const slot_mask = group(ctrls + slot_index).match_empty();
 
+	size_t const r_zero_left = static_cast<size_t>(std::countr_zero(left_mask));
+	size_t const l_zero_slot = static_cast<size_t>(std::countl_zero(slot_mask));
+
 	bool const reuse_slot =
 		left_mask != 0 &&
 		slot_mask != 0 &&
-		(std::countr_zero(left_mask) + std::countl_zero(slot_mask)) < group_size;
+		(r_zero_left + l_zero_slot) < group_size;
 
 	set_ctrl(ctrls, capacity, slot_index, reuse_slot ? ctrl_empty : ctrl_tomb);
 

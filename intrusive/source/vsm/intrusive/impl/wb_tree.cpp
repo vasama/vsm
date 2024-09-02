@@ -16,8 +16,8 @@ using ptr = _wb::ptr<T>;
 static_assert(check_incomplete_tag_ptr<ptr<hook>>());
 
 
-static constexpr uintptr_t delta = 4;
-static constexpr uintptr_t ratio = 2;
+static constexpr size_t delta = 4;
+static constexpr size_t ratio = 2;
 
 
 static size_t weight(hook* const root)
@@ -43,9 +43,9 @@ static void rotate(hook* const root, bool const l)
 	hook* const pivot = root->children[l];
 	hook* const child = pivot->children[r];
 
-	uintptr_t const root_weight = root->weight;
-	uintptr_t const pivot_weight = pivot->weight;
-	uintptr_t const child_weight = weight(child);
+	size_t const root_weight = root->weight;
+	size_t const pivot_weight = pivot->weight;
+	size_t const child_weight = weight(child);
 
 	root->children[l] = child;
 	root->parent = pivot->children;
@@ -65,7 +65,9 @@ static void rotate(hook* const root, bool const l)
 
 static void rebalance(hook** const root, hook** node, bool l, bool const insert)
 {
-	uintptr_t const weight_increment = insert ? +1 : -1;
+	size_t const weight_increment = insert
+		? 1
+		: static_cast<size_t>(-1);
 
 	while (node != root)
 	{
@@ -126,7 +128,7 @@ static void rebalance(hook** const root, hook** node, bool l, bool const insert)
 
 			for (uint32_t visit; (visit = frame.visit++) < 2;)
 			{
-				frame.l_weight = std::exchange(r_weight, 0);
+				frame.l_weight = std::exchange(r_weight, static_cast<uint32_t>(0));
 
 				if (const hook* const child = node->children[visit])
 				{
