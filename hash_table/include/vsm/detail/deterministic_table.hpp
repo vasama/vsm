@@ -283,7 +283,7 @@ void resize(_table_allocator<I, P, A>& table, size_t const element_size, size_t 
 }
 
 template<typename K, typename UserK, typename I, typename P, typename A>
-insert_result2<void*> insert(
+insert_result<void*> insert(
 	_table_allocator<I, P, A>& table,
 	size_t const element_size,
 	size_t const hash,
@@ -353,6 +353,26 @@ void move_assign(
 	construct(src);
 }
 
+template<size_t ElementSize, typename I>
+void swap_elements(_table<I>& table, std::byte const* const lhs_end, std::byte const* const rhs_end)
+{
+	auto const elements_end = reinterpret_cast<std::byte const*>(table.buckets);
+
+	size_t const lhs_index = static_cast<size_t>(elements_end - lhs_end) / ElementSize;
+	size_t const rhs_index = static_cast<size_t>(elements_end - rhs_end) / ElementSize;
+
+	std::swap(table.buckets[lhs_index].index, table.buckets[rhs_index].index);
+}
+
+template<
+	typename T,
+	typename Key,
+	typename I,
+	typename Policies,
+	typename Allocator,
+	size_t Capacity>
+class table;
+
 template<typename T>
 class iterator
 {
@@ -369,6 +389,12 @@ public:
 	{
 	}
 
+	template<cv_convertible_to<T> U>
+	iterator(iterator<U> const& other)
+		: m_element_end(other.m_element_end)
+	{
+	}
+
 	[[nodiscard]] T& operator*() const
 	{
 		return *std::launder(m_element_end - 1);
@@ -377,6 +403,11 @@ public:
 	[[nodiscard]] T* operator->() const
 	{
 		return std::launder(m_element_end - 1);
+	}
+
+	[[nodiscard]] T& operator[](ptrdiff_t const offset) const
+	{
+		return *std::launder(m_element_end - offset - 1);
 	}
 
 	iterator& operator++() &
@@ -392,7 +423,47 @@ public:
 		return it;
 	}
 
+	iterator& operator--() &
+	{
+		++m_element_end;
+		return *this;
+	}
+
+	[[nodiscard]] iterator operator--(int) &
+	{
+		auto it = *this;
+		++m_element_end;
+		return it;
+	}
+
+	[[nodiscard]] friend iterator operator+(iterator const it, ptrdiff_t const offset)
+	{
+		return iterator(it.m_element_end - offset);
+	}
+
+	[[nodiscard]] friend iterator operator+(ptrdiff_t const offset, iterator const it)
+	{
+		return iterator(it.m_element_end - offset);
+	}
+
+	[[nodiscard]] friend iterator operator-(iterator const it, ptrdiff_t const offset)
+	{
+		return iterator(it.m_element_end + offset);
+	}
+
+	[[nodiscard]] friend ptrdiff_t operator-(iterator const lhs, iterator const rhs)
+	{
+		return iterator(rhs.m_element_end - lhs.m_element_end);
+	}
+
 	friend auto operator<=>(iterator const&, iterator const&) = default;
+
+private:
+	template<typename>
+	friend class iterator;
+
+	template<typename, typename, typename, typename, typename, size_t>
+	friend class table;
 };
 
 template<
@@ -426,7 +497,7 @@ public:
 	using const_iterator                = deterministic_table::iterator<T const>;
 	using single_iterator               = deterministic_table::iterator<T>;
 	using const_single_iterator         = deterministic_table::iterator<T const>;
-	using insert_result                 = vsm::insert_result2<iterator>;
+	using insert_result                 = vsm::insert_result<iterator>;
 
 
 	table()
@@ -537,6 +608,8 @@ public:
 	template<typename K>
 	[[nodiscard]] size_t erase(K const& key);
 
+	[[nodiscard]] iterator erase(const_iterator const iterator);
+
 
 	[[nodiscard]] iterator begin()
 	{
@@ -556,6 +629,21 @@ public:
 	[[nodiscard]] const_iterator end() const
 	{
 		return const_iterator(static_cast<T const*>(get_element_end(m.buckets, sizeof(T), m.size)));
+	}
+
+
+	[[nodiscard]] void swap(const_iterator const lhs, const_iterator const rhs)
+	{
+		deterministic_table::swap_elements<sizeof(T)>(
+			m,
+			reinterpret_cast<std::byte const*>(lhs.m_element_end),
+			reinterpret_cast<std::byte const*>(rhs.m_element_end));
+	}
+
+private:
+	[[nodiscard]] size_t index_of(iterator const it)
+	{
+		
 	}
 
 #	pragma pop_macro("destroy_type")

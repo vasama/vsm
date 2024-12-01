@@ -4,7 +4,7 @@ function(vsm_detail_add_test_suite test_suite_target)
 
 	define_property(DIRECTORY PROPERTY vsm_detail_test_suite_target INHERITED)
 	set_property(DIRECTORY PROPERTY vsm_detail_test_suite_target "${test_suite_target}")
-	
+
 	# Set the Visual Studio debugger working directory for the target:
 	set_property(
 		TARGET "${test_suite_target}"
@@ -27,8 +27,8 @@ endfunction()
 function(vsm_add_root name)
 	cmake_parse_arguments(
 		VSM_OPT
-		"NO_TEST_SUITE"
 		""
+		"TEST_SUITE"
 		""
 		${ARGN}
 	)
@@ -44,7 +44,7 @@ function(vsm_add_root name)
 	define_property(DIRECTORY PROPERTY vsm_detail_root_name INHERITED)
 	set_property(DIRECTORY PROPERTY vsm_detail_root_name "${name}")
 
-	if(NOT ${VSM_OPT_NO_TEST_SUITE})
+	if(NOT DEFINED VSM_OPT_TEST_SUITE OR "${VSM_OPT_TEST_SUITE}")
 		# Define the test suite target:
 		vsm_detail_add_test_suite("${name}-test-suite")
 	endif()

@@ -4,7 +4,7 @@
 #include <vsm/insert_result.hpp>
 #include <vsm/key_selector.hpp>
 #include <vsm/memory.hpp>
-#include <vsm/math.hpp>
+#include <vsm/numeric.hpp>
 #include <vsm/platform.h>
 #include <vsm/standard.hpp>
 #include <vsm/type_traits.hpp>
@@ -152,8 +152,10 @@ inline void set_ctrl(
 	size_t const slot_index,
 	ctrl const h2)
 {
+	size_t const copy_index = (slot_index - group_size & capacity) + group_size;
+
 	ctrls[slot_index] = h2;
-	ctrls[(slot_index - group_size & capacity) + group_size] = h2;
+	ctrls[copy_index] = h2;
 }
 
 inline void init_ctrl(ctrl* const ctrls, size_t const capacity)
@@ -187,11 +189,11 @@ std::byte* allocate_storage(A& allocator, size_t const element_size, size_t& cap
 template<typename T, typename P, typename A, size_t C>
 void construct(_table_storage<T, P, A, C>& table)
 {
-	static_assert(is_power_of_two(C + 1));
+	static_assert(std::has_single_bit(C + 1));
 
 	table.slots = get_storage(table);
 	table.size = 0;
-	table.free = C;
+	table.free = get_max_size(C);
 	table.capacity = C;
 
 	if constexpr (C != 0)
@@ -337,7 +339,7 @@ void resize(
 	size_t new_capacity,
 	void const* const null_storage)
 {
-	vsm_assert(is_power_of_two(new_capacity + 1));
+	vsm_assert(std::has_single_bit(new_capacity + 1));
 	vsm_assert(get_max_size(new_capacity) >= table.size);
 
 	std::byte* const new_slots = allocate_storage(table.allocator, element_size, new_capacity);
@@ -470,7 +472,7 @@ void* find(_table_policies<P> const& table, size_t const hash, input_t<UserK> ke
 }
 
 template<typename K, typename UserK, size_t element_size, typename P>
-insert_result2<void*> insert(
+insert_result<void*> insert(
 	_table_policies<P>& table,
 	size_t const hash,
 	input_t<UserK> key,
@@ -706,7 +708,7 @@ public:
 	using const_iterator                = iterator_n<T const>;
 	using single_iterator               = iterator_1<T>;
 	using const_single_iterator         = iterator_1<T const>;
-	using insert_result                 = vsm::insert_result2<single_iterator>;
+	using insert_result                 = vsm::insert_result<single_iterator>;
 
 
 	table()

@@ -27,7 +27,7 @@ struct _rb
 	struct hook
 	{
 		hook* children[2];
-	
+
 		// Pointer to hook::children[0] of a parent hook or to _rb::m_root,
 		// with the tag bit indicating node colour.
 		ptr<hook*> parent;
@@ -47,8 +47,14 @@ struct _rb
 
 		iterator() = default;
 
-		iterator(hook** const children)
+		explicit iterator(hook** const children)
 			: m_children(children)
+		{
+		}
+
+		template<cv_convertible_to<T> U>
+		iterator(iterator<U, Tag> const& other)
+			: m_children(other.m_children)
 		{
 		}
 
@@ -92,6 +98,12 @@ struct _rb
 
 
 		[[nodiscard]] bool operator==(iterator const&) const = default;
+
+	private:
+		friend _rb;
+
+		template<typename, typename>
+		friend class iterator;
 	};
 
 
@@ -138,7 +150,7 @@ struct _rb
 	};
 
 	void insert(hook* node, ptr<hook*> parent_and_side);
-	void remove(hook* node);
+	void erase(hook* node);
 	void clear();
 	_list::hook* flatten();
 
@@ -149,6 +161,12 @@ struct _rb
 		swap(lhs.m_size, rhs.m_size);
 	}
 
+
+	template<typename T, typename Tag>
+	static hook** get_iterator_ptr(iterator<T, Tag> const& it)
+	{
+		return it.m_children;
+	}
 
 	static hook** iterator_begin(hook** root);
 	static hook** iterator_advance(hook** children, bool l);
@@ -176,7 +194,7 @@ public:
 	using       iterator = _rb::iterator<      element_type, tag_type>;
 	using const_iterator = _rb::iterator<const element_type, tag_type>;
 
-	using insert_result = vsm::insert_result<element_type>;
+	using insert_result = vsm::insert_result<iterator>;
 
 private:
 	vsm_no_unique_address KeySelector m_key_selector;
@@ -217,56 +235,60 @@ public:
 	}
 
 
-	/// @brief Find element by homogeneous key.
+	/// @brief Find element by key.
 	/// @param key Lookup key.
-	/// @return Pointer to element, or null if not found.
-	[[nodiscard]] element_type* find(key_type const& key)
-		noexcept(noexcept(find_internal(key)))
-	{
-		hook* const node = find_internal(key).node;
-
-		return node == nullptr
-			? nullptr
-			: get_elem(node);
-	}
-
-	/// @brief Find element by homogeneous key.
-	/// @param key Lookup key.
-	/// @return Pointer to element, or null if not found.
-	[[nodiscard]] element_type const* find(const key_type& key) const
-		noexcept(noexcept(find_internal(key)))
-	{
-		hook const* const node = find_internal(key).node;
-
-		return node == nullptr
-			? nullptr
-			: get_elem(node);
-	}
-
-	/// @brief Find element by heterogeneous key.
-	/// @param key Lookup key.
-	/// @return Pointer to element or null.
-	template<typename Key>
-	[[nodiscard]] element_type* find_equivalent(Key const& key)
-		noexcept(noexcept(find_internal(key)))
+	/// @return Iterator to the element or end.
+	template<typename Key = key_type>
+	[[nodiscard]] iterator find(Key const& key)
 		requires (requires (key_type const& tree_key) { m_comparator(key, tree_key); })
 	{
-		hook* const node = find_internal(key).node;
+		static_assert(detail::check<element_type, tag_type, hook>);
+		hook* const node = _find(key).node;
+
+		return node == nullptr
+			? end()
+			: iterator(node->children);
+	}
+
+	/// @brief Find element by key.
+	/// @param key Lookup key.
+	/// @return Iterator to the element or end.
+	template<typename Key = key_type>
+	[[nodiscard]] const_iterator find(Key const& key) const
+		requires (requires (key_type const& tree_key) { m_comparator(key, tree_key); })
+	{
+		static_assert(detail::check<element_type, tag_type, hook>);
+		hook const* const node = _find(key).node;
+
+		return node == nullptr
+			? end()
+			: const_iterator(node->children);
+	}
+
+	/// @brief Access element by key.
+	/// @param key Lookup key.
+	/// @return Pointer to the element or null.
+	template<typename Key = key_type>
+	[[nodiscard]] element_type* at_ptr(Key const& key)
+		requires (requires (key_type const& tree_key) { m_comparator(key, tree_key); })
+	{
+		static_assert(detail::check<element_type, tag_type, hook>);
+		hook* const node = _find(key).node;
 
 		return node == nullptr
 			? nullptr
 			: get_elem(node);
 	}
 
-	/// @brief Find element by heterogeneous key.
+	/// @brief Access element by key.
 	/// @param key Lookup key.
-	/// @return Pointer to element or null.
-	template<typename Key>
-	[[nodiscard]] element_type const* find_equivalent(Key const& key) const
-		noexcept(noexcept(find_internal(key)))
+	/// @return Pointer to the element or null.
+	template<typename Key = key_type>
+	[[nodiscard]] element_type const* at_ptr(Key const& key) const
 		requires (requires (key_type const& tree_key) { m_comparator(key, tree_key); })
 	{
-		hook const* const node = find_internal(key).node;
+		static_assert(detail::check<element_type, tag_type, hook>);
+		hook const* const node = _find(key).node;
 
 		return node == nullptr
 			? nullptr
@@ -277,25 +299,33 @@ public:
 	/// @brief Insert new element into the tree.
 	/// @param element Element to be inserted.
 	/// @pre @p element is not part of any container.
-	insert_result insert(element_type* const element)
+	insert_result insert(element_type& element)
 	{
-		auto const r = find_internal(m_key_selector(*element));
+		auto const r = _find(m_key_selector(element));
+
 		if (r.node != nullptr)
 		{
-			return { get_elem(r.node), false };
+			return { iterator(r.node->children), false};
 		}
+
 		_rb::insert(
-			detail::links::construct<hook, tag_type>(element),
+			detail::links::construct<hook, tag_type>(std::addressof(element)),
 			const_pointer_cast<ptr<hook*>>(r.parent));
-		return { element, true };
+
+		return { iterator(get_hook(std::addressof(element))->children), true };
 	}
 
 	/// @brief Remove an element from the tree.
 	/// @param element Element to be removed.
 	/// @pre @p element is part of this tree.
-	void remove(element_type* const element)
+	void erase(element_type& element)
 	{
-		_rb::remove(get_hook(element));
+		_rb::erase(get_hook(std::addressof(element)));
+	}
+
+	void erase(const_iterator const position)
+	{
+		_rb::erase(reinterpret_cast<hook*>(_rb::get_iterator_ptr(position)));
 	}
 
 	/// @brief Remove all elements from the tree.
@@ -312,17 +342,17 @@ public:
 	/// @brief Create an iterator referring to an element.
 	/// @pram element Element to which the resulting iterator shall refer.
 	/// @pre @p element is part of this tree.
-	[[nodiscard]] iterator make_iterator(element_type* const element)
+	[[nodiscard]] iterator make_iterator(element_type& element)
 	{
-		return iterator(get_hook(element));
+		return iterator(get_hook(std::addressof(element)));
 	}
 
 	/// @brief Create an iterator referring to an element.
 	/// @pram element Element to which the resulting iterator shall refer.
 	/// @pre @p element is part of this tree.
-	[[nodiscard]] const_iterator make_iterator(element_type const* const element) const
+	[[nodiscard]] const_iterator make_iterator(element_type const& element) const
 	{
-		return const_iterator(get_hook(element));
+		return const_iterator(get_hook(std::addressof(element)));
 	}
 
 
@@ -366,8 +396,7 @@ private:
 	}
 
 	template<typename Key>
-	find_result find_internal(Key const& key) const
-		noexcept(noexcept(m_comparator(key, std::declval<key_type const&>())))
+	find_result _find(Key const& key) const
 	{
 		hook* const* parent = &m_root;
 		bool l = 0;

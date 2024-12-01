@@ -25,18 +25,18 @@ TEST_CASE("list::push_back", "[intrusive][list]")
 
 	list.push_back(e(1));
 	CHECK(list.size() == 1);
-	CHECK(list.front()->value == 1);
-	CHECK(list.back()->value == 1);
+	CHECK(list.front().value == 1);
+	CHECK(list.back().value == 1);
 
 	list.push_back(e(2));
 	CHECK(list.size() == 2);
-	CHECK(list.front()->value == 1);
-	CHECK(list.back()->value == 2);
+	CHECK(list.front().value == 1);
+	CHECK(list.back().value == 2);
 
 	list.push_back(e(3));
 	CHECK(list.size() == 3);
-	CHECK(list.front()->value == 1);
-	CHECK(list.back()->value == 3);
+	CHECK(list.front().value == 1);
+	CHECK(list.back().value == 3);
 }
 
 TEST_CASE("list::push_front", "[intrusive][list]")
@@ -46,18 +46,18 @@ TEST_CASE("list::push_front", "[intrusive][list]")
 
 	list.push_front(e(1));
 	CHECK(list.size() == 1);
-	CHECK(list.front()->value == 1);
-	CHECK(list.back()->value == 1);
+	CHECK(list.front().value == 1);
+	CHECK(list.back().value == 1);
 
 	list.push_front(e(2));
 	CHECK(list.size() == 2);
-	CHECK(list.front()->value == 2);
-	CHECK(list.back()->value == 1);
+	CHECK(list.front().value == 2);
+	CHECK(list.back().value == 1);
 
 	list.push_front(e(3));
 	CHECK(list.size() == 3);
-	CHECK(list.front()->value == 3);
-	CHECK(list.back()->value == 1);
+	CHECK(list.front().value == 3);
+	CHECK(list.back().value == 1);
 }
 
 TEST_CASE("list iteration.", "[intrusive][list]")
@@ -92,11 +92,13 @@ TEST_CASE("list::remove" "[intrusive][list]")
 	element* elements[5];
 	for (int i = 0; i < 5; ++i)
 	{
-		list.push_back(elements[i] = e(i));
+		element& new_element = e(i);
+		list.push_back(new_element);
+		elements[i] = &new_element;
 	}
 
 	int const remove = GENERATE(0, 2, 4);
-	list.remove(elements[remove]);
+	list.remove(*elements[remove]);
 
 	int expected[4];
 	for (int i = 0, j = 0; i < 5; ++i)
@@ -128,7 +130,7 @@ TEST_CASE("list::remove during iteration.", "[intrusive][list]")
 		auto const next = std::next(beg);
 		REQUIRE(next != end);
 		CHECK(next->value == 2);
-		list.remove(&*next);
+		list.remove(*next);
 	}
 	REQUIRE(beg != end);
 	CHECK(beg->value == 1);
@@ -136,7 +138,7 @@ TEST_CASE("list::remove during iteration.", "[intrusive][list]")
 		auto const next = std::next(beg);
 		REQUIRE(next != end);
 		CHECK(next->value == 3);
-		list.remove(&*next);
+		list.remove(*next);
 	}
 	REQUIRE(beg != end);
 	CHECK(beg->value == 1);

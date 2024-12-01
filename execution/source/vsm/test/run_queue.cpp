@@ -15,7 +15,7 @@ TEST_CASE("run_queue", "[execution][run_queue]")
 	exec::async_scope scope;
 
 	bool flag = false;
-	scope.spawn(ex::on(
+	scope.spawn(ex::starts_on(
 		queue.get_scheduler(),
 		ex::just() | ex::then([&]()
 		{

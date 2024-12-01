@@ -24,4 +24,5 @@ inline float vsm_detail_half_to_float(unsigned short const x)
 	(_cvtsh_ss((__VA_ARGS__)))
 #endif
 
-#define vsm_detail_half_promotion 1
+// Promote the result of any float16 arithmetic to float.
+#define vsm_detail_float16_promote float

@@ -68,7 +68,7 @@ public:
 };
 
 
-TEST_CASE("", "[casting]")
+TEST_CASE("casting - shapes", "[casting]")
 {
 	circle c;
 	rectangle r;

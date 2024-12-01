@@ -5,20 +5,20 @@
 namespace vsm {
 
 template<typename Signature, size_t Capacity>
-class static_function : detail::_function_call<Capacity, Signature>
+class inplace_function : detail::_function_call<Capacity, Signature>
 {
 	using base_type = detail::_function_call<Capacity, Signature>;
 
 public:
 	using base_type::base_type;
 
-	static_function() = default;
+	inplace_function() = default;
 
-	static_function(static_function&&) = default;
-	static_function& operator=(static_function&&) & = default;
+	inplace_function(inplace_function&&) = default;
+	inplace_function& operator=(inplace_function&&) & = default;
 
-	template<no_cvref_of<static_function> F>
-	constexpr static_function(F&& f)
+	template<no_cvref_of<inplace_function> F>
+	constexpr inplace_function(F&& f)
 		requires
 			no_instance_of<remove_cvref_t<F>, std::in_place_type_t> &&
 			base_type::template is_invocable<std::decay_t<F>> &&
@@ -31,7 +31,7 @@ public:
 	}
 
 	template<typename T, typename... Args>
-	explicit constexpr static_function(std::in_place_type_t<T>, Args&&... args)
+	explicit constexpr inplace_function(std::in_place_type_t<T>, Args&&... args)
 		requires
 			std::constructible_from<std::decay_t<T>, Args...> &&
 			base_type::template is_invocable<std::decay_t<T>> &&

@@ -15,7 +15,7 @@ class mpsc_queue_producer;
 template<typename T, typename Allocator>
 class mpsc_queue_consumer<T*, Allocator>
 {
-	struct queue_block : intrusive_ref_count
+	struct queue_block : intrusive_refcount
 	{
 		using queue_block_ptr = intrusive_ptr<queue_block>;
 

@@ -6,6 +6,4 @@ class package(ConanFile):
 
 	name = "vsm-hash"
 	version = "0.1"
-	package_type = "static-library" # TODO: Add shared library support
-
-	vsm_libs = ["vsm_hash"]
+	package_type = "header-library"

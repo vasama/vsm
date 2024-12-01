@@ -41,15 +41,15 @@ TEST_CASE("forward_list::push_front", "[intrusive][forward_list]")
 
 	l.push_front(e(1));
 	check_content(l, { 1 });
-	CHECK(l.front()->value == 1);
+	CHECK(l.front().value == 1);
 
 	l.push_front(e(2));
 	check_content(l, { 2, 1 });
-	CHECK(l.front()->value == 2);
+	CHECK(l.front().value == 2);
 
 	l.push_front(e(3));
 	check_content(l, { 3, 2, 1 });
-	CHECK(l.front()->value == 3);
+	CHECK(l.front().value == 3);
 }
 
 TEST_CASE("forward_list::push_back", "[intrusive][forward_list]")
@@ -59,15 +59,15 @@ TEST_CASE("forward_list::push_back", "[intrusive][forward_list]")
 
 	l.push_back(e(1));
 	check_content(l, { 1 });
-	CHECK(l.front()->value == 1);
+	CHECK(l.front().value == 1);
 
 	l.push_back(e(2));
 	check_content(l, { 1, 2 });
-	CHECK(l.front()->value == 1);
+	CHECK(l.front().value == 1);
 
 	l.push_back(e(3));
 	check_content(l, { 1, 2, 3 });
-	CHECK(l.front()->value == 1);
+	CHECK(l.front().value == 1);
 }
 
 TEST_CASE("forward_list::pop_front", "[intrusive][forward_list]")
@@ -79,15 +79,15 @@ TEST_CASE("forward_list::pop_front", "[intrusive][forward_list]")
 	l.push_front(e(2));
 	l.push_front(e(3));
 
-	CHECK(l.pop_front()->value == 3);
+	CHECK(l.pop_front().value == 3);
 	check_content(l, { 2, 1 });
-	CHECK(l.front()->value == 2);
+	CHECK(l.front().value == 2);
 
-	CHECK(l.pop_front()->value == 2);
+	CHECK(l.pop_front().value == 2);
 	check_content(l, { 1 });
-	CHECK(l.front()->value == 1);
+	CHECK(l.front().value == 1);
 
-	CHECK(l.pop_front()->value == 1);
+	CHECK(l.pop_front().value == 1);
 	check_content(l, {});
 }
 
@@ -106,7 +106,7 @@ TEST_CASE("forward_list move constructor", "[intrusive][forward_list]")
 	list_type l2 = std::move(l1);
 
 	REQUIRE(l1.empty());
-	REQUIRE(l2.pop_front()->value == 1);
+	REQUIRE(l2.pop_front().value == 1);
 
 }
 
@@ -121,7 +121,7 @@ TEST_CASE("forward_list move assignment", "[intrusive][forward_list]")
 	l2 = std::move(l1);
 
 	REQUIRE(l1.empty());
-	REQUIRE(l2.pop_front()->value == 1);
+	REQUIRE(l2.pop_front().value == 1);
 }
 
 TEST_CASE("forward_list self assignment", "[intrusive][forward_list]")
@@ -133,7 +133,7 @@ TEST_CASE("forward_list self assignment", "[intrusive][forward_list]")
 
 	l1 = std::move(l1);
 
-	REQUIRE(l1.pop_front()->value == 1);
+	REQUIRE(l1.pop_front().value == 1);
 }
 
 } // namespace

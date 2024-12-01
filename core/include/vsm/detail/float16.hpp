@@ -45,27 +45,18 @@ struct std::common_type<vsm::detail::_float16, Integral>
 
 namespace vsm::detail {
 
-template<typename>
-concept _float16_explicit = true;
-
 template<typename Float>
 concept _float16_concept = std::floating_point<Float> || std::same_as<Float, _float16>;
 
+// If vsm_detail_float16_promote is defined, it specifies the minimum promoted result type of any
+// arithmetic operations on float16.
 template<typename L, typename R>
 using _float16_promote = std::common_type_t<
-#if vsm_detail_half_promotion
-	float,
+#ifdef vsm_detail_float16_promote
+	vsm_detail_float16_promote,
 #endif
 	L,
 	R>;
-
-template<typename T, typename U>
-concept _losslessly_convertible_to =
-	std::convertible_to<T, U> &&
-	requires (T const& t)
-	{
-		U{ t };
-	};
 
 class _float16 final
 {
@@ -85,7 +76,7 @@ public:
 	}
 
 	template<not_same_as<_float16> T, int = 1>
-		requires std::convertible_to<T, float> && _float16_explicit<T>
+		requires std::convertible_to<T, float> && always_true<T>
 	explicit _float16(T const& value)
 		noexcept(noexcept(static_cast<float>(value)))
 		: m_value(vsm_detail_float_to_half(value))
@@ -103,7 +94,7 @@ public:
 	}
 
 	template<not_same_as<_float16> T, int = 1>
-		requires _losslessly_convertible_to<float, T>
+		requires losslessly_convertible_to<float, T>
 	[[nodiscard]] operator T() const
 		noexcept(noexcept(static_cast<T>(0.0f)))
 	{
@@ -111,7 +102,7 @@ public:
 	}
 
 	template<not_same_as<_float16> T, int = 2>
-		requires std::convertible_to<float, T> && _float16_explicit<T>
+		requires std::convertible_to<float, T> && always_true<T>
 	[[nodiscard]] explicit operator T() const
 		noexcept(noexcept(static_cast<T>(0.0f)))
 	{
@@ -119,7 +110,7 @@ public:
 	}
 
 	template<not_same_as<_float16> T, int = 3>
-		requires _losslessly_convertible_to<float, T> && _float16_explicit<T>
+		requires losslessly_convertible_to<float, T> && always_true<T>
 	[[nodiscard]] explicit operator T() const
 		noexcept(noexcept(static_cast<T>(0.0f)))
 	{

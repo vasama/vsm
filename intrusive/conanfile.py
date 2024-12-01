@@ -7,5 +7,3 @@ class package(ConanFile):
 	name = "vsm-intrusive"
 	version = "0.1"
 	package_type = "static-library" # TODO: Add shared library support
-
-	vsm_libs = ["vsm_intrusive"]

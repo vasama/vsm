@@ -78,7 +78,32 @@ TEST_CASE("", "[work_stealing_queue]")
 }
 #endif
 
-TEST_CASE("", "[work_stealing_queue]")
+TEST_CASE("Bug 1", "[work_stealing_queue]")
+{
+	work_stealing_queue<int> queue(/* min_initial_size: */ 2);
+	work_stealing_thief<int> thief = queue.get_thief();
+
+	std::set<int> values;
+	auto const push = [&](int const value)
+	{
+		queue.push_one(value);
+		values.insert(value);
+	};
+
+	push(1);
+	push(2);
+	push(3);
+	push(4);
+
+	REQUIRE(values.erase(queue.take_one().value()));
+	REQUIRE(values.erase(queue.take_one().value()));
+	REQUIRE(values.erase(thief.steal_one().value()));
+	REQUIRE(values.erase(queue.take_one().value()));
+
+	REQUIRE(values.empty());
+}
+
+TEST_CASE("work_stealing_queue single threaded mass test", "[work_stealing_queue]")
 {
 	static constexpr int count = 10'000;
 
@@ -93,10 +118,10 @@ TEST_CASE("", "[work_stealing_queue]")
 		deque.push_back(i);
 	}
 
-	Catch::uniform_integer_distribution<int> d(0, 1);
+	Catch::uniform_integer_distribution<int> distribution(0, 1);
 	for (int i = 0; i < count; ++i)
 	{
-		if (d(Catch::sharedRng()))
+		if (distribution(Catch::sharedRng()))
 		{
 			REQUIRE(queue.take_one().value() == deque.back());
 			deque.pop_back();

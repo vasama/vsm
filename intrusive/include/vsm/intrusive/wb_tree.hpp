@@ -50,8 +50,14 @@ struct _wb
 
 		iterator() = default;
 
-		iterator(hook** const children)
+		explicit iterator(hook** const children)
 			: m_children(children)
+		{
+		}
+
+		template<cv_convertible_to<T> U>
+		iterator(iterator<U, Tag> const& other)
+			: m_children(other.m_children)
 		{
 		}
 
@@ -95,6 +101,12 @@ struct _wb
 
 
 		[[nodiscard]] bool operator==(iterator const&) const = default;
+
+	private:
+		friend _wb;
+
+		template<typename, typename>
+		friend class iterator;
 	};
 
 
@@ -141,7 +153,7 @@ struct _wb
 	size_t rank(hook const* node) const;
 
 	void insert(hook* node, ptr<hook*> parent_and_side);
-	void remove(hook* node);
+	void erase(hook* node);
 	void clear();
 	_list::hook* flatten();
 
@@ -151,6 +163,12 @@ struct _wb
 		swap(lhs.m_root, rhs.m_root);
 	};
 
+
+	template<typename T, typename Tag>
+	static hook** get_iterator_ptr(iterator<T, Tag> const& it)
+	{
+		return it.m_children;
+	}
 
 	static hook** iterator_begin(hook** root);
 	static hook** iterator_advance(hook** children, bool l);
@@ -181,7 +199,7 @@ public:
 	using       iterator = _wb::iterator<      element_type, tag_type>;
 	using const_iterator = _wb::iterator<const element_type, tag_type>;
 
-	using insert_result = vsm::insert_result<element_type>;
+	using insert_result = vsm::insert_result<iterator>;
 
 private:
 	vsm_no_unique_address KeySelector m_key_selector;
@@ -224,94 +242,110 @@ public:
 	}
 
 
-	[[nodiscard]] element_type* root()
+	[[nodiscard]] element_type& root()
 	{
 		vsm_assert(m_root != nullptr);
-		return get_elem(m_root);
+		return *get_elem(m_root);
 	}
 
-	[[nodiscard]] element_type const* root() const
+	[[nodiscard]] element_type const& root() const
 	{
 		vsm_assert(m_root != nullptr);
-		return get_elem(m_root);
+		return *get_elem(m_root);
 	}
 
 
-	[[nodiscard]] size_t weight(element_type const* const element) const
+	[[nodiscard]] size_t weight(element_type const& element) const
 	{
-		vsm_intrusive_link_check(*this, *element);
-		return get_hook(element)->weight;
+		vsm_intrusive_link_check(*this, element);
+		return get_hook(std::addressof(element))->weight;
 	}
 
-	[[nodiscard]] wb_tree_children<element_type> children(element_type const* const element)
+	[[nodiscard]] wb_tree_children<element_type> children(element_type const& element)
 	{
-		vsm_intrusive_link_check(*this, *element);
-		hook const* const node = get_hook(element);
+		vsm_intrusive_link_check(*this, element);
+		hook const* const node = get_hook(std::addressof(element));
 		return { get_elem(node->children[0]), get_elem(node->children[1]) };
 	}
 
-	[[nodiscard]] wb_tree_children<element_type const> children(element_type const* const element) const
+	[[nodiscard]] wb_tree_children<element_type const> children(element_type const& element) const
 	{
-		vsm_intrusive_link_check(*this, *element);
-		hook const* const node = get_hook(element);
+		vsm_intrusive_link_check(*this, element);
+		hook const* const node = get_hook(std::addressof(element));
 		return { get_elem(node->children[0]), get_elem(node->children[1]) };
 	}
 
 
-	[[nodiscard]] element_type* select(size_t const rank)
+	[[nodiscard]] element_type& select(size_t const rank)
 	{
-		return get_elem(_wb::select(rank));
+		return *get_elem(_wb::select(rank));
 	}
 
-	[[nodiscard]] const element_type* select(size_t const rank) const
+	[[nodiscard]] element_type const& select(size_t const rank) const
 	{
-		return get_elem(_wb::select(rank));
+		return *get_elem(_wb::select(rank));
 	}
 
-	[[nodiscard]] size_t rank(element_type const* const element) const
+	[[nodiscard]] size_t rank(element_type const& element) const
 	{
-		return _wb::rank(get_hook(element));
+		return _wb::rank(get_hook(std::addressof(element)));
 	}
 
 
-	[[nodiscard]] element_type* find(key_type const& key)
-		noexcept(noexcept(find_internal(key)))
-	{
-		hook* const node = find_internal(key).node;
-
-		return node == nullptr
-			? nullptr
-			: get_elem(node);
-	}
-
-	[[nodiscard]] element_type const* find(key_type const& key) const
-		noexcept(noexcept(find_internal(key)))
-	{
-		hook const* const node = find_internal(key).node;
-
-		return node == nullptr
-			? nullptr
-			: get_elem(node);
-	}
-
-	template<typename Key>
-	[[nodiscard]] element_type* find_equivalent(Key const& key)
-		noexcept(noexcept(find_internal(key)))
+	/// @brief Find element by key.
+	/// @param key Lookup key.
+	/// @return Iterator to the element or end.
+	template<typename Key = key_type>
+	[[nodiscard]] iterator find(Key const& key)
 		requires (requires (key_type const& tree_key) { m_comparator(key, tree_key); })
 	{
-		hook* const node = find_internal(key).node;
+		static_assert(detail::check<element_type, tag_type, hook>);
+		hook* const node = _find(key).node;
 
 		return node == nullptr
-			? nullptr
-			: get_elem(node);
+			? end()
+			: iterator(node->children);
 	}
 
-	template<typename Key>
-	[[nodiscard]] element_type const* find_equivalent(Key const& key) const
-		noexcept(noexcept(find_internal(key)))
+	/// @brief Find element by key.
+	/// @param key Lookup key.
+	/// @return Iterator to the element or end.
+	template<typename Key = key_type>
+	[[nodiscard]] const_iterator find(Key const& key) const
 		requires (requires (key_type const& tree_key) { m_comparator(key, tree_key); })
 	{
-		hook const* const node = find_internal(key).node;
+		static_assert(detail::check<element_type, tag_type, hook>);
+		hook const* const node = _find(key).node;
+
+		return node == nullptr
+			? end()
+			: const_iterator(node->children);
+	}
+
+	/// @brief Access element by key.
+	/// @param key Lookup key.
+	/// @return Pointer to the element or null.
+	template<typename Key = key_type>
+	[[nodiscard]] element_type* at_ptr(Key const& key)
+		requires (requires (key_type const& tree_key) { m_comparator(key, tree_key); })
+	{
+		static_assert(detail::check<element_type, tag_type, hook>);
+		hook* const node = _find(key).node;
+
+		return node == nullptr
+			? nullptr
+			: get_elem(node);
+	}
+
+	/// @brief Access element by key.
+	/// @param key Lookup key.
+	/// @return Pointer to the element or null.
+	template<typename Key = key_type>
+	[[nodiscard]] element_type const* at_ptr(Key const& key) const
+		requires (requires (key_type const& tree_key) { m_comparator(key, tree_key); })
+	{
+		static_assert(detail::check<element_type, tag_type, hook>);
+		hook const* const node = _find(key).node;
 
 		return node == nullptr
 			? nullptr
@@ -319,23 +353,30 @@ public:
 	}
 
 
-	insert_result insert(element_type* const element)
-		noexcept(noexcept(find_internal(std::declval<key_type>())))
+	insert_result insert(element_type& element)
 	{
-		auto const r = find_internal(m_key_selector(*element));
+		auto const r = _find(m_key_selector(element));
+
 		if (r.node != nullptr)
 		{
-			return { get_elem(r.node), false };
+			return { iterator(r.node->children), false };
 		}
+
 		_wb::insert(
-			detail::links::construct<hook, tag_type>(element),
+			detail::links::construct<hook, tag_type>(std::addressof(element)),
 			const_pointer_cast<ptr<hook*>>(r.parent));
-		return { element, true };
+
+		return { iterator(get_hook(std::addressof(element))->children), true };
 	}
 
-	void remove(element_type* const element)
+	void erase(element_type& element)
 	{
-		_wb::remove(get_hook(element));
+		_wb::erase(get_hook(std::addressof(element)));
+	}
+
+	void erase(const_iterator const position)
+	{
+		_wb::erase(reinterpret_cast<hook*>(get_iterator_ptr(position)));
 	}
 
 	using _wb::clear;
@@ -348,14 +389,14 @@ public:
 
 
 
-	[[nodiscard]] iterator make_iterator(element_type* const element)
+	[[nodiscard]] iterator make_iterator(element_type& element)
 	{
-		return iterator(get_hook(element));
+		return iterator(get_hook(std::addressof(element)));
 	}
 
-	[[nodiscard]] const_iterator make_iterator(element_type const* const element) const
+	[[nodiscard]] const_iterator make_iterator(element_type const& element) const
 	{
-		return const_iterator(get_hook(element));
+		return const_iterator(get_hook(std::addressof(element)));
 	}
 
 
@@ -399,8 +440,7 @@ private:
 	}
 
 	template<typename Key>
-	find_result find_internal(Key const& key) const
-		noexcept(noexcept(m_comparator(key, std::declval<key_type const&>())))
+	find_result _find(Key const& key) const
 	{
 		hook* const* parent = &m_root;
 		bool l = 0;

@@ -37,7 +37,7 @@ struct two_trees
 	{
 		auto const it = list.insert(list.end(), element(value));
 
-		auto const vsm_result = vsm_tree.insert(&*it);
+		auto const vsm_result = vsm_tree.insert(*it);
 		auto const std_result = std_tree.insert(value);
 		REQUIRE(vsm_result.inserted == std_result.second);
 
@@ -49,19 +49,20 @@ struct two_trees
 		return vsm_result;
 	}
 
-	bool remove(int const value)
+	bool erase(int const value)
 	{
-		element* const element = vsm_tree.find(value);
-		auto const it = std_tree.find(value);
+		auto const vsm_it = vsm_tree.find(value);
+		auto const std_it = std_tree.find(value);
 
-		REQUIRE((element != nullptr) == (it != std_tree.end()));
-		if (element == nullptr)
+		REQUIRE((vsm_it != vsm_tree.end()) == (std_it != std_tree.end()));
+
+		if (vsm_it == vsm_tree.end())
 		{
 			return false;
 		}
 
-		vsm_tree.remove(element);
-		std_tree.erase(it);
+		vsm_tree.erase(vsm_it);
+		std_tree.erase(std_it);
 
 		return true;
 	}
@@ -138,14 +139,14 @@ TEST_CASE("wb_tree::insert", "[intrusive][wb_tree]")
 	}
 }
 
-TEST_CASE("wb_tree::remove", "[intrusive][wb_tree]")
+TEST_CASE("wb_tree::erase", "[intrusive][wb_tree]")
 {
 	two_trees trees;
 
 	SECTION("One element tree")
 	{
 		trees.insert(0);
-		REQUIRE(trees.remove(0));
+		REQUIRE(trees.erase(0));
 	}
 
 	SECTION("Perfectly balanced, height 5")
@@ -154,7 +155,7 @@ TEST_CASE("wb_tree::remove", "[intrusive][wb_tree]")
 		{
 			if (GENERATE(false, true))
 			{
-				trees.remove(value);
+				trees.erase(value);
 				return true;
 			}
 			return false;
@@ -203,7 +204,7 @@ TEST_CASE("wb_tree::remove", "[intrusive][wb_tree]")
 
 		SECTION("Remove a leaf")
 		{
-			REQUIRE(trees.remove(base + GENERATE(1, 3, 5, 7) * 10));
+			REQUIRE(trees.erase(base + GENERATE(1, 3, 5, 7) * 10));
 		}
 
 		SECTION("Remove an upper branch")
@@ -214,7 +215,7 @@ TEST_CASE("wb_tree::remove", "[intrusive][wb_tree]")
 			maybe_remove(branch - 10);
 			maybe_remove(branch + 10);
 
-			REQUIRE(trees.remove(branch));
+			REQUIRE(trees.erase(branch));
 		}
 
 		SECTION("Remove a lower branch")
@@ -233,12 +234,12 @@ TEST_CASE("wb_tree::remove", "[intrusive][wb_tree]")
 			maybe_remove_upper_branch(branch - 20);
 			maybe_remove_upper_branch(branch + 20);
 
-			REQUIRE(trees.remove(branch));
+			REQUIRE(trees.erase(branch));
 		}
 
 		SECTION("Remove the root")
 		{
-			REQUIRE(trees.remove(80));
+			REQUIRE(trees.erase(80));
 		}
 	}
 

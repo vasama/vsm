@@ -290,6 +290,7 @@ public:
 	using vector_type::clear;
 	using vector_type::erase;
 	using vector_type::resize;
+	using vector_type::_resize_default;
 
 	void append(string_view_type const string)
 	{

@@ -18,6 +18,16 @@ struct s
 	int v;
 };
 
+static_assert(requires (p<s*>& x)
+{
+	x = nullptr;
+	{ x.get() } -> std::same_as<s*>;
+	{ *x } -> std::same_as<s&>;
+	{ x->v } -> std::same_as<int&>;
+	{ x[0] } -> std::same_as<s&>;
+	{ x == nullptr } -> std::same_as<bool>;
+});
+
 vsm_dependent_context // pointer
 {
 	using s = vsm_dependent_t(::s);

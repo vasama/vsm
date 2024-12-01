@@ -135,43 +135,43 @@ public:
 
 	/// @return The minimum element of the heap.
 	/// @pre The heap is not empty.
-	[[nodiscard]] element_type* peek()
+	[[nodiscard]] element_type& peek()
 	{
 		vsm_assert(m_size > 0);
-		return get_elem(m_root);
+		return *get_elem(m_root);
 	}
 
 	/// @return The minimum element of the heap.
 	/// @pre The heap is not empty.
-	[[nodiscard]] element_type const* peek() const
+	[[nodiscard]] element_type const& peek() const
 	{
 		vsm_assert(m_size > 0);
-		return get_elem(m_root);
+		return *get_elem(m_root);
 	}
 
 
 	/// @brief Insert an element into the heap.
 	/// @param element Element to be inserted.
 	/// @pre @p element is not part of any container.
-	void push(element_type* const element)
+	void push(element_type& element)
 	{
-		_heap::push(detail::links::construct<hook, tag_type>(element), comparator);
+		_heap::push(detail::links::construct<hook, tag_type>(std::addressof(element)), comparator);
 	}
 
 	/// @brief Remove an element from the heap.
 	/// @param element Element to be removed.
 	/// @pre @p element is part of this heap.
-	void remove(element_type* const element)
+	void remove(element_type& element)
 	{
-		_heap::remove(get_hook(element), comparator);
+		_heap::remove(get_hook(std::addressof(element)), comparator);
 	}
 
 	/// @brief Pop the minimum element of the heap.
 	/// @return The minimum element.
 	/// @pre The heap is not empty.
-	[[nodiscard]] element_type* pop()
+	[[nodiscard]] element_type& pop()
 	{
-		return get_elem(_heap::pop(comparator));
+		return *get_elem(_heap::pop(comparator));
 	}
 
 

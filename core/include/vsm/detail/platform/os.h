@@ -14,10 +14,10 @@
 #	define vsm_debugbreak() ((void)0)
 #endif
 
-#ifndef vsm_api_export
-#	define vsm_api_export
+#ifndef vsm_dll_export
+#	define vsm_dll_export
 #endif
 
-#ifndef vsm_api_import
-#	define vsm_api_import
+#ifndef vsm_dll_import
+#	define vsm_dll_import
 #endif

@@ -173,27 +173,27 @@ public:
 
 	/// @return First element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] element_type* front()
+	[[nodiscard]] element_type& front()
 	{
 		vsm_assert(m_root.next != &m_root);
-		return get_elem(m_root.next);
+		return *get_elem(m_root.next);
 	}
 
 	/// @return First element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] element_type const* front() const
+	[[nodiscard]] element_type const& front() const
 	{
 		vsm_assert(m_root.next != &m_root);
-		return get_elem(m_root.next);
+		return *get_elem(m_root.next);
 	}
 
 
 	/// @brief Insert an element at the front of the list.
 	/// @param element Element to be inserted.
 	/// @pre @p element is not part of any container.
-	void push_front(element_type* const element)
+	void push_front(element_type& element)
 	{
-		_flist::push_front(make_hook(element));
+		_flist::push_front(make_hook(std::addressof(element)));
 	}
 
 	void splice_front(forward_list<T>&& other)
@@ -202,9 +202,9 @@ public:
 	}
 
 
-	void push_back(element_type* const element)
+	void push_back(element_type& element)
 	{
-		_flist::push_back(make_hook(element));
+		_flist::push_back(make_hook(std::addressof(element)));
 	}
 
 	void splice_back(forward_list<T>&& other)
@@ -216,10 +216,10 @@ public:
 	/// @brief Remove the first element from the list.
 	/// @return The first element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] element_type* pop_front()
+	[[nodiscard]] element_type& pop_front()
 	{
 		vsm_assert(m_root.next != &m_root);
-		return get_elem(_flist::pop_front());
+		return *get_elem(_flist::pop_front());
 	}
 
 

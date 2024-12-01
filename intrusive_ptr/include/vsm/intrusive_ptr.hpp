@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vsm/allocator.hpp>
 #include <vsm/assert.h>
 #include <vsm/atomic.hpp>
 #include <vsm/concepts.hpp>
@@ -12,155 +13,246 @@
 namespace vsm {
 namespace detail {
 
-template<typename T>
-struct propagate_const_traits;
+struct intrusive_ptr_adopt_t {};
 
 
-struct intrusive_ptr_acquire_tag {};
+struct intrusive_ptr_deleter_cpo
+{
+	template<typename Manager, typename T>
+	friend void tag_invoke(intrusive_ptr_deleter_cpo, Manager const& manager, T* const ptr)
+		requires requires { manager.deleter(ptr); }
+	{
+		manager.deleter(ptr);
+	}
 
+	template<typename Manager, typename T>
+	vsm_static_operator void operator()(Manager const& manager, T* const ptr) vsm_static_operator_const
+		requires tag_invocable<intrusive_ptr_deleter_cpo, Manager const&, T*>
+	{
+		vsm::tag_invoke(intrusive_ptr_deleter_cpo(), manager, ptr);
+	}
+};
 
 struct intrusive_ptr_acquire_cpo
 {
-	template<typename T>
-	vsm_static_operator void operator()(T* const ptr, size_t const count) vsm_static_operator_const
-		requires tag_invocable<intrusive_ptr_acquire_cpo, T*, size_t>
+	template<typename Manager, typename T>
+	vsm_static_operator void operator()(
+		Manager const& manager,
+		T* const ptr,
+		size_t const count) vsm_static_operator_const noexcept
+		requires tag_invocable<intrusive_ptr_acquire_cpo, Manager const&, T*, size_t>
 	{
-		vsm::tag_invoke(intrusive_ptr_acquire_cpo(), ptr, count);
+		vsm::tag_invoke(intrusive_ptr_acquire_cpo(), manager, ptr, count);
 	}
 };
 
 struct intrusive_ptr_release_cpo
 {
-	template<typename T>
-	vsm_static_operator void operator()(T* const ptr, size_t const count) vsm_static_operator_const
-		requires tag_invocable<intrusive_ptr_release_cpo, T*, size_t>
+	template<typename Manager, typename T>
+	vsm_static_operator void operator()(
+		Manager const& manager,
+		T* const ptr,
+		size_t const count) vsm_static_operator_const noexcept
+		requires tag_invocable<intrusive_ptr_release_cpo, Manager const&, T*, size_t>
 	{
-		vsm::tag_invoke(intrusive_ptr_release_cpo(), ptr, count);
-	}
-};
-
-struct intrusive_ptr_delete_cpo
-{
-	template<typename T>
-	friend void tag_invoke(intrusive_ptr_delete_cpo, T* const ptr)
-	{
-		std::default_delete<T>()(ptr);
-	}
-
-	template<typename T>
-	vsm_static_operator void operator()(T* const ptr) vsm_static_operator_const
-		requires tag_invocable<intrusive_ptr_delete_cpo, T*>
-	{
-		vsm::tag_invoke(intrusive_ptr_delete_cpo(), ptr);
+		vsm::tag_invoke(intrusive_ptr_release_cpo(), manager, ptr, count);
 	}
 };
 
 
 template<typename Counter>
-struct intrusive_ref_count_base
+struct intrusive_refcount_base
 {
 	template<typename T>
 	using type = T;
 
-	Counter m_ref_count;
+	Counter m_refcount;
 
-	explicit intrusive_ref_count_base(size_t const ref_count)
-		: m_ref_count(ref_count)
+	explicit intrusive_refcount_base(size_t const refcount)
+		: m_refcount(refcount)
 	{
 	}
 };
 
 template<typename Counter>
-struct intrusive_ref_count_mutable_base
+struct intrusive_refcount_mutable_base
 {
 	template<typename T>
 	using type = T const;
 
-	Counter mutable m_ref_count;
+	Counter mutable m_refcount;
 
-	explicit intrusive_ref_count_mutable_base(size_t const ref_count)
-		: m_ref_count(ref_count)
+	explicit intrusive_refcount_mutable_base(size_t const refcount)
+		: m_refcount(refcount)
 	{
 	}
 };
 
 template<typename Base>
-class basic_intrusive_ref_count : Base
+class basic_intrusive_refcount : Base
 {
 protected:
-	basic_intrusive_ref_count()
+	basic_intrusive_refcount() noexcept
 		: Base(0)
 	{
 	}
 
-	explicit basic_intrusive_ref_count(size_t const ref_count)
-		: Base(ref_count)
+	explicit basic_intrusive_refcount(size_t const refcount) noexcept
+		: Base(refcount)
 	{
 	}
 
-	basic_intrusive_ref_count(basic_intrusive_ref_count const&)
+	basic_intrusive_refcount(basic_intrusive_refcount const&) noexcept
 	{
 	}
 
-	basic_intrusive_ref_count& operator=(basic_intrusive_ref_count const&)
+	basic_intrusive_refcount& operator=(basic_intrusive_refcount const&) noexcept
 	{
 		return *this;
 	}
 
-	~basic_intrusive_ref_count() = default;
+	~basic_intrusive_refcount() = default;
 
 
-	template<std::derived_from<basic_intrusive_ref_count> T>
-	friend void tag_invoke(intrusive_ptr_acquire_cpo, typename Base::template type<T>* const ptr, size_t const count)
+	template<typename Manager, std::derived_from<basic_intrusive_refcount> T>
+	friend void tag_invoke(
+		intrusive_ptr_acquire_cpo,
+		Manager const& manager,
+		typename Base::template type<T>* const ptr,
+		size_t const count) noexcept
 	{
-		(void)ptr->m_ref_count.fetch_add(count, std::memory_order_relaxed);
+		(void)ptr->m_refcount.fetch_add(count, std::memory_order_relaxed);
 	}
 
-	template<std::derived_from<basic_intrusive_ref_count> T>
-	friend void tag_invoke(intrusive_ptr_release_cpo, typename Base::template type<T>* const ptr, size_t const count)
+	template<typename Manager, std::derived_from<basic_intrusive_refcount> T>
+	friend void tag_invoke(
+		intrusive_ptr_release_cpo,
+		Manager const& manager,
+		typename Base::template type<T>* const ptr,
+		size_t const count) noexcept
 	{
-		size_t const old_count = ptr->m_ref_count.fetch_sub(count, std::memory_order_acq_rel);
+		size_t const old_count = ptr->m_refcount.fetch_sub(count, std::memory_order_acq_rel);
 
 		vsm_assert(count <= old_count);
 
 		if (count == old_count)
 		{
-			intrusive_ptr_delete_cpo()(ptr);
+			intrusive_ptr_deleter_cpo()(manager, ptr);
 		}
 	}
 };
 
+
+template<typename From, typename To>
+concept _intrusive_ptr_convertible =
+	std::convertible_to<From*, To*> && (
+		std::is_same_v<remove_cv_t<From>, remove_cv_t<To>> ||
+		std::has_virtual_destructor_v<remove_cv_t<To>> ||
+		has_destroying_delete_v<remove_cv_t<To>>);
+
+
+template<typename Manager, typename T>
+concept _intrusive_ptr_manager = requires (Manager const& manager, T* const ptr, size_t const count)
+{
+	{ manager.acquire(ptr, count) };
+	{ manager.release(ptr, count) } noexcept;
+};
+
+template<typename Manager, typename T>
+concept _intrusive_ptr_nothrow_manager =
+	_intrusive_ptr_manager<Manager, T> &&
+	requires (Manager const& manager, T* const ptr, size_t const count)
+	{
+		{ manager.acquire(ptr, count) } noexcept;
+	};
+
 } // namespace detail
 
 template<typename Counter>
-using basic_intrusive_ref_count = detail::basic_intrusive_ref_count<detail::intrusive_ref_count_base<Counter>>;
+using basic_intrusive_refcount =
+	detail::basic_intrusive_refcount<detail::intrusive_refcount_base<Counter>>;
 
 template<typename Counter>
-using basic_intrusive_mutable_ref_count = detail::basic_intrusive_ref_count<detail::intrusive_ref_count_mutable_base<Counter>>;
+using basic_intrusive_mutable_refcount =
+	detail::basic_intrusive_refcount<detail::intrusive_refcount_mutable_base<Counter>>;
 
-using intrusive_ref_count = basic_intrusive_ref_count<atomic<size_t>>;
-using intrusive_mutable_ref_count = basic_intrusive_mutable_ref_count<atomic<size_t>>;
+using intrusive_refcount = basic_intrusive_refcount<atomic<size_t>>;
+using intrusive_mutable_refcount = basic_intrusive_mutable_refcount<atomic<size_t>>;
 
+inline constexpr detail::intrusive_ptr_deleter_cpo intrusive_ptr_deleter = {};
 inline constexpr detail::intrusive_ptr_acquire_cpo intrusive_ptr_acquire = {};
 inline constexpr detail::intrusive_ptr_release_cpo intrusive_ptr_release = {};
-inline constexpr detail::intrusive_ptr_delete_cpo intrusive_ptr_delete = {};
 
-struct intrusive_ref_count_manager
+struct default_refcount_manager
 {
-	static void acquire(auto* const object, size_t const count)
+	template<typename T>
+	void deleter(T* const object) const noexcept
 	{
-		intrusive_ptr_acquire(object, count);
+		std::default_delete<T>()(object);
 	}
 
-	static void release(auto* const object, size_t const count)
+	template<typename T>
+	void acquire(T* const object, size_t const count) const
+		noexcept(noexcept(intrusive_ptr_acquire(*this, object, count)))
 	{
-		intrusive_ptr_release(object, count);
+		intrusive_ptr_acquire(*this, object, count);
+	}
+
+	template<typename T>
+	void release(T* const object, size_t const count) const
+		noexcept(noexcept(intrusive_ptr_release(*this, object, count)))
+	{
+		intrusive_ptr_release(*this, object, count);
 	}
 };
 
-template<typename T, typename Manager = intrusive_ref_count_manager>
+template<allocator Allocator>
+class basic_refcount_manager
+{
+	vsm_no_unique_address Allocator m_allocator = {};
+
+public:
+	basic_refcount_manager()
+		requires std::is_default_constructible_v<Allocator> = default;
+
+	explicit basic_refcount_manager(any_cvref_of<Allocator> auto&& allocator)
+	{
+	}
+
+	[[nodiscard]] Allocator const& get_allocator() const noexcept
+	{
+		return m_allocator;
+	}
+
+	template<typename T>
+	void deleter(T* const object) const noexcept
+	{
+		vsm::delete_via(m_allocator, object);
+	}
+
+	template<typename T>
+	void acquire(T* const object, size_t const count) const noexcept
+	{
+		intrusive_ptr_acquire(*this, object, count);
+	}
+
+	template<typename T>
+	void release(T* const object, size_t const count) const noexcept
+	{
+		intrusive_ptr_release(*this, object, count);
+	}
+};
+
+template<non_ref T, detail::_intrusive_ptr_manager<T> Manager = default_refcount_manager>
 class intrusive_ptr
 {
+	static_assert(std::is_nothrow_move_constructible_v<Manager>);
+	static_assert(std::is_nothrow_move_assignable_v<Manager>);
+	static_assert(std::is_nothrow_swappable_v<Manager>);
+
+	static constexpr bool has_nothrow_acquire =
+		noexcept(std::declval<Manager const&>().acquire(static_cast<T*>(0), size_t(1)));
+
 	T* m_ptr;
 	vsm_no_unique_address Manager m_manager;
 
@@ -171,26 +263,43 @@ public:
 	}
 
 	constexpr intrusive_ptr(decltype(nullptr))
+		noexcept(std::is_nothrow_default_constructible_v<Manager>)
+		requires std::is_default_constructible_v<Manager>
 		: m_ptr(nullptr)
 	{
 	}
 
-	explicit constexpr intrusive_ptr(T* const ptr)
+	template<any_cvref_of<Manager> NewManager>
+		requires std::is_constructible_v<Manager, NewManager>
+	constexpr intrusive_ptr(decltype(nullptr), NewManager&& manager)
+		noexcept(has_nothrow_acquire && std::is_nothrow_constructible_v<Manager, NewManager>)
+		: m_ptr(nullptr)
+		, m_manager(vsm_forward(manager))
+	{
+	}
+
+	template<detail::_intrusive_ptr_convertible<T> U = T>
+		requires std::is_default_constructible_v<Manager>
+	explicit constexpr intrusive_ptr(U* const ptr)
+		noexcept(has_nothrow_acquire && std::is_nothrow_default_constructible_v<Manager>)
 		: m_ptr(ptr)
 	{
 		if (ptr != nullptr)
 		{
-			m_manager.acquire(ptr, 1);
+			vsm_as_const(m_manager).acquire(ptr, static_cast<size_t>(1));
 		}
 	}
 
-	explicit constexpr intrusive_ptr(T* const ptr, any_cvref_of<Manager> auto&& manager)
+	template<any_cvref_of<Manager> NewManager, detail::_intrusive_ptr_convertible<T> U = T>
+		requires std::is_constructible_v<Manager, NewManager>
+	explicit constexpr intrusive_ptr(U* const ptr, NewManager&& manager)
+		noexcept(has_nothrow_acquire && std::is_nothrow_constructible_v<Manager, NewManager>)
 		: m_ptr(ptr)
 		, m_manager(vsm_forward(manager))
 	{
 		if (ptr != nullptr)
 		{
-			m_manager.acquire(ptr, 1);
+			vsm_as_const(m_manager).acquire(ptr, static_cast<size_t>(1));
 		}
 	}
 
@@ -200,52 +309,74 @@ public:
 		other.m_ptr = nullptr;
 	}
 
-	constexpr intrusive_ptr(intrusive_ptr const& other) noexcept
+	template<detail::_intrusive_ptr_convertible<T> U = T>
+	constexpr intrusive_ptr(intrusive_ptr<U, Manager>&& other) noexcept
+		: m_ptr(other.m_ptr)
+	{
+		other.m_ptr = nullptr;
+	}
+
+	constexpr intrusive_ptr(intrusive_ptr const& other)
+		noexcept(has_nothrow_acquire)
 		: m_ptr(other.m_ptr)
 	{
 		if (m_ptr != nullptr)
 		{
-			m_manager.acquire(m_ptr, 1);
+			vsm_as_const(m_manager).acquire(m_ptr, static_cast<size_t>(1));
 		}
 	}
 
-	constexpr intrusive_ptr& operator=(intrusive_ptr&& other) & noexcept
+	template<detail::_intrusive_ptr_convertible<T> U = T>
+		requires std::is_copy_constructible_v<Manager>
+	constexpr intrusive_ptr(intrusive_ptr<U, Manager> const& other)
+		noexcept(has_nothrow_acquire && std::is_nothrow_copy_constructible_v<Manager>)
+		: m_ptr(other.m_ptr)
+		, m_manager(other.m_manager)
 	{
-		T* const old_ptr = this->m_ptr;
-		T* const new_ptr = other.m_ptr;
-
-		this->m_ptr = nullptr;
-		other.m_ptr = nullptr;
-
-		if (old_ptr != nullptr)
+		if (m_ptr != nullptr)
 		{
-			m_manager.release(old_ptr, 1);
+			vsm_as_const(m_manager).acquire(m_ptr, static_cast<size_t>(1));
 		}
-		
-		this->m_ptr = new_ptr;
+	}
+
+	constexpr intrusive_ptr& operator=(decltype(nullptr)) & noexcept
+	{
+		if (T* const old_ptr = m_ptr)
+		{
+			m_ptr = nullptr;
+			vsm_as_const(m_manager).release(old_ptr, static_cast<size_t>(1));
+		}
 
 		return *this;
 	}
 
-	constexpr intrusive_ptr& operator=(intrusive_ptr const& other) & noexcept
+	constexpr intrusive_ptr& operator=(intrusive_ptr&& other) & noexcept
 	{
-		T* const old_ptr = this->m_ptr;
-		T* const new_ptr = other.m_ptr;
+		intrusive_ptr(vsm_move(other)).swap(*this);
+		return *this;
+	}
 
-		this->m_ptr = nullptr;
+	template<detail::_intrusive_ptr_convertible<T> U = T>
+	constexpr intrusive_ptr& operator=(intrusive_ptr<U, Manager>&& other) & noexcept
+	{
+		intrusive_ptr(vsm_move(other)).swap(*this);
+		return *this;
+	}
 
-		if (new_ptr != nullptr)
-		{
-			m_manager.acquire(new_ptr, 1);
-		}
+	constexpr intrusive_ptr& operator=(intrusive_ptr const& other) &
+		noexcept(has_nothrow_acquire && std::is_nothrow_copy_assignable_v<Manager>)
+		requires std::is_copy_assignable_v<Manager>
+	{
+		intrusive_ptr(vsm_move(other)).swap(*this);
+		return *this;
+	}
 
-		if (old_ptr != nullptr)
-		{
-			m_manager.release(old_ptr, 1);
-		}
-
-		this->m_ptr = new_ptr;
-
+	template<detail::_intrusive_ptr_convertible<T> U = T>
+		requires std::is_copy_assignable_v<Manager>
+	constexpr intrusive_ptr& operator=(intrusive_ptr<U, Manager> const& other) &
+		noexcept(has_nothrow_acquire && std::is_nothrow_copy_assignable_v<Manager>)
+	{
+		intrusive_ptr(vsm_move(other)).swap(*this);
 		return *this;
 	}
 
@@ -253,20 +384,21 @@ public:
 	{
 		if (m_ptr != nullptr)
 		{
-			m_manager.release(m_ptr, 1);
+			vsm_as_const(m_manager).release(m_ptr, static_cast<size_t>(1));
 		}
 	}
 
 
-	[[nodiscard]] constexpr T* get() const
+	[[nodiscard]] constexpr T* get() const noexcept
 	{
 		return m_ptr;
 	}
 
-	[[nodiscard]] constexpr Manager const& get_manager() const
+	[[nodiscard]] constexpr Manager const& get_manager() const noexcept
 	{
 		return m_manager;
 	}
+
 
 	[[nodiscard]] constexpr T& operator*() const
 	{
@@ -281,39 +413,92 @@ public:
 	}
 
 
-	constexpr void reset(T* const new_ptr = nullptr)
+	constexpr void reset(decltype(nullptr) = nullptr) & noexcept
 	{
-		T* const old_ptr = m_ptr;
-		m_ptr = nullptr;
-		
-		if (new_ptr != nullptr)
+		if (T* const ptr = m_ptr)
 		{
-			m_manager.acquire(new_ptr, 1);
-		}
-		m_ptr = new_ptr;
-		
-		if (old_ptr != nullptr)
-		{
-			m_manager.release(old_ptr, 1);
+			m_ptr = nullptr;
+			vsm_as_const(m_manager).release(ptr, static_cast<size_t>(1));
 		}
 	}
 
+	constexpr void reset(T* const new_ptr) &
+		noexcept(has_nothrow_acquire)
+	{
+		if (new_ptr != nullptr)
+		{
+			vsm_as_const(m_manager).acquire(new_ptr, static_cast<size_t>(1));
+		}
 
-	[[nodiscard]] constexpr T* release()
+		T* const old_ptr = m_ptr;
+		m_ptr = new_ptr;
+
+		if (old_ptr != nullptr)
+		{
+			vsm_as_const(m_manager).release(old_ptr, static_cast<size_t>(1));
+		}
+	}
+
+	template<any_cvref_of<Manager> NewManager>
+		requires std::is_constructible_v<Manager, NewManager>
+	constexpr void reset(T* const new_ptr, NewManager&& new_manager) &
+		noexcept(has_nothrow_acquire && std::is_nothrow_constructible_v<Manager, NewManager>)
+	{
+		intrusive_ptr(new_ptr, vsm_forward(new_manager)).swap(*this);
+	}
+
+
+	[[nodiscard]] constexpr T* release() noexcept
 	{
 		T* const ptr = m_ptr;
 		m_ptr = nullptr;
 		return ptr;
 	}
 
-	[[nodiscard]] static intrusive_ptr acquire(T* const ptr)
+	[[nodiscard]] constexpr std::pair<T*, Manager> release_with_manager() noexcept
 	{
-		return intrusive_ptr(detail::intrusive_ptr_acquire_tag(), ptr);
+		T* const ptr = m_ptr;
+		m_ptr = nullptr;
+		return { ptr, vsm_move(m_manager) };
 	}
 
-	[[nodiscard]] static intrusive_ptr acquire(T* const ptr, any_cvref_of<Manager> auto&& manager)
+
+	[[nodiscard]] static intrusive_ptr adopt(T* const ptr)
+		noexcept(std::is_nothrow_default_constructible_v<Manager>)
+		requires std::is_default_constructible_v<Manager>
 	{
-		return intrusive_ptr(detail::intrusive_ptr_acquire_tag(), ptr, vsm_forward(manager));
+		return intrusive_ptr(detail::intrusive_ptr_adopt_t(), ptr);
+	}
+
+	template<any_cvref_of<Manager> NewManager>
+		requires std::is_constructible_v<Manager, NewManager>
+	[[nodiscard]] static intrusive_ptr adopt(T* const ptr, NewManager&& manager)
+		noexcept(std::is_nothrow_constructible_v<Manager, NewManager>)
+	{
+		return intrusive_ptr(detail::intrusive_ptr_adopt_t(), ptr, vsm_forward(manager));
+	}
+
+
+	void swap(intrusive_ptr& other) noexcept
+	{
+		std::swap(this->m_ptr, other.m_ptr);
+
+		using std::swap;
+		swap(this->m_manager, other.m_manager);
+	}
+
+	friend void swap(intrusive_ptr& lhs, intrusive_ptr& rhs) noexcept
+	{
+		std::swap(lhs.m_ptr, rhs.m_ptr);
+
+		using std::swap;
+		swap(lhs.m_manager, rhs.m_manager);
+	}
+
+
+	[[nodiscard]] explicit operator bool() const
+	{
+		return m_ptr != nullptr;
 	}
 
 
@@ -347,22 +532,23 @@ public:
 		return std::compare_three_way()(ptr.m_ptr, static_cast<T*>(nullptr));
 	}
 
-	[[nodiscard]] explicit operator bool() const
-	{
-		return m_ptr != nullptr;
-	}
-
 private:
-	explicit intrusive_ptr(detail::intrusive_ptr_acquire_tag, T* const ptr)
+	explicit intrusive_ptr(detail::intrusive_ptr_adopt_t, T* const ptr)
 		: m_ptr(ptr)
 	{
 	}
 
-	explicit intrusive_ptr(detail::intrusive_ptr_acquire_tag, T* const ptr, any_cvref_of<Manager> auto&& manager)
+	explicit intrusive_ptr(
+		detail::intrusive_ptr_adopt_t,
+		T* const ptr,
+		any_cvref_of<Manager> auto&& manager)
 		: m_ptr(ptr)
 		, m_manager(manager)
 	{
 	}
+
+	template<non_ref U, detail::_intrusive_ptr_manager<U>>
+	friend class intrusive_ptr;
 };
 
 } // namespace vsm
@@ -377,12 +563,12 @@ struct std::pointer_traits<vsm::intrusive_ptr<T, Manager>>
 	template<typename U>
 	using rebind = vsm::intrusive_ptr<U, Manager>;
 
-	static pointer pointer_to(T* const ptr)
+	[[nodiscard]] static pointer pointer_to(T* const ptr)
 	{
 		return ptr;
 	}
 
-	static T* to_address(pointer const& ptr)
+	[[nodiscard]] static T* to_address(pointer const& ptr)
 	{
 		return ptr.get();
 	}

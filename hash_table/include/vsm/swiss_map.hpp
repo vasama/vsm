@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vsm/default_allocator.hpp>
+#include <vsm/allocator.hpp>
 #include <vsm/detail/swiss_table.hpp>
 #include <vsm/hash_map.hpp>
 

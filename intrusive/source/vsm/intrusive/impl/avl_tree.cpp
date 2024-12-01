@@ -234,7 +234,7 @@ void _avl::insert(hook* const node, ptr<ptr<hook>> const parent_and_side)
 	//vsm_assert_slow(invariant(*this));
 }
 
-void _avl::remove(hook* const node)
+void _avl::erase(hook* const node)
 {
 	--m_size;
 

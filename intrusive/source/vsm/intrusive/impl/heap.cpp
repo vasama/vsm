@@ -125,12 +125,11 @@ static void percolate_to_root(
 
 		struct frame
 		{
-			uint8_t visit : 2;
-			uint8_t l_height : 6;
+			uint8_t visit;
+			uint8_t l_height;
 		};
 
 		frame stack[sizeof(size_t) * CHAR_BIT];
-		static_assert(std::size(stack) <= 1 << 6);
 
 		uint8_t height = 0;
 		stack[0].visit = 0;
@@ -300,3 +299,6 @@ void _heap::clear()
 
 	//vsm_assert_slow(invariant(*this));
 }
+
+// NOLINTEND(readability-implicit-bool-conversion)
+// NOLINTEND(modernize-use-bool-literals)

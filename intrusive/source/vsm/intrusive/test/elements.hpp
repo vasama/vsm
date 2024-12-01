@@ -22,9 +22,9 @@ struct elements
 {
 	std::list<element> list;
 
-	element* operator()(int const value)
+	element& operator()(int const value)
 	{
-		return &list.emplace_back(value);
+		return list.emplace_back(value);
 	}
 };
 
@@ -32,9 +32,9 @@ struct unique_elements
 {
 	std::unordered_map<int, element> map;
 
-	element* operator()(int const value)
+	element& operator()(int const value)
 	{
-		return &map.try_emplace(value, value).first->second;
+		return map.try_emplace(value, value).first->second;
 	}
 };
 

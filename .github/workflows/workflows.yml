@@ -1,0 +1,62 @@
+jobs:
+  build-and-test:
+    runs-on: ${{ matrix.os }}-latest
+    name: Build - ${{ matrix.os }} - ${{ matrix.tool }} - ${{ matrix.config }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows
+          - ubuntu
+        tool:
+          - msvc
+          - clang
+          - clang-cl
+          - gcc
+        config:
+          - Debug
+          - Release
+        exclude:
+          - os: windows
+            tool: gcc
+          - os: ubuntu
+            tool: msvc
+          - os: ubuntu
+            tool: clang-cl
+
+    steps:
+      - uses: actions/checkout@v4
+
+      #- uses: actions/cache@v3
+      #  with:
+      #    path: ~/.conan2
+      #    key: vsm-build-${{ matrix.os }}-${{ matrix.tool }}-${{ matrix.config }}
+
+      - name: CMake/CTest (${{ matrix.os }} - ${{ matrix.tool }} - ${{ matrix.config }})
+        shell: pwsh
+        run: .github/workflow.ps1 ${{ matrix.tool }} -Config ${{ matrix.config }} -ConanBuild missing
+
+  analyze:
+    runs-on: ${{ matrix.os }}-latest
+    name: Analysis - ${{ matrix.tool }}
+    needs: build-and-test
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu
+            tool: clang-tidy
+            config: Release
+
+          - os: windows
+            tool: intellisense
+            config: Debug
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Analysis - ${{ matrix.tool }}
+        shell: pwsh
+        run: .github/workflow.ps1 intellisense -Config Debug -ConanBuild missing

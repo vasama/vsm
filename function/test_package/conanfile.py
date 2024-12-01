@@ -5,6 +5,7 @@ from conan.tools.build import can_run
 class test_package(ConanFile):
 	settings = "os", "compiler", "build_type", "arch"
 	generators = "CMakeDeps", "CMakeToolchain"
+	layout = cmake_layout
 
 	def requirements(self):
 		self.requires(self.tested_reference_str)
@@ -13,9 +14,6 @@ class test_package(ConanFile):
 		cmake = CMake(self)
 		cmake.configure()
 		cmake.build()
-
-	def layout(self):
-		cmake_layout(self)
 
 	def test(self):
 		if can_run(self):

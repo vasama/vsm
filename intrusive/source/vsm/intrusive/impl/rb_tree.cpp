@@ -205,7 +205,7 @@ void _rb::insert(hook* node, ptr<hook*> const parent_and_side)
 	//vsm_assert_slow(invariant(*this));
 }
 
-void _rb::remove(hook* const node)
+void _rb::erase(hook* const node)
 {
 
 }

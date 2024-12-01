@@ -1,9 +1,9 @@
 #pragma once
 
-#include <vsm/assert.h>
 #include <vsm/algorithm/remove_unstable.hpp>
+#include <vsm/allocator.hpp>
+#include <vsm/assert.h>
 #include <vsm/concepts.hpp>
-#include <vsm/default_allocator.hpp>
 #include <vsm/platform.h>
 #include <vsm/relocate.hpp>
 #include <vsm/standard.hpp>
@@ -848,7 +848,7 @@ public:
 		{
 			vsm_except_try
 			{
-				_push_back_range(iterator, sentinel);
+				_append_range(iterator, sentinel);
 			}
 			vsm_except_catch (...)
 			{
@@ -859,6 +859,7 @@ public:
 		}
 		else
 		{
+			//TODO: Implement vector::vector
 			static_assert(sizeof(T) == 0, "not implemented yet");
 		}
 	}
@@ -874,7 +875,7 @@ public:
 
 		vsm_except_try
 		{
-			_push_back_range(range);
+			_append_range(range);
 		}
 		vsm_except_catch (...)
 		{
@@ -1084,7 +1085,7 @@ public:
 	}
 
 	template<std::ranges::input_range R>
-	void _assign_range(R&& range)
+	void assign_range(R&& range)
 		requires std::convertible_to<std::ranges::range_reference_t<R>, T>
 	{
 		if constexpr (std::ranges::sized_range<R>)
@@ -1113,6 +1114,7 @@ public:
 		}
 		else
 		{
+			//TODO: Implement vector::_assign_range
 			static_assert(sizeof(T) == 0, "not implemented");
 		}
 	}
@@ -1257,7 +1259,7 @@ public:
 	}
 
 	template<std::ranges::input_range R>
-	vsm_always_inline iterator _insert_range(const_iterator const pos, R&& range)
+	vsm_always_inline iterator insert_range(const_iterator const pos, R&& range)
 		requires std::convertible_to<std::ranges::range_reference_t<R>, T>
 	{
 		if constexpr (std::ranges::sized_range<R>)
@@ -1289,6 +1291,7 @@ public:
 		}
 		else
 		{
+			//TODO: Implement vector::_insert_range
 			static_assert(sizeof(T) == 0, "not implemented");
 		}
 	}
@@ -1417,50 +1420,51 @@ public:
 	}
 
 	template<std::ranges::input_range R>
-	vsm_always_inline iterator _push_back_range(R&& range)
+	vsm_always_inline iterator append_range(R&& range)
 		requires std::convertible_to<std::ranges::range_reference_t<R>, T>
 	{
 		if constexpr (std::ranges::sized_range<R>)
 		{
-			return _push_back_n(
+			return _append_n(
 				std::ranges::begin(range),
 				std::ranges::size(range));
 		}
 		else
 		{
-			return _push_back_range(
+			return _append_range(
 				std::ranges::begin(range),
 				std::ranges::end(range));
 		}
 	}
 
 	template<std::input_iterator Iterator, std::sentinel_for<Iterator> Sentinel>
-	iterator _push_back_range(Iterator begin, Sentinel const end)
+	iterator _append_range(Iterator begin, Sentinel const end)
 		requires std::convertible_to<std::iter_reference_t<Iterator>, T>
 	{
 		if (std::sized_sentinel_for<Sentinel, Iterator>)
 		{
-			return _push_back_n(
+			return _append_n(
 				begin,
 				static_cast<size_t>(end - begin));
 		}
 		else
 		{
+			//TODO: Implement vector::_append_range
 			static_assert(sizeof(T) == 0, "not implemented");
 		}
 	}
 
 	template<std::forward_iterator Iterator>
-	vsm_always_inline iterator _push_back_range(Iterator const begin, Iterator const end)
+	vsm_always_inline iterator _append_range(Iterator const begin, Iterator const end)
 		requires std::convertible_to<std::iter_reference_t<Iterator>, T>
 	{
-		return _push_back_n(
+		return _append_n(
 			begin,
 			static_cast<size_t>(std::distance(begin, end)));
 	}
 
 	template<std::input_iterator Iterator>
-	iterator _push_back_n(Iterator beg, size_t const count)
+	iterator _append_n(Iterator beg, size_t const count)
 		requires std::convertible_to<std::iter_reference_t<Iterator>, T>
 	{
 		std::byte* const storage = detail::_vector_push<relo_t, local, sizeof(T)>(
@@ -1491,7 +1495,7 @@ public:
 		}
 	}
 
-	iterator _push_back_fill(size_t const count, T const& value)
+	iterator _append_fill(size_t const count, T const& value)
 		requires std::is_copy_constructible_v<T>
 	{
 		std::byte* const storage = detail::_vector_push<relo_t, local, sizeof(T)>(
@@ -1522,7 +1526,7 @@ public:
 		}
 	}
 
-	iterator _push_back_default(size_t const count)
+	iterator _append_default(size_t const count)
 		requires std::is_default_constructible_v<T>
 	{
 		std::byte* const storage = detail::_vector_push<relo_t, local, sizeof(T)>(
@@ -1552,7 +1556,7 @@ public:
 		}
 	}
 
-	vsm_always_inline iterator _push_back_uninitialized(size_t const count)
+	vsm_always_inline iterator _append_unitialized(size_t const count)
 	{
 		std::byte* const storage = detail::_vector_push<relo_t, local, sizeof(T)>(
 			m,

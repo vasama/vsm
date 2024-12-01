@@ -70,6 +70,7 @@ vsm_add_library(
 		source/vsm/test/atomic.cpp
 		source/vsm/test/flags.cpp
 		source/vsm/test/float.cpp
+		source/vsm/test/numeric.cpp
 		source/vsm/test/relocate.cpp
 		source/vsm/test/utility.cpp
 

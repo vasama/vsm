@@ -7,5 +7,3 @@ class package(ConanFile):
 	name = "vsm-test_allocator"
 	version = "0.1"
 	package_type = "static-library"
-
-	vsm_libs = ["vsm_test_allocator"]

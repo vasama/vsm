@@ -18,6 +18,10 @@ inline constexpr bool is_trivially_hashable_v = false;
 template<std::integral T>
 inline constexpr bool is_trivially_hashable_v<T> = true;
 
+//TODO: Add conditional DLL export
+extern void const* const aslr_seed;
+
+
 template<auto Mix, std::unsigned_integral T>
 T mix_unsigned_integer(T state, std::unsigned_integral auto value)
 {
@@ -39,159 +43,160 @@ T mix_unsigned_integer(T state, std::unsigned_integral auto value)
 	return state;
 }
 
-struct hash_append_bits_cpo
-{
-	template<typename State, typename T>
-	friend State tag_invoke(hash_append_bits_cpo cpo, State const state, T const& value)
-		requires is_trivially_hashable_v<T>
-	{
-		return tag_invoke(cpo, state, reinterpret_cast<std::byte const*>(&value), sizeof(T));
-	}
-
-	template<typename State, typename T>
-	vsm_static_operator State operator()(
-		State const state,
-		T const& value) vsm_static_operator_const
-		requires tag_invocable<hash_append_bits_cpo, State, T const&>
-	{
-		return tag_invoke(hash_append_bits_cpo(), state, value);
-	}
-
-	template<typename State>
-	vsm_static_operator State operator()(
-		State const state,
-		std::byte const* const data,
-		size_t const size) vsm_static_operator_const
-		requires tag_invocable<hash_append_bits_cpo, State, std::byte const*, size_t>
-	{
-		return tag_invoke(hash_append_bits_cpo(), state, data, size);
-	}
-};
-static constexpr hash_append_bits_cpo hash_append_bits = {};
 
 struct hash_append_cpo;
 
 template<typename State, typename T>
 concept _hash_append_concept =
-	tag_invocable<hash_append_cpo, State, T const&> ||
+	tag_invocable<hash_append_cpo, State&, T const&> ||
 	is_trivially_hashable_v<T> ||
 	requires (T const& value) { std::hash<T>()(value); };
+
+
+struct hash_append_bits_cpo
+{
+	template<typename State, typename T>
+	friend void tag_invoke(hash_append_bits_cpo, State& state, T const& value)
+		requires is_trivially_hashable_v<T>
+	{
+		tag_invoke(
+			hash_append_bits_cpo(),
+			state,
+			reinterpret_cast<void const*>(&value),
+			sizeof(T));
+	}
+
+	template<typename State, typename T>
+	vsm_static_operator void operator()(State& state, T const& value) vsm_static_operator_const
+		requires tag_invocable<hash_append_bits_cpo, State&, T const&>
+	{
+		tag_invoke(hash_append_bits_cpo(), state, value);
+	}
+
+	template<typename State>
+	vsm_static_operator void operator()(
+		State& state,
+		void const* const data,
+		size_t const size) vsm_static_operator_const
+		requires tag_invocable<hash_append_bits_cpo, State&, void const*, size_t>
+	{
+		tag_invoke(hash_append_bits_cpo(), state, data, size);
+	}
+};
+static constexpr hash_append_bits_cpo hash_append_bits = {};
 
 struct hash_append_cpo
 {
 	template<typename State>
-	friend State tag_invoke(hash_append_cpo, State const state, bool const value)
+	friend void tag_invoke(hash_append_cpo, State& state, bool const value)
 	{
 		hash_append_bits(state, static_cast<unsigned char>(value));
 	}
 
 	template<typename State, std::integral T>
-	friend State tag_invoke(hash_append_cpo, State const state, T const value)
+	friend void tag_invoke(hash_append_cpo, State& state, T const value)
 	{
-		return hash_append_bits(state, static_cast<std::make_unsigned_t<T>>(value));
+		hash_append_bits(state, static_cast<std::make_unsigned_t<T>>(value));
 	}
 
 	template<typename State, std::floating_point T>
-	friend State tag_invoke(hash_append_cpo, State const state, T const value)
+	friend void tag_invoke(hash_append_cpo, State& state, T value)
 	{
-		return hash_append_bits(
-			state,
-			std::bit_cast<unsigned_integer_of_size<sizeof(T)>>(value == 0 ? 0 : value));
+		if (value == static_cast<T>(0.0))
+		{
+			value = static_cast<T>(0.0);
+		}
+
+		hash_append_bits(state, static_cast<void const*>(&value), sizeof(T));
 	}
 
 	template<typename State>
-	friend State tag_invoke(hash_append_cpo, State const state, long double) = delete;
-
-	template<typename State>
-	friend State tag_invoke(hash_append_cpo, State state, void const* const ptr)
+	friend void tag_invoke(hash_append_cpo, State& state, void const* const ptr)
 	{
 		auto const value = reinterpret_cast<uintptr_t>(ptr);
-		state = hash_append_bits(state, value);
-		state = hash_append_bits(state, value);
-		return state;
+		uintptr_t const data[2] = { value, value };
+		hash_append_bits(state, static_cast<void const*>(data), sizeof(data));
 	}
 
 	template<typename State, non_cvref T>
 		requires _hash_append_concept<State, T>
-	vsm_static_operator State operator()(
-		State const state,
-		T const& value) vsm_static_operator_const
+	vsm_static_operator void operator()(State& state, T const& value) vsm_static_operator_const
 	{
-		if constexpr (tag_invocable<hash_append_cpo, State, T const&>)
+		if constexpr (tag_invocable<hash_append_cpo, State&, T const&>)
 		{
-			return tag_invoke(hash_append_cpo(), state, value);
+			tag_invoke(hash_append_cpo(), state, value);
 		}
 		else if constexpr (is_trivially_hashable_v<T>)
 		{
-			return hash_append_bits(state, value);
+			tag_invoke(hash_append_bits_cpo(), state, value);
 		}
 		else
 		{
-			return hash_append_bits(state, std::hash<T>()(value));
+			tag_invoke(hash_append_bits_cpo(), state, std::hash<T>()(value));
 		}
 	}
 
 	template<typename State, std::input_iterator Iterator, std::sentinel_for<Iterator> Sentinel>
 		requires _hash_append_concept<State, std::iter_value_t<Iterator>>
-	vsm_static_operator State operator()(
-		State state,
+	vsm_static_operator void operator()(
+		State& state,
 		Iterator begin,
 		Sentinel end) vsm_static_operator_const
 	{
-		using value_type = std::iter_value_t<Iterator>;
+		using value_type = std::remove_cv_t<std::iter_value_t<Iterator>>;
 
 		if constexpr (tag_invocable<hash_append_cpo, State, Iterator, Sentinel>)
 		{
-			return tag_invoke(hash_append_cpo(), vsm_move(state), vsm_move(begin), vsm_move(end));
+			tag_invoke(hash_append_cpo(), state, vsm_move(begin), vsm_move(end));
 		}
 		else if constexpr (
 			is_trivially_hashable_v<value_type> &&
 			std::contiguous_iterator<Iterator> &&
 			std::sized_sentinel_for<Sentinel, Iterator>)
 		{
-			vsm::any_cv_of<value_type> auto* const ptr = std::to_address(begin);
+			std::same_as<value_type> auto const* const data = std::to_address(begin);
 
-			return hash_append_bits(
+			hash_append_bits(
 				state,
-				reinterpret_cast<std::byte const*>(ptr),
+				reinterpret_cast<void const*>(data),
 				static_cast<size_t>(end - begin) * sizeof(value_type));
 		}
 		else
 		{
 			for (; begin != end; ++begin)
 			{
-				state = operator()(vsm_move(state), *begin);
+				operator()(state, *begin);
 			}
-
-			return state;
 		}
 	}
 };
 static constexpr hash_append_cpo hash_append = {};
 
-//TODO: Add conditional DLL export
-extern void const* const aslr_seed;
-
 } // namespace detail
 
 using detail::is_trivially_hashable_v;
 
+[[nodiscard]] inline size_t get_aslr_seed()
+{
+	return 0; //TODO: Debugging
+	//return static_cast<size_t>(reinterpret_cast<uintptr_t>(&detail::aslr_seed));
+}
+
+
 using detail::hash_append_bits;
 using detail::hash_append;
 
-inline size_t get_aslr_seed()
-{
-	return static_cast<size_t>(reinterpret_cast<uintptr_t>(&detail::aslr_seed));
-}
 
 template<typename Hash>
 struct basic_hasher
 {
 	template<typename T>
 	vsm_static_operator constexpr size_t operator()(T const& value) vsm_static_operator_const
-		requires requires { hash_append(std::declval<typename Hash::state_type>(), value); }
+		requires requires (typename Hash::state_type& state) { hash_append(state, value); }
 	{
-		return Hash::finalize(hash_append(Hash::initialize(get_aslr_seed()), value));
+		typename Hash::state_type state = Hash::initialize(get_aslr_seed());
+		hash_append(state, value);
+		return Hash::finalize(state);
 	}
 };
 

@@ -15,7 +15,7 @@ struct allocation
 	void* buffer;
 	size_t size;
 
-	[[nodiscard]] constexpr operator void*() const
+	[[nodiscard]] constexpr operator void*() const noexcept
 	{
 		return buffer;
 	}
@@ -27,7 +27,7 @@ template<typename T>
 inline constexpr bool _allocator_has_resize = requires (T& t, size_t const& s, allocation const& a)
 {
 	// size_t resize(allocation allocation, size_t min_size) /* const */;
-	{ t.resize(a, s) } -> std::same_as<size_t>;
+	{ t.resize(a, s) } noexcept -> std::same_as<size_t>;
 };
 
 template<typename T>
@@ -122,7 +122,7 @@ constexpr void delete_via(Allocator&& allocator, T* const object)
 	if (object != nullptr)
 	{
 		object->~T();
-		allocator.deallocate(allocation(object, sizeof(object)));
+		allocator.deallocate(allocation(object, sizeof(T)));
 	}
 }
 
@@ -167,12 +167,30 @@ public:
 };
 #endif
 
+
+class new_allocator
+{
+public:
+	static constexpr bool is_always_equal = true;
+	static constexpr bool is_propagatable = true;
+
+	[[nodiscard]] allocation allocate(size_t const size) const noexcept
+	{
+		return { operator new(size, std::nothrow), size };
+	}
+
+	void deallocate(allocation const allocation) const noexcept
+	{
+		operator delete(allocation.buffer, allocation.size);
+	}
+};
+
+using default_allocator = new_allocator;
+
 } // namespace vsm
 
 template<vsm::memory_resource Allocator>
-[[nodiscard]] constexpr void* operator new(
-	size_t const size,
-	Allocator&& allocator)
+[[nodiscard]] constexpr void* operator new(size_t const size, Allocator&& allocator)
 {
 	return vsm::allocate_or_throw(allocator, size);
 }
@@ -181,7 +199,7 @@ template<vsm::memory_resource Allocator>
 [[nodiscard]] constexpr void* operator new(
 	size_t const size,
 	Allocator&& allocator,
-	std::nothrow_t)
+	std::nothrow_t) noexcept
 {
 	return allocator.allocate(size);
 }

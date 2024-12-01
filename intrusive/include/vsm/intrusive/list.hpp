@@ -186,51 +186,50 @@ public:
 
 	/// @return First element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] element_type* front()
+	[[nodiscard]] element_type& front()
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
 		vsm_assert(m_size > 0);
-		return get_elem(m_root.siblings[0]);
+		return *get_elem(m_root.siblings[0]);
 	}
 
 	/// @return First element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] element_type const* front() const
+	[[nodiscard]] element_type const& front() const
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
 		vsm_assert(m_size > 0);
-		return get_elem(m_root.siblings[0]);
+		return *get_elem(m_root.siblings[0]);
 	}
 
 	/// @return Last element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] element_type* back()
+	[[nodiscard]] element_type& back()
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
 		vsm_assert(m_size > 0);
-		return get_elem(m_root.siblings[1]);
+		return *get_elem(m_root.siblings[1]);
 	}
 
 	/// @return Last element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] element_type const* back() const
+	[[nodiscard]] element_type const& back() const
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
 		vsm_assert(m_size > 0);
-		return get_elem(m_root.siblings[1]);
+		return *get_elem(m_root.siblings[1]);
 	}
-
 
 
 	/// @brief Insert an element at the front of the list.
 	/// @param element Element to be inserted.
 	/// @pre @p element is not part of any container.
-	void push_front(element_type* const element)
+	void push_front(element_type& element)
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
 		_list::insert(
 			&m_root,
-			make_hook(element),
+			make_hook(std::addressof(element)),
 			/* before: */ false);
 	}
 
@@ -246,12 +245,12 @@ public:
 	/// @brief Insert an element at the back of the list.
 	/// @param element Element to be inserted.
 	/// @pre @p element is not part of any container.
-	void push_back(element_type* const element)
+	void push_back(element_type& element)
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
 		_list::insert(
 			&m_root,
-			make_hook(element),
+			make_hook(std::addressof(element)),
 			/* before: */ true);
 	}
 
@@ -269,18 +268,18 @@ public:
 	/// @param element Element to be inserted.
 	/// @pre @p existing is part of this container.
 	/// @pre @p element is not part of any container.
-	void insert_before(element_type* const existing, element_type* const element)
+	void insert_before(element_type& existing, element_type& element)
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
 		_list::insert(
-			get_hook(existing),
-			make_hook(element),
+			get_hook(std::addressof(existing)),
+			make_hook(std::addressof(element)),
 			/* before: */ false);
 	}
 
-	void insert_before(iterator const existing, element_type* const element);
+	void insert_before(iterator const existing, element_type& element);
 
-	void splice_before(element_type* const existing, list<T>&& list);
+	void splice_before(element_type& existing, list<T>&& list);
 	void splice_before(iterator const existing, list<T>&& list);
 
 	/// @brief Insert an element after another element.
@@ -288,48 +287,48 @@ public:
 	/// @param element Element to be inserted.
 	/// @pre @p existing is part of this container.
 	/// @pre @p element is not part of any container.
-	void insert_after(element_type* const existing, element_type* const element)
+	void insert_after(element_type& existing, element_type& element)
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
 		_list::insert(
-			get_hook(existing),
-			make_hook(element),
+			get_hook(std::addressof(existing)),
+			make_hook(std::addressof(element)),
 			/* before: */ true);
 	}
 
-	void insert_after(iterator const existing, element_type* const element);
+	void insert_after(iterator const existing, element_type& element);
 
-	void splice_after(element_type* const existing, list<T>&& list);
+	void splice_after(element_type& existing, list<T>&& list);
 	void splice_after(iterator const existing, list<T>&& list);
 
-	[[nodiscard]] element_type* pop_front()
+	[[nodiscard]] element_type& pop_front()
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
 		vsm_assert(m_size > 0);
 		hook* const hook = m_root.siblings[0];
 		_list::remove(hook);
-		return get_elem(hook);
+		return *get_elem(hook);
 	}
 
-	[[nodiscard]] element_type* pop_back()
+	[[nodiscard]] element_type& pop_back()
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
 		vsm_assert(m_size > 0);
 		hook* const hook = m_root.siblings[1];
 		_list::remove(hook);
-		return get_elem(hook);
+		return *get_elem(hook);
 	}
 
 	/// @brief Remove an element from the list.
 	/// @param element Element to be removed.
 	/// @pre @p element is part of this list.
-	void remove(element_type* const element)
+	void remove(element_type& element)
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
-		_list::remove(get_hook(element));
+		_list::remove(get_hook(std::addressof(element)));
 	}
 
-	list<T> remove_list(element_type* const begin, element_type* const end);
+	list<T> remove_list(element_type& begin, element_type& end);
 
 
 	void clear()
@@ -344,19 +343,19 @@ public:
 	/// @brief Create an iterator referring to an element.
 	/// @param element Element to which the resulting iterator shall refer.
 	/// @pre @p element is part of this tree.
-	[[nodiscard]] iterator make_iterator(element_type* const element)
+	[[nodiscard]] iterator make_iterator(element_type& element)
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
-		return iterator(get_hook(element));
+		return iterator(get_hook(std::addressof(element)));
 	}
 
 	/// @brief Create an iterator referring to an element.
 	/// @param element Element to which the resulting iterator shall refer.
 	/// @pre @p element is part of this tree.
-	[[nodiscard]] const_iterator make_iterator(element_type const* const element) const
+	[[nodiscard]] const_iterator make_iterator(element_type const& element) const
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
-		return const_iterator(get_hook(element));
+		return const_iterator(get_hook(std::addressof(element)));
 	}
 
 

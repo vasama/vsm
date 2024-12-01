@@ -1,5 +1,7 @@
 #include <vsm/main.hpp>
 
+#include <vsm/exceptions.hpp>
+
 #include <print>
 
 static void report_error_code(std::error_code const e)
@@ -14,7 +16,7 @@ static void report_error_code(std::error_code const e)
 
 int vsm_main_entrypoint(int const argc, char const* const* const argv)
 {
-	try
+	vsm_except_try
 	{
 		auto const r = vsm_nothrow_main(argc, argv);
 
@@ -25,23 +27,22 @@ int vsm_main_entrypoint(int const argc, char const* const* const argv)
 
 		report_error_code(r.error());
 	}
-	catch (std::system_error const& e)
+	vsm_except_catch (std::system_error const& e)
 	{
 		report_error_code(e.code());
 	}
-	catch (std::bad_expected_access<std::error_code> const& e)
+	vsm_except_catch (std::bad_expected_access<std::error_code> const& e)
 	{
 		report_error_code(e.error());
 	}
-	catch (std::exception const& e)
+	vsm_except_catch (std::exception const& e)
 	{
 		std::print(stderr, "{}\n", e.what());
 	}
-	catch (...)
+	vsm_except_catch (...)
 	{
 		std::print(stderr, "Unhandled non-standard exception was encountered.\n");
 	}
 
-	fflush(stderr);
 	return EXIT_FAILURE;
 }

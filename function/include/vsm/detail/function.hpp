@@ -105,19 +105,17 @@ struct _function_base
 
 	_function_base() = default;
 
-	_function_base(_function_base&& other)
+	_function_base(_function_base&& other) noexcept
 		: m_table(other.m_table)
 	{
-		if (m_table != nullptr)
+		if (other.m_table != nullptr)
 		{
-			m_table->relocate(
-				other.m_storage.storage,
-				m_storage.storage);
+			other.m_table->relocate(other.m_storage.storage, m_storage.storage);
+			other.m_table = nullptr;
 		}
-		other.m_table = nullptr;
 	}
 
-	_function_base& operator=(_function_base&& other) &
+	_function_base& operator=(_function_base&& other) & noexcept
 	{
 		if (m_table != nullptr)
 		{
@@ -127,13 +125,12 @@ struct _function_base
 
 		if (other.m_table != nullptr)
 		{
-			m_table->relocate(
-				other.m_storage.storage,
-				m_storage.storage);
-
+			other.m_table->relocate(other.m_storage.storage, m_storage.storage);
 			m_table = other.m_table;
 			other.m_table = nullptr;
 		}
+		
+		return *this;
 	}
 
 	~_function_base()

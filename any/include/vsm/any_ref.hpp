@@ -148,13 +148,10 @@ _any_function* const _any_functions<Fs...>::table[sizeof...(Fs)] =
 };
 
 template<typename F, typename Cvref, typename... Args>
-concept _any_invocable =
-	// requires (typename _any_traits_for<F>::template member_type<remove_cvref_t<Cvref>> member)
-	requires
-	{
-		// (std::declval<Cvref>().*member)(std::declval<Args>()...);
-		std::declval<copy_cvref_t<Cvref, _any_traits_for<F>>>()._i(std::declval<Args>()...);
-	};
+concept _any_invocable = requires
+{
+	std::declval<copy_cvref_t<Cvref, _any_traits_for<F>>>()._i(std::declval<Args>()...);
+};
 
 } // namespace detail
 
@@ -189,7 +186,7 @@ public:
 	{
 	}
 
-#if 0
+#if 0 //TODO: Enable this
 	template<non_cvref T>
 	constexpr any_ref(std::in_place_type_t<T>)
 		requires

@@ -12,6 +12,12 @@
 
 namespace vsm {
 
+#if __INTELLISENSE__
+#	define vsm_detail_bit_ptr_intellisense 0
+#else
+#	define vsm_detail_bit_ptr_intellisense 1
+#endif
+
 static_assert(CHAR_BIT == 8);
 
 #  if vsm_word_bits <= 12
@@ -24,6 +30,7 @@ using bit_ptrdiff_t = int_least32_t;
 using bit_size_t = uint_least64_t;
 using bit_ptrdiff_t = int_least64_t;
 #else
+//TODO: Consider using 128-bit size types? Maybe add a config option.
 using bit_size_t = size_t;
 using bit_ptrdiff_t = ptrdiff_t;
 #endif
@@ -33,7 +40,7 @@ namespace detail {
 template<typename T>
 concept _bit_word = std::unsigned_integral<T> && not_same_as<T, bool>;
 
-#if !__INTELLISENSE__
+#if vsm_detail_bit_ptr_intellisense
 template<typename T>
 concept _bit_offset = std::unsigned_integral<T> && requires (T const x) { bit_size_t{ x }; };
 #endif
@@ -80,7 +87,7 @@ public:
 		return bit_ref<Word>(*m_ptr, m_pos);
 	}
 
-#if !__INTELLISENSE__
+#if vsm_detail_bit_ptr_intellisense
 	[[nodiscard]] constexpr bit_ref<Word> operator[](detail::_bit_offset auto const offset) const
 	{
 		auto ptr = m_ptr;
@@ -125,7 +132,7 @@ public:
 		return r;
 	}
 
-#if !__INTELLISENSE__
+#if vsm_detail_bit_ptr_intellisense
 	constexpr bit_ptr& operator+=(detail::_bit_offset auto const offset) &
 	{
 		add_unsigned(m_ptr, m_pos, offset);
@@ -139,7 +146,7 @@ public:
 		return *this;
 	}
 
-#if !__INTELLISENSE__
+#if vsm_detail_bit_ptr_intellisense
 	constexpr bit_ptr& operator-=(detail::_bit_offset auto const offset) &
 	{
 		sub_unsigned(m_ptr, m_pos, offset);
@@ -153,7 +160,7 @@ public:
 		return *this;
 	}
 
-#if !__INTELLISENSE__
+#if vsm_detail_bit_ptr_intellisense
 	[[nodiscard]] friend constexpr bit_ptr operator+(bit_ptr ptr, detail::_bit_offset auto const offset)
 	{
 		add_unsigned(ptr.m_ptr, ptr.m_pos, offset);
@@ -167,7 +174,7 @@ public:
 		return ptr;
 	}
 
-#if !__INTELLISENSE__
+#if vsm_detail_bit_ptr_intellisense
 	[[nodiscard]] friend constexpr bit_ptr operator+(detail::_bit_offset auto const offset, bit_ptr ptr)
 	{
 		add_unsigned(ptr.m_ptr, ptr.m_pos, offset);
@@ -181,7 +188,7 @@ public:
 		return ptr;
 	}
 
-#if !__INTELLISENSE__
+#if vsm_detail_bit_ptr_intellisense
 	[[nodiscard]] friend constexpr bit_ptr operator-(bit_ptr ptr, detail::_bit_offset auto const offset)
 	{
 		sub_unsigned(ptr.m_ptr, ptr.m_pos, offset);
@@ -198,8 +205,8 @@ public:
 	[[nodiscard]] friend constexpr bit_ptrdiff_t operator-(bit_ptr const& lhs, bit_ptr const& rhs)
 	{
 		return
-			static_cast<bit_ptrdiff_t>(lhs.m_ptr - rhs.m_ptr) *
-			static_cast<bit_ptrdiff_t>(word_bits + (lhs.m_pos - rhs.m_pos));
+			static_cast<bit_ptrdiff_t>(lhs.m_ptr - rhs.m_ptr) * word_bits +
+			static_cast<bit_ptrdiff_t>(lhs.m_pos - rhs.m_pos);
 	}
 
 	[[nodiscard]] auto operator<=>(bit_ptr const&) const = default;
@@ -233,6 +240,7 @@ private:
 	static constexpr void sub_unsigned(Word*& ptr, size_t& pos, bit_size_t offset)
 	{
 		//TODO: Maybe this can be slightly optimised.
+		//TODO: Think more about the potential UB on negation here:
 		add_signed(ptr, pos, -static_cast<bit_ptrdiff_t>(offset));
 	}
 

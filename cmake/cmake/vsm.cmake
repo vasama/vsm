@@ -110,6 +110,7 @@ if("${CMAKE_SYSTEM_NAME}" STREQUAL "Windows")
 	)
 endif()
 
+include(vsm_cmake)
 include(vsm_configure)
 include(vsm_find_requirements)
 include(vsm_root)

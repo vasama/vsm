@@ -8,7 +8,7 @@
 
 #if __cplusplus
 template<typename T>
-vsm_always_inline bool vsm_detail_assert_bool(T const& value)
+vsm_always_inline constexpr bool vsm_detail_assert_bool(T const& value)
 	requires requires (T const& t) { t ? 0 : 0; }
 {
 	return static_cast<bool>(value);

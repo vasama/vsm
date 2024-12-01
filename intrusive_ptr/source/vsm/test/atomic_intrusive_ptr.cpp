@@ -16,7 +16,7 @@ static_assert(atomic<s>::is_always_lock_free);
 
 TEST_CASE("atomic_intrusive_ptr: single thread", "[intrusive_ptr][atomic]")
 {
-	struct shared_object : intrusive_ref_count, test::counted {};
+	struct shared_object : intrusive_refcount, test::counted {};
 
 	test::scoped_count instance_count;
 	{
@@ -29,7 +29,7 @@ TEST_CASE("atomic_intrusive_ptr: single thread", "[intrusive_ptr][atomic]")
 		pointer = nullptr;
 
 		pointer = atomic.exchange(vsm_move(pointer));
-		REQUIRE(pointer == pointer);
+		REQUIRE(pointer == shared);
 
 		pointer = atomic.exchange(vsm_move(pointer));
 		REQUIRE(pointer == nullptr);
@@ -38,12 +38,15 @@ TEST_CASE("atomic_intrusive_ptr: single thread", "[intrusive_ptr][atomic]")
 }
 
 
-struct alignas(64) mt_shared_object : intrusive_ref_count
+struct alignas(64) mt_shared_object : intrusive_refcount
 {
 	std::atomic_flag destroyed;
 	std::atomic_flag* failed = nullptr;
 
-	friend void tag_invoke(decltype(intrusive_ptr_delete), mt_shared_object* const p)
+	friend void tag_invoke(
+		decltype(intrusive_ptr_deleter),
+		default_refcount_manager const&,
+		mt_shared_object* const p)
 	{
 		if (p->destroyed.test_and_set())
 		{
@@ -63,7 +66,6 @@ TEST_CASE("atomic_intrusive_ptr: multiple threads", "[intrusive_ptr][atomic]")
 	struct
 	{
 		alignas(64) shared_object objects[thread_count + 1];
-
 		alignas(64) atomic_intrusive_ptr<shared_object> p;
 
 		struct alignas(64)

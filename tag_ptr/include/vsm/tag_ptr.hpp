@@ -58,71 +58,72 @@ consteval bool tag_ptr_check_tag(Tag const max)
 	}
 	else
 	{
-		return max > 0 && max <= tag_ptr_max_tag<T, Tag>();
+		return 0 < max && max <= tag_ptr_max_tag<T, Tag>();
 	}
 }
 
 template<typename In, typename InTag, InTag InMax, typename Out, typename OutTag, OutTag OutMax>
-auto static_cast_constraint(tag_ptr<In, InTag, InMax>, tag_ptr<Out, OutTag, OutMax>**) -> tag_ptr<Out, OutTag, OutMax>
-	requires
-		requires (In* in, InTag in_tag)
-		{
-			static_cast<Out*>(in);
-			static_cast<OutTag>(in_tag);
-		}
-		&& (static_cast<OutTag>(InMax) <= OutMax);
+auto tag_ptr_static_cast(tag_ptr<In, InTag, InMax>, tag_ptr<Out, OutTag, OutMax>**)
+	-> tag_ptr<Out, OutTag, OutMax>
+	requires requires (In* in, InTag in_tag)
+	{
+		static_cast<Out*>(in);
+		static_cast<OutTag>(in_tag);
+	}
+	&& (static_cast<OutTag>(InMax) <= OutMax);
 
 template<typename In, typename Tag, Tag Max, typename Out>
-auto const_cast_constraint(tag_ptr<In, Tag, Max>, tag_ptr<Out, Tag, Max>**) -> tag_ptr<Out, Tag, Max>
+auto tag_ptr_const_cast(tag_ptr<In, Tag, Max>, tag_ptr<Out, Tag, Max>**) -> tag_ptr<Out, Tag, Max>
 	requires requires (In* in) { const_cast<Out*>(in); };
 
 template<typename T, typename Tag, Tag Max, intptr Integer>
-auto reinterpret_cast_constraint_ptr(tag_ptr<T, Tag, Max>, Integer**) -> Integer;
+auto tag_ptr_reinterpret_cast_ptr(tag_ptr<T, Tag, Max>, Integer**) -> Integer;
 
 template<typename In, typename Tag, Tag Max, typename Out>
-auto reinterpret_cast_constraint_ptr(tag_ptr<In, Tag, Max>, tag_ptr<Out, Tag, Max>**) -> tag_ptr<Out, Tag, Max>
+auto tag_ptr_reinterpret_cast_ptr(tag_ptr<In, Tag, Max>, tag_ptr<Out, Tag, Max>**)
+	-> tag_ptr<Out, Tag, Max>
 	requires requires (In* in) { reinterpret_cast<Out*>(in); };
 
 template<typename T, typename Tag, Tag Max, intptr Integer>
-auto reinterpret_cast_constraint_int(Integer**, tag_ptr<T, Tag, Max>**) -> tag_ptr<T, Tag, Max>;
+auto tag_ptr_reinterpret_cast_int(Integer**, tag_ptr<T, Tag, Max>**) -> tag_ptr<T, Tag, Max>;
 
 template<typename In, typename Tag, Tag Max, typename Out>
-auto dynamic_cast_constraint(tag_ptr<In, Tag, Max>, tag_ptr<Out, Tag, Max>**) -> tag_ptr<Out, Tag, Max>
+auto tag_ptr_dynamic_cast(tag_ptr<In, Tag, Max>, tag_ptr<Out, Tag, Max>**) -> tag_ptr<Out, Tag, Max>
 	requires requires (In* in) { dynamic_cast<Out*>(in); };
 
 } // namespace detail
 
 template<typename Out, typename In, typename InTag, InTag InMax>
 auto static_pointer_cast(detail::tag_ptr<In, InTag, InMax> const ptr)
-	-> decltype(detail::static_cast_constraint(ptr, static_cast<Out**>(0)))
+	-> decltype(detail::tag_ptr_static_cast(ptr, static_cast<Out**>(0)))
 {
 	return Out(static_cast<typename Out::element_type*>(ptr.ptr()), ptr.tag());
 }
 
 template<typename Out, typename In, typename InTag, InTag InMax>
 auto const_pointer_cast(detail::tag_ptr<In, InTag, InMax> const ptr)
-	-> decltype(detail::const_cast_constraint(ptr, static_cast<Out**>(0)))
+	-> decltype(detail::tag_ptr_const_cast(ptr, static_cast<Out**>(0)))
 {
 	return Out(ptr.m_value);
 }
 
 template<typename Out, typename In, typename InTag, InTag InMax>
 auto reinterpret_pointer_cast(detail::tag_ptr<In, InTag, InMax> const ptr)
-	-> decltype(detail::reinterpret_cast_constraint_ptr(ptr, static_cast<Out**>(0)))
+	-> decltype(detail::tag_ptr_reinterpret_cast_ptr(ptr, static_cast<Out**>(0)))
 {
 	return Out(ptr.m_value);
 }
 
 template<typename Out, typename In>
 auto reinterpret_pointer_cast(In const in)
-	-> decltype(detail::reinterpret_cast_constraint_int(static_cast<In**>(0), static_cast<Out**>(0)))
+	-> decltype(detail::tag_ptr_reinterpret_cast_int(static_cast<In**>(0), static_cast<Out**>(0)))
 {
 	return Out(in);
 }
 
 template<typename Out, typename In, typename InTag, InTag InMax>
 auto dynamic_pointer_cast(detail::tag_ptr<In, InTag, InMax> const ptr)
-	-> decltype(detail::dynamic_cast_constraint(ptr, static_cast<Out**>(0)))
+	-> decltype(detail::tag_ptr_dynamic_cast(ptr, static_cast<Out**>(0)))
 {
 	return Out(dynamic_cast<typename Out::element_type*>(ptr.ptr()), ptr.tag());
 }
@@ -131,7 +132,8 @@ template<typename T, typename Tag, Tag Max>
 class detail::tag_ptr
 {
 	// Laundering through integral_constant allows the Visual Studio debugger to see the value.
-	static constexpr uintptr_t tag_mask = std::integral_constant<uintptr_t,
+	static constexpr uintptr_t tag_mask = std::integral_constant<
+		uintptr_t,
 		(static_cast<uintptr_t>(-1) >> std::countl_zero(static_cast<uintptr_t>(Max)))>::value;
 
 	static constexpr uintptr_t ptr_mask = ~tag_mask;
@@ -166,7 +168,10 @@ public:
 
 	template<typename OtherT, typename OtherTag, OtherTag OtherMax>
 	tag_ptr(tag_ptr<OtherT, OtherTag, OtherMax> const& other)
-		requires std::is_convertible_v<OtherT*, T*> && std::is_convertible_v<OtherTag, Tag> && (static_cast<Tag>(OtherMax) <= Max)
+		requires
+			std::convertible_to<OtherT*, T*> &&
+			losslessly_convertible_to<OtherTag, Tag> &&
+			(static_cast<Tag>(OtherMax) <= Max)
 		: m_value(other.m_value)
 	{
 	}
@@ -175,7 +180,7 @@ public:
 	tag_ptr& operator=(tag_ptr const&) & = default;
 
 
-	T* ptr() const
+	[[nodiscard]] T* ptr() const
 	{
 		return reinterpret_cast<T*>(m_value & ptr_mask);
 	}
@@ -185,7 +190,7 @@ public:
 		m_value = reinterpret_cast<uintptr_t>(ptr) | (m_value & tag_mask);
 	}
 
-	Tag tag() const
+	[[nodiscard]] Tag tag() const
 	{
 		return static_cast<Tag>(m_value & tag_mask);
 	}
@@ -202,13 +207,13 @@ public:
 		m_value = reinterpret_cast<uintptr_t>(ptr) | static_cast<uintptr_t>(tag);
 	}
 
-	bool is_zero() const
+	[[nodiscard]] bool is_zero() const
 	{
 		return m_value == 0;
 	}
 
 
-	std::add_lvalue_reference_t<T> operator*() const
+	[[nodiscard]] std::add_lvalue_reference_t<T> operator*() const
 	{
 		if constexpr (!std::is_void_v<T>)
 		{
@@ -216,29 +221,26 @@ public:
 		}
 	}
 
-	T* operator->() const
+	[[nodiscard]] T* operator->() const
 	{
 		return reinterpret_cast<T*>(m_value & ptr_mask);
 	}
 
-	std::add_lvalue_reference_t<T> operator[](ptrdiff_t const index) const
+	[[nodiscard]] T& operator[](ptrdiff_t const index) const
 	{
-		if constexpr (!std::is_void_v<T>)
-		{
-			return reinterpret_cast<T*>(m_value & ptr_mask)[index];
-		}
+		return reinterpret_cast<T*>(m_value & ptr_mask)[index];
 	}
 
 
-	explicit operator bool() const
+	[[nodiscard]] explicit operator bool() const
 	{
 		return (m_value & ptr_mask) != 0;
 	}
 
 
-	friend bool operator==(tag_ptr const&, tag_ptr const&) = default;
+	[[nodiscard]] friend bool operator==(tag_ptr const&, tag_ptr const&) = default;
 
-	friend constexpr bool operator==(tag_ptr const& ptr, decltype(nullptr))
+	[[nodiscard]] friend constexpr bool operator==(tag_ptr const& ptr, decltype(nullptr))
 	{
 		return (ptr.m_value & ptr_mask) == 0;
 	}
@@ -254,15 +256,17 @@ private:
 
 	template<typename Out, typename In, typename InTag, InTag InMax>
 	friend auto vsm::const_pointer_cast(detail::tag_ptr<In, InTag, InMax> const ptr)
-		-> decltype(detail::const_cast_constraint(ptr, static_cast<Out**>(0)));
+		-> decltype(detail::tag_ptr_const_cast(ptr, static_cast<Out**>(0)));
 
 	template<typename Out, typename In, typename InTag, InTag InMax>
 	friend auto vsm::reinterpret_pointer_cast(detail::tag_ptr<In, InTag, InMax> const ptr)
-		-> decltype(detail::reinterpret_cast_constraint_ptr(ptr, static_cast<Out**>(0)));
+		-> decltype(detail::tag_ptr_reinterpret_cast_ptr(ptr, static_cast<Out**>(0)));
 
 	template<typename Out, typename In>
 	friend auto vsm::reinterpret_pointer_cast(In const in)
-		-> decltype(detail::reinterpret_cast_constraint_int(static_cast<In**>(0), static_cast<Out**>(0)));
+		-> decltype(detail::tag_ptr_reinterpret_cast_int(
+			static_cast<In**>(0),
+			static_cast<Out**>(0)));
 };
 
 template<typename T, typename Tag, Tag Max>
@@ -281,7 +285,7 @@ template<typename T, typename Tag, Tag Max = detail::tag_ptr_max_tag<T, Tag>()>
 using tag_ptr = detail::tag_ptr<T, Tag, Max>;
 
 template<typename T>
-consteval bool check_incomplete_tag_ptr()
+[[nodiscard]] consteval bool check_incomplete_tag_ptr()
 {
 	return detail::tag_ptr_check_tag<typename T::element_type>(T::max_tag);
 }

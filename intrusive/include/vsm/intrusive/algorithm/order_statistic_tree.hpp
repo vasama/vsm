@@ -9,7 +9,7 @@
 namespace vsm::intrusive {
 
 template<typename T>
-concept order_statistic_tree = requires (T& mt, T const& ct, typename T::iterator_const const& ci)
+concept order_statistic_tree = requires (T& mt, T const& ct, typename T::const_iterator const& ci)
 {
 	//{ typename T::size_type } -> std::unsigned_integral;
 
@@ -24,8 +24,10 @@ concept order_statistic_tree = requires (T& mt, T const& ct, typename T::iterato
 
 template<order_statistic_tree OrderStatisticTree>
 	requires std::integral<typename OrderStatisticTree::key_type>
-std::optional<typename OrderStatisticTree::key_type>
-	order_statistic_free_key(OrderStatisticTree& tree, auto select_key, auto select_key_index)
+std::optional<typename OrderStatisticTree::key_type> order_statistic_free_key(
+	OrderStatisticTree& tree,
+	auto select_key,
+	auto select_key_index)
 {
 	using key_type = typename OrderStatisticTree::key_type;
 	using unsigned_key_type = std::make_unsigned_t<key_type>;

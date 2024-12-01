@@ -62,6 +62,9 @@ struct _prop_cv_traits
 	}
 };
 
+template<typename T>
+struct _prop_cv_traits<T&>; //TODO: Implement prop_cv<T&>
+
 template<_prop_cv_const_convertible_ptr P>
 struct _prop_cv_traits<P>
 {
@@ -131,9 +134,9 @@ public:
 	prop_cv() = default;
 
 	template<no_cvref_of<prop_cv> T = underlying_type>
+		requires std::constructible_from<Underlying, T&&>
 	explicit(!std::is_convertible_v<T&&, Underlying>)
 	constexpr prop_cv(T&& value)
-		requires std::constructible_from<Underlying, T&&>
 		: m_value(vsm_forward(value))
 	{
 	}
@@ -148,8 +151,8 @@ public:
 	prop_cv(prop_cv const& other) = delete;
 
 	template<no_cvref_of<prop_cv> T = underlying_type>
-	constexpr prop_cv& operator=(T&& value) &
 		requires std::assignable_from<Underlying&, T&&>
+	constexpr prop_cv& operator=(T&& value) &
 	{
 		m_value = vsm_forward(value);
 		return *this;
@@ -227,23 +230,36 @@ public:
 
 #if __INTELLISENSE__
 // https://developercommunity.visualstudio.com/t/rejects-valid-EDG-defaulted-constexpr/10735255
-	[[nodiscard]] friend constexpr auto operator<=>(prop_cv const&, prop_cv const&);
+	friend constexpr auto operator<=>(prop_cv const&, prop_cv const&);
 #else
 	[[nodiscard]] friend auto operator<=>(prop_cv const&, prop_cv const&) = default;
 #endif
 
 	template<not_same_as<Underlying> Rhs>
-	[[nodiscard]] friend constexpr auto operator<=>(prop_cv const& lhs, prop_cv<Rhs> const& rhs)
+	[[nodiscard]] friend constexpr bool operator==(prop_cv const& lhs, prop_cv<Rhs> const& rhs)
 		requires requires { lhs.m_value == rhs.m_value; }
 	{
 		return lhs.m_value == rhs.m_value;
 	}
 
+	template<not_same_as<Underlying> Rhs>
+	[[nodiscard]] friend constexpr auto operator<=>(prop_cv const& lhs, prop_cv<Rhs> const& rhs)
+		requires requires { lhs.m_value <=> rhs.m_value; }
+	{
+		return lhs.m_value <=> rhs.m_value;
+	}
+
 	template<not_same_as<prop_cv> Rhs>
-	[[nodiscard]] friend constexpr auto operator<=>(prop_cv const& lhs, Rhs const& rhs)
+	[[nodiscard]] friend constexpr bool operator==(prop_cv const& lhs, Rhs const& rhs)
 		requires requires { lhs.m_value == rhs; }
 	{
 		return lhs.m_value == rhs;
+	}
+	template<not_same_as<prop_cv> Rhs>
+	[[nodiscard]] friend constexpr auto operator<=>(prop_cv const& lhs, Rhs const& rhs)
+		requires requires { lhs.m_value <=> rhs; }
+	{
+		return lhs.m_value <=> rhs;
 	}
 
 #undef vsm_detail_prop_cv_default

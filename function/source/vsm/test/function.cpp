@@ -1,34 +1,57 @@
 #include <vsm/function.hpp>
 
-#include <catch2/catch_all.hpp>
+#include <vsm/test/allocator.hpp>
 
-#include <array>
+#include <catch2/catch_all.hpp>
 
 using namespace vsm;
 
+namespace {
+
 using function_type = function<int(int)>;
 
-TEST_CASE("static storage")
+struct adder
 {
-	auto lambda = [](int const x) -> int
+	int x;
+
+	explicit adder(int const x)
+		: x(x)
 	{
-		return x + 1;
-	};
+	}
 
-	REQUIRE(function<int(int)>(lambda)(42) == 43);
-}
+	int operator()(int y) const
+	{
+		return x + y;
+	}
+};
 
-TEST_CASE("dynamic storage")
+struct alignas(256) big_adder : adder
 {
-	auto lambda = [data = std::array{ 1, 2, 3, 4, 5, 6, 7, 8 }](int const x) -> int
+	using adder::adder;
+};
+
+TEST_CASE("function", "[function]")
+{
+	test::allocation_scope scope;
 	{
-		int r = 0;
-		for (int const y : data)
+		function<int(int)> f;
+		size_t expected_allocation_count = 0;
+
+		SECTION("static storage")
 		{
-			r += x * y;
+			f = adder(7);
 		}
-		return r;
-	};
 
-	REQUIRE(function<int(int)>(lambda)(2) == 72);
+		SECTION("dynamic storage")
+		{
+			f = decltype(f)(test::allocator(), big_adder(7));
+			expected_allocation_count = 1;
+		}
+
+		REQUIRE(f(42) == 49);
+		REQUIRE(scope.get_allocation_count() == expected_allocation_count);
+	}
+	REQUIRE(scope.get_allocation_count() == 0);
 }
+
+} // namespace

@@ -13,7 +13,7 @@ vsm_add_library(
 
 		include/vsm/function.hpp
 		include/vsm/function_view.hpp
-		include/vsm/static_function.hpp
+		include/vsm/inplace_function.hpp
 
 	HEADER_DEPENDENCIES
 		vsm::allocator
@@ -22,5 +22,8 @@ vsm_add_library(
 	TEST_SOURCES
 		source/vsm/test/function_view.cpp
 		source/vsm/test/function.cpp
-		source/vsm/test/static_function.cpp
+		source/vsm/test/inplace_function.cpp
+
+	TEST_DEPENDENCIES
+		vsm::test_allocator
 )

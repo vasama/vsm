@@ -15,8 +15,11 @@ namespace detail {
 //TODO: Optimize for random access/contiguous iterators
 template<typename SrcIterator, typename SrcSentinel, typename OutIterator>
 OutIterator ring_copy(
-	SrcIterator src_beg, SrcSentinel const src_end,
-	OutIterator const out_beg, OutIterator out_pos, OutIterator const out_end)
+	SrcIterator src_beg,
+	SrcSentinel const src_end,
+	OutIterator const out_beg,
+	OutIterator out_pos,
+	OutIterator const out_end)
 {
 	for (; src_beg != src_end; (void)++src_beg, (void)++out_pos)
 	{
@@ -128,13 +131,12 @@ public:
 
 		if (thief_offset >= owner_offset)
 		{
-			return 0;
+			return false;
 		}
 
-		// It does not matter if this operation tears. That can only happen
-		// if thief_offset was changed by another thread, in which case the
-		// subsequent compare-exchange will fail and whatever result was read
-		// will be disregarded.
+		// It does not matter if this operation tears. That can only happen if thief_offset was
+		// changed by another thread, in which case the subsequent compare-exchange will fail and
+		// whatever result was read will be disregarded.
 		out = array[thief_offset & mask];
 
 		offset_type expected_thief_offset = thief_offset;

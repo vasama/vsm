@@ -43,6 +43,7 @@ static void* insert_slot(
 	size_t const hash,
 	size_t const slot_index)
 {
+	vsm_assert(slot_index < table.capacity);
 	++table.size;
 	size_t const capacity = table.capacity;
 	ctrl* const ctrls = get_ctrls(table.slots, element_size, capacity);

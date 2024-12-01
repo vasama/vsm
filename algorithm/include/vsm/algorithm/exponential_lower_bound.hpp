@@ -55,7 +55,7 @@ template<
 	std::sized_sentinel_for<Iterator> Sentinel,
 	typename T = std::iter_value_t<Iterator>,
 	typename Comparator>
-[[nodiscard]] constexpr Iterator lower_bound_near(
+[[nodiscard]] constexpr Iterator exponential_lower_bound_near(
 	Iterator begin,
 	Iterator near,
 	Sentinel end,

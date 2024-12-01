@@ -159,7 +159,7 @@ struct _avl
 
 	ptr<hook> const* lower_bound(ptr<ptr<hook> const> parent_and_side) const;
 	void insert(hook* node, ptr<ptr<hook>> parent_and_side);
-	void remove(hook* node);
+	void erase(hook* node);
 	void replace(hook* existing_node, hook* new_node);
 	void clear();
 	_list::hook* flatten();
@@ -210,7 +210,7 @@ public:
 	using       iterator = _avl::iterator<      element_type, tag_type>;
 	using const_iterator = _avl::iterator<const element_type, tag_type>;
 
-	using insert_result = vsm::insert_result<element_type>;
+	using insert_result = vsm::insert_result<iterator>;
 
 
 	avl_tree() = default;
@@ -247,37 +247,41 @@ public:
 	}
 
 
-	/// @brief Find element by homogeneous key.
+	/// @brief Find element by key.
 	/// @param key Lookup key.
-	/// @return Pointer to element, or null if not found.
-	[[nodiscard]] element_type* find(key_type const& key)
+	/// @return Iterator to the element or end.
+	template<typename Key = key_type>
+	[[nodiscard]] iterator find(Key const& key)
+		requires (requires (key_type const& tree_key) { m_comparator(key, tree_key); })
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
 		hook* const hook = _find(key).node;
 
 		return hook == nullptr
-			? nullptr
-			: get_elem(hook);
+			? end()
+			: iterator(hook->children);
 	}
 
-	/// @brief Find element by homogeneous key.
+	/// @brief Find element by key.
 	/// @param key Lookup key.
-	/// @return Pointer to element, or null if not found.
-	[[nodiscard]] element_type const* find(key_type const& key) const
+	/// @return Iterator to the element or end.
+	template<typename Key = key_type>
+	[[nodiscard]] const_iterator find(Key const& key) const
+		requires (requires (key_type const& tree_key) { m_comparator(key, tree_key); })
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
 		hook const* const hook = _find(key).node;
 
 		return hook == nullptr
-			? nullptr
-			: get_elem(hook);
+			? end()
+			: const_iterator(hook->children);
 	}
 
-	/// @brief Find element by heterogeneous key.
+	/// @brief Access element by key.
 	/// @param key Lookup key.
-	/// @return Pointer to element or null.
-	template<typename Key>
-	[[nodiscard]] element_type* find_equivalent(Key const& key)
+	/// @return Pointer to the element or null.
+	template<typename Key = key_type>
+	[[nodiscard]] element_type* at_ptr(Key const& key)
 		requires (requires (key_type const& tree_key) { m_comparator(key, tree_key); })
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
@@ -288,11 +292,11 @@ public:
 			: get_elem(hook);
 	}
 
-	/// @brief Find element by heterogeneous key.
+	/// @brief Access element by key.
 	/// @param key Lookup key.
-	/// @return Pointer to element or null.
-	template<typename Key>
-	[[nodiscard]] element_type const* find_equivalent(Key const& key) const
+	/// @return Pointer to the element or null.
+	template<typename Key = key_type>
+	[[nodiscard]] element_type const* at_ptr(Key const& key) const
 		requires (requires (key_type const& tree_key) { m_comparator(key, tree_key); })
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
@@ -330,21 +334,21 @@ public:
 	/// @brief Insert new element into the tree.
 	/// @param element Element to be inserted.
 	/// @pre @p element is not part of any intrusive container.
-	insert_result insert(element_type* const element)
+	insert_result insert(element_type& element)
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
-		auto const r = _find(vsm_as_const(m_key_selector)(*element));
+		auto const r = _find(vsm_as_const(m_key_selector)(element));
 
 		if (r.node != nullptr)
 		{
-			return { get_elem(r.node), false };
+			return { iterator(r.node->children), false };
 		}
 
 		_avl::insert(
-			detail::links::construct<hook, tag_type>(element),
+			detail::links::construct<hook, tag_type>(std::addressof(element)),
 			const_pointer_cast<ptr<ptr<hook>>>(r.parent));
 
-		return { element, true };
+		return { iterator(get_hook(std::addressof(element))->children), true };
 	}
 
 #if 0
@@ -375,10 +379,16 @@ public:
 	/// @brief Remove an element from the tree.
 	/// @param element Element to be removed.
 	/// @pre @p element is part of this tree.
-	void remove(element_type* const element)
+	void erase(element_type& element)
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
-		_avl::remove(get_hook(element));
+		_avl::erase(get_hook(std::addressof(element)));
+	}
+
+	void erase(const_iterator const position)
+	{
+		static_assert(detail::check<element_type, tag_type, hook>);
+		_avl::erase(reinterpret_cast<hook*>(_avl::get_iterator_ptr(position)));
 	}
 
 	/// @brief Replace an element with a new equivalent element.
@@ -387,15 +397,17 @@ public:
 	/// @pre @p existing_element is part of this tree.
 	/// @pre @p new_element is not part of any intrusive container.
 	/// @pre The selected keys of @p existing_element and @p new_element are equivalent.
-	void replace(element_type* const existing_element, element_type* const new_element)
+	void replace(element_type& existing_element, element_type& new_element)
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
 
 		vsm_assert(
-			vsm_as_const(m_key_selector)(*existing_element) ==
-			vsm_as_const(m_key_selector)(*new_element));
+			vsm_as_const(m_key_selector)(existing_element) ==
+			vsm_as_const(m_key_selector)(new_element));
 
-		_avl::replace(get_hook(existing_element), get_hook(new_element));
+		_avl::replace(
+			get_hook(std::addressof(existing_element)),
+			get_hook(std::addressof(new_element)));
 	}
 
 	/// @brief Replace an element with a new equivalent element.
@@ -404,18 +416,18 @@ public:
 	/// @pre @p position is an iterator referring to an element in this tree.
 	/// @pre @p new_element is not part of any intrusive container.
 	/// @pre The selected keys of @p position and @p new_element are equivalent.
-	void replace(const_iterator const position, element_type* const new_element)
+	void replace(const_iterator const position, element_type& new_element)
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
 
 		vsm_assert(position != end());
 		vsm_assert(
-			vsm_as_const(m_key_selector)(*position) ==
-			vsm_as_const(m_key_selector)(*new_element));
+			vsm_as_const(m_key_selector)(position) ==
+			vsm_as_const(m_key_selector)(new_element));
 
 		_avl::replace(
 			reinterpret_cast<hook*>(_avl::get_iterator_ptr(position)),
-			get_hook(new_element));
+			get_hook(std::addressof(new_element)));
 	}
 
 	/// @brief Remove all elements from the tree.
@@ -432,19 +444,19 @@ public:
 	/// @brief Create an iterator referring to an element.
 	/// @param element Element to which the resulting iterator shall refer.
 	/// @pre @p element is part of this tree.
-	[[nodiscard]] iterator make_iterator(element_type* const element)
+	[[nodiscard]] iterator make_iterator(element_type& element)
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
-		return iterator(get_hook(element));
+		return iterator(get_hook(std::addressof(element)));
 	}
 
 	/// @brief Create an iterator referring to an element.
 	/// @param element Element to which the resulting iterator shall refer.
 	/// @pre @p element is part of this tree.
-	[[nodiscard]] const_iterator make_iterator(element_type const* const element) const
+	[[nodiscard]] const_iterator make_iterator(element_type const& element) const
 	{
 		static_assert(detail::check<element_type, tag_type, hook>);
-		return const_iterator(get_hook(element));
+		return const_iterator(get_hook(std::addressof(element)));
 	}
 
 

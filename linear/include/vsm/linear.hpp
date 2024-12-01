@@ -5,7 +5,7 @@
 namespace vsm {
 namespace detail {
 
-enum class linear_default_tag {};
+enum class linear_default_t {};
 
 template<typename T, auto Value>
 struct basic_linear_traits
@@ -17,7 +17,7 @@ struct basic_linear_traits
 };
 
 template<typename T>
-struct basic_linear_traits<T, linear_default_tag{}>
+struct basic_linear_traits<T, linear_default_t{}>
 {
 	static constexpr T default_value()
 	{
@@ -47,19 +47,19 @@ struct basic_linear
 		source.value = Traits::default_value();
 	}
 
-	basic_linear& operator=(basic_linear&& source) noexcept
+	basic_linear& operator=(basic_linear&& source) & noexcept
 	{
 		value = source.value;
 		source.value = Traits::default_value();
 		return *this;
 	}
 
-	void reset()
+	void reset() &
 	{
 		value = Traits::default_value();
 	}
 
-	T release()
+	[[nodiscard]] T release()
 	{
 		T result = value;
 		value = Traits::default_value();
@@ -67,7 +67,7 @@ struct basic_linear
 	}
 };
 
-template<typename T, auto Value = detail::linear_default_tag{}>
+template<typename T, auto Value = detail::linear_default_t{}>
 using linear = basic_linear<T, detail::basic_linear_traits<T, Value>>;
 
 } // namespace vsm

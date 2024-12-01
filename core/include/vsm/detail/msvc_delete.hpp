@@ -18,7 +18,8 @@ public:
 	{
 	}
 
-	vsm_always_inline operator std::same_as<T> auto() const
+	template<std::same_as<T> U>
+	vsm_always_inline operator U() const
 	{
 		return m_value;
 	}

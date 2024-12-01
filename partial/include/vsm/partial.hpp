@@ -7,17 +7,17 @@ namespace vsm {
 namespace detail {
 
 template<typename>
-struct self_traits;
+struct _self;
 
 template<typename Interface>
-struct self_traits<Interface*>
+struct _self<Interface*>
 {
 	template<typename T>
 	using type = T*;
 };
 
 template<typename Interface>
-struct self_traits<Interface const*>
+struct _self<Interface const*>
 {
 	template<typename T>
 	using type = T const*;
@@ -27,32 +27,12 @@ struct self_traits<Interface const*>
 
 class partial
 {
-#if vsm_compiler_clang
-#	if __clang_major__ >= 19
-#		error Remove this workaround.
-#	endif
-
-	template<typename T>
-	struct access
-	{
-		using internal_class = T::internal_class;
-		using private_class = T::private_class;
-	};
-
-public:
-	template<typename T>
-	using internal_class = access<T>::internal_class;
-
-	template<typename T>
-	using private_class = access<T>::private_class;
-#else
 public:
 	template<typename T>
 	using internal_class = T::internal_class;
 
 	template<typename T>
 	using private_class = T::private_class;
-#endif
 };
 
 #define vsm_partial(T) \
@@ -80,6 +60,6 @@ public:
 		friend T::private_class
 
 #define vsm_self(T) \
-	auto* const self = static_cast<::vsm::detail::self_traits<decltype(this)>::template type<T>>(this)
+	auto* const self = static_cast<::vsm::detail::_self<decltype(this)>::template type<T>>(this)
 
 } // namespace vsm

@@ -39,7 +39,7 @@ public:
 		return m_resource;
 	}
 
-	explicit operator bool() const noexcept
+	[[nodiscard]] explicit operator bool() const noexcept
 	{
 		return m_resource != Sentinel;
 	}
@@ -88,7 +88,7 @@ public:
 		return *m_resource;
 	}
 
-	explicit operator bool() const noexcept
+	[[nodiscard]] explicit operator bool() const noexcept
 	{
 		return m_resource.has_value();
 	}
@@ -183,7 +183,7 @@ public:
 	{
 	}
 
-	constexpr unique_resource& operator=(null_resource_t) noexcept
+	constexpr unique_resource& operator=(null_resource_t) & noexcept
 	{
 		if (*this)
 		{
@@ -193,7 +193,7 @@ public:
 		return *this;
 	}
 
-	constexpr unique_resource& operator=(unique_resource&& source) noexcept
+	constexpr unique_resource& operator=(unique_resource&& source) & noexcept
 	{
 		if (*this)
 		{
@@ -226,7 +226,7 @@ public:
 		return resource;
 	}
 
-	constexpr void reset() noexcept
+	constexpr void reset() & noexcept
 	{
 		if (*this)
 		{
@@ -235,7 +235,7 @@ public:
 		this->clear();
 	}
 
-	constexpr void reset(Resource const resource) noexcept
+	constexpr void reset(Resource const resource) & noexcept
 	{
 		if (*this)
 		{
@@ -245,38 +245,37 @@ public:
 	}
 
 
-	friend constexpr bool operator==(unique_resource const& lhs, unique_resource const& rhs) noexcept
+	[[nodiscard]] friend constexpr bool operator==(
+		unique_resource const& lhs,
+		unique_resource const& rhs) noexcept
 	{
 		return lhs.get() == rhs.get();
 	}
 
-	friend constexpr auto operator<=>(unique_resource const& lhs, unique_resource const& rhs) noexcept
+	[[nodiscard]] friend constexpr auto operator<=>(
+		unique_resource const& lhs,
+		unique_resource const& rhs) noexcept
 	{
 		return lhs.get() <=> rhs.get();
 	}
 
-	friend constexpr bool operator==(unique_resource const& r, null_resource_t) noexcept
+	[[nodiscard]] friend constexpr bool operator==(
+		unique_resource const& r,
+		null_resource_t) noexcept
 	{
 		return static_cast<bool>(r);
 	}
 
-	friend constexpr bool operator!=(unique_resource const& r, null_resource_t) noexcept
-	{
-		return !static_cast<bool>(r);
-	}
-
-	friend constexpr bool operator==(null_resource_t, unique_resource const& r) noexcept
-	{
-		return static_cast<bool>(r);
-	}
-
-	friend constexpr bool operator!=(null_resource_t, unique_resource const& r) noexcept
+	[[nodiscard]] friend constexpr bool operator!=(
+		unique_resource const& r,
+		null_resource_t) noexcept
 	{
 		return !static_cast<bool>(r);
 	}
 };
 
 
+#if 0
 template<typename T>
 concept unique_resource_concept = requires (T&& t)
 {
@@ -285,15 +284,16 @@ concept unique_resource_concept = requires (T&& t)
 };
 
 template<typename Consumer, unique_resource_concept... Resources>
-auto consume_resources(Consumer&& consumer, Resources&&... resources)
+[[nodiscard]] decltype(auto) consume_resources(Consumer&& consumer, Resources&&... resources)
 {
-	auto r = vsm_forward(consumer)(resources.get()...);
+	decltype(auto) r = vsm_forward(consumer)(resources.get()...);
 	if (r)
 	{
 		((void)resources.release(), ...);
 	}
 	return r;
 }
+#endif
 
 } // namespace detail
 
@@ -301,6 +301,9 @@ using detail::null_resource_t;
 using detail::null_resource;
 
 using detail::unique_resource;
+
+#if 0
 using detail::consume_resources;
+#endif
 
 } // namespace vsm

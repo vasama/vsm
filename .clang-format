@@ -32,8 +32,8 @@ BraceWrapping:
   SplitEmptyRecord: true
   SplitEmptyNamespace: true
 BreakAfterAttributes: Leave
-#TODO: BreakAfterReturnType: Automatic
-#TODO: BreakBeforeBinaryOperators
+BreakAfterReturnType: Automatic
+BreakBeforeBinaryOperators: NonAssignment
 BreakBeforeBraces: Custom
 BreakBeforeConceptDeclarations: Allowed
 BreakBeforeTernaryOperators: true
@@ -41,9 +41,7 @@ BreakBeforeTernaryOperators: true
 BreakConstructorInitializers: BeforeComma
 BreakInheritanceList: BeforeComma
 BreakStringLiterals: true
-#TODO: BreakTemplateDeclarations: Yes
-#TODO: Renamed to BreakTemplateDeclarations
-AlwaysBreakTemplateDeclarations: true
+BreakTemplateDeclarations: Yes
 ColumnLimit: 100
 CompactNamespaces: false
 EmptyLineBeforeAccessModifier: Always
@@ -64,10 +62,10 @@ InsertBraces: false
 InsertNewlineAtEOF: true
 InsertTrailingCommas: Wrapped
 #TODO: IntegerLiteralSeparator
-#TODO: KeepEmptyLines:
-#TODO:   AtEndOfFile: false
-#TODO:   AtStartOfBlock: false
-#TODO:   AtStartOfFile: false
+KeepEmptyLines:
+  AtEndOfFile: false
+  AtStartOfBlock: false
+  AtStartOfFile: false
 #TODO: LambdaBodyIndentation
 #TODO: LineEnding
 Macros:
@@ -75,7 +73,7 @@ Macros:
   - vsm_static_operator_const=const
 MaxEmptyLinesToKeep: 2
 NamespaceIndentation: None
-PackConstructorInitializers: NextLineOnly
+PackConstructorInitializers: Never
 #TODO: Penalty*
 PointerAlignment: Left
 #TODO: QualifierAlignment
@@ -91,7 +89,7 @@ SortUsingDeclarations: Lexicographic
 SpaceAfterCStyleCast: false
 SpaceAfterLogicalNot: false
 SpaceAfterTemplateKeyword: false
-#SpaceAroundPointerQualifiers: Before
+#SpaceAroundPointerQualifiers: After
 SpaceBeforeAssignmentOperators: true
 SpaceBeforeCaseColon: false
 SpaceBeforeCpp11BracedList: false

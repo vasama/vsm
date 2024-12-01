@@ -27,9 +27,6 @@
 /* C++23 lambda attributes */
 
 #if vsm_compiler_msvc
-#	if _MSC_VER > 1941
-#		error Check for MSVC lambda attribute support
-#	endif
 #	define vsm_lambda_attribute(...)
 #else
 #	define vsm_lambda_attribute(...) __VA_ARGS__
@@ -72,10 +69,12 @@
 /* C++23 explicit lifetime management */
 
 namespace vsm {
+
 #if __cpp_lib_start_lifetime_as
 	using std::start_lifetime_as;
 	using std::start_lifetime_as_array;
 #else
 #	include <vsm/detail/start_lifetime_as.ipp>
 #endif
+
 } // namespace vsm

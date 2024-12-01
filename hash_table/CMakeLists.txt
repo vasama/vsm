@@ -32,7 +32,6 @@ vsm_add_library(
 		vsm::container_core
 		vsm::core
 		vsm::hash
-		vsm::math
 
 	TEST_SOURCES
 		source/vsm/test/deterministic_set.cpp

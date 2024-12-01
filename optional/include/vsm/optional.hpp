@@ -40,14 +40,14 @@ struct storage
 		return m_value;
 	}
 
-	constexpr T& emplace(auto&&... args)
+	constexpr T& emplace(auto&&... args) &
 	{
 		m_value = T(vsm_forward(args)...);
 		vsm_assert(m_value != Sentinel);
 		return m_value;
 	}
 
-	constexpr void reset() noexcept
+	constexpr void reset() & noexcept
 	{
 		m_value = Sentinel;
 	}
@@ -113,7 +113,7 @@ struct storage<T, bool_flag{}>
 		return m_engaged;
 	}
 
-	constexpr T& emplace(auto&&... args)
+	constexpr T& emplace(auto&&... args) &
 	{
 		if (m_engaged)
 		{
@@ -126,7 +126,7 @@ struct storage<T, bool_flag{}>
 		return m_value;
 	}
 
-	constexpr void reset() noexcept
+	constexpr void reset() & noexcept
 	{
 		if (m_engaged)
 		{
@@ -158,7 +158,10 @@ template<typename T, auto S>
 char _optional_concept(optional<T, S> const&);
 
 template<typename T>
-concept optional_concept = requires { sizeof(_optional_concept(vsm_declval(std::remove_cvref_t<T>))); };
+concept optional_concept = requires
+{
+	sizeof(_optional_concept(vsm_declval(std::remove_cvref_t<T>)));
+};
 
 template<optional_concept Optional>
 using value_cvref_t = copy_cvref_t<Optional, typename std::remove_cvref_t<Optional>::value_type>;

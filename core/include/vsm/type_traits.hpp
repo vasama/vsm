@@ -1,5 +1,7 @@
 #pragma once
 
+#include <concepts>
+#include <new>
 #include <type_traits>
 
 #include <cstddef>
@@ -231,6 +233,26 @@ struct integer_of_size<8>
 
 } // namespace detail::_type_traits
 
+namespace detail {
+
+template<typename T>
+struct _delete_arg
+{
+	template<std::same_as<T> U>
+	operator U() const;
+};
+
+template<typename T, typename... Args>
+concept _has_destroying_delete = requires
+{
+	T::operator delete(
+		_delete_arg<std::remove_cv_t<T>*>(),
+		_delete_arg<std::destroying_delete_t>(),
+		_delete_arg<Args>()...);
+};
+
+} // namespace detail
+
 struct monostate {};
 
 
@@ -292,6 +314,13 @@ using copy_cvref_t = typename detail::_type_traits::copy<T>::template cvref<U>;
 /* type properties */
 
 template<typename T>
+inline constexpr bool has_destroying_delete_v =
+	detail::_has_destroying_delete<T> ||
+	detail::_has_destroying_delete<T, std::align_val_t> ||
+	detail::_has_destroying_delete<T, size_t> ||
+	detail::_has_destroying_delete<T, size_t, std::align_val_t>;
+
+template<typename T>
 inline constexpr bool is_inheritable_v = std::is_class_v<T> && !std::is_final_v<T>;
 
 template<typename T>
@@ -303,6 +332,8 @@ inline constexpr bool is_instance_of_v = detail::_type_traits::is_instance_of<Te
 template<typename T, template<typename...> typename Template>
 using is_instance_of = detail::_type_traits::is_instance_of<Template, T>;
 
+
+/* miscellaneous */
 
 template<size_t Size>
 using signed_integer_of_size = typename detail::_type_traits::integer_of_size<Size>::signed_type;

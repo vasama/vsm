@@ -7,5 +7,3 @@ class package(ConanFile):
 	name = "vsm-main"
 	version = "0.1"
 	package_type = "static-library"
-
-	vsm_libs = ["vsm_main"]

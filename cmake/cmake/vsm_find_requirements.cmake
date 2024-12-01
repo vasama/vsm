@@ -3,24 +3,23 @@ include_guard(GLOBAL)
 function(vsm_detail_find_requirement package version)
 	cmake_parse_arguments(
 		VSM_OPT
-		"TEST;BUILD;PRIVATE"
+		"TEST;BUILD;PRIVATE;HEADER_ONLY"
 		"USER;CHANNEL;FIND"
 		""
 		${ARGN}
 	)
 
 	if(DEFINED VSM_OPT_UNPARSED_ARGUMENTS)
-		string(JOIN " " arguments ${ARGN})
-		message(SEND_ERROR "Unrecognized requirement options: '${arguments}'")
+		message(SEND_ERROR "Unrecognized requirement options: ${VSM_OPT_UNPARSED_ARGUMENTS}")
 	endif()
 
-	if(NOT "${FIND}" STREQUAL "<UNDEFINED>")
+	if(NOT DEFINED VSM_OPT_FIND)
 		# Skip packages starting with ~ ${root_name}-
 		if(NOT "${root_name}" STREQUAL "" AND "${package}" MATCHES "^${root_name}[\\.\\+\\-].+")
 			return()
 		endif()
 
-		set(FIND "${package}")
+		set(VSM_OPT_FIND "${package}")
 	endif()
 
 	set(find_package_args "")
@@ -40,7 +39,7 @@ function(vsm_detail_find_requirement package version)
 		list(APPEND find_package_args QUIET)
 	endif()
 
-	find_package("${FIND}" ${find_package_args} REQUIRED)
+	find_package("${VSM_OPT_FIND}" ${find_package_args} REQUIRED)
 endfunction()
 
 function(vsm_find_requirements)

@@ -99,17 +99,21 @@ struct resource_type<1>
 } // namespace detail
 
 template<typename Resource = void, typename Owner, typename... Args>
-auto out_resource(Owner& owner, Args&&... args)
+[[nodiscard]] auto out_resource(Owner& owner, Args&&... args)
 {
-	using resource_type = detail::resource_type<std::is_void_v<Resource>>::template type<Owner, Resource>;
+	using resource_type =
+		detail::resource_type<std::is_void_v<Resource>>::template type<Owner, Resource>;
 	return detail::out_resource_type<Owner, resource_type, Args&&...>(owner, vsm_forward(args)...);
 }
 
 template<typename Resource = void, typename Owner, typename... Args>
-auto inout_resource(Owner& owner, Args&&... args)
+[[nodiscard]] auto inout_resource(Owner& owner, Args&&... args)
 {
-	using resource_type = detail::resource_type<std::is_void_v<Resource>>::template type<Owner, Resource>;
-	return detail::inout_resource_type<Owner, resource_type, Args&&...>(owner, vsm_forward(args)...);
+	using resource_type =
+		detail::resource_type<std::is_void_v<Resource>>::template type<Owner, Resource>;
+	return detail::inout_resource_type<Owner, resource_type, Args&&...>(
+		owner,
+		vsm_forward(args)...);
 }
 
 } // namespace vsm

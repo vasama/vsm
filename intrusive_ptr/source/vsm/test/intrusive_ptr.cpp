@@ -8,7 +8,7 @@ using namespace vsm;
 
 namespace {
 
-struct thing : intrusive_ref_count, test::counted {};
+struct thing : intrusive_refcount, test::counted {};
 
 using ptr = intrusive_ptr<thing>;
 
@@ -96,14 +96,14 @@ TEST_CASE("intrusive_ptr::operator=(intrusive_ptr const&)", "[intrusive_ptr]")
 	CHECK(instance_count.empty());
 }
 
-TEST_CASE("intrusive_ptr::acquire", "[intrusive_ptr]")
+TEST_CASE("intrusive_ptr::adopt", "[intrusive_ptr]")
 {
 	test::scoped_count instance_count;
 	{
 		thing* const raw = new thing;
 
 		(void)ptr(raw).release();
-		(void)ptr::acquire(raw);
+		(void)ptr::adopt(raw);
 	}
 	CHECK(instance_count.empty());
 }

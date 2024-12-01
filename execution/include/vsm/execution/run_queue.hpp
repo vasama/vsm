@@ -96,7 +96,7 @@ class run_queue
 		{
 			run_queue& queue = *m_queue;
 			m_execute = execute;
-			queue.m_stack.push_back(this);
+			queue.m_stack.push_back(*this);
 		}
 
 	private:
@@ -106,7 +106,8 @@ class run_queue
 		
 			vsm_except_try
 			{
-				if (std_execution::get_stop_token(std_execution::get_env(static_cast<Receiver const&>(receiver))).stop_requested())
+				if (std_execution::get_stop_token(std_execution::get_env(
+					static_cast<Receiver const&>(receiver))).stop_requested())
 				{
 					std_execution::set_stopped(static_cast<Receiver&&>(receiver));
 				}
@@ -117,7 +118,9 @@ class run_queue
 			}
 			vsm_except_catch(...)
 			{
-				std_execution::set_error(static_cast<Receiver&&>(receiver), std::current_exception());
+				std_execution::set_error(
+					static_cast<Receiver&&>(receiver),
+					std::current_exception());
 			}
 		}
 	};
@@ -138,6 +141,13 @@ class run_queue
 		}
 
 		template<std_execution::receiver Receiver>
+		[[nodiscard]] auto connect(Receiver&& receiver) const
+		{
+			return operation<std::decay_t<Receiver>>(*m_queue, vsm_forward(receiver));
+		}
+
+#if 0
+		template<std_execution::receiver Receiver>
 		[[nodiscard]] friend operation<std::decay_t<Receiver>> tag_invoke(
 			std_execution::connect_t,
 			sender const& self,
@@ -145,6 +155,7 @@ class run_queue
 		{
 			return operation<std::decay_t<Receiver>>(*self.m_queue, vsm_forward(receiver));
 		}
+#endif
 
 		[[nodiscard]] env get_env() const noexcept
 		{
@@ -198,7 +209,7 @@ public:
 			}
 		}
 
-		task& t = *m_queue.pop_front();
+		task& t = m_queue.pop_front();
 		t.m_execute(t);
 
 		return true;

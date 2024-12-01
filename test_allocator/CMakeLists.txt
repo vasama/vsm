@@ -15,7 +15,6 @@ vsm_add_library(
 		source/vsm/impl/allocator.cpp
 
 	HEADER_DEPENDENCIES
-		vsm::allocator_core
 		vsm::core
 )
 

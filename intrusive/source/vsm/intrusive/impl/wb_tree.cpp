@@ -224,7 +224,7 @@ void _wb::insert(hook* const node, ptr<hook*> const parent_and_side)
 	//vsm_assert_slow(invariant(*this));
 }
 
-void _wb::remove(hook* const node)
+void _wb::erase(hook* const node)
 {
 	hook** const parent = node->parent;
 	bool const l = *parent != node;

@@ -49,10 +49,9 @@ public:
 	/// @brief Push an element at the end of the queue.
 	/// @returns True if the queue was previously empty.
 	/// @pre @p element is not null.
-	bool push_back(element_type* const element)
+	bool push_back(element_type& element)
 	{
-		vsm_assert(element != nullptr);
-		return _mpscq::push_one(detail::links::construct<hook, tag_type>(element));
+		return _mpscq::push_one(detail::links::construct<hook, tag_type>(std::addressof(element)));
 	}
 
 	/// @brief Splice a list of elements at the end of the queue.

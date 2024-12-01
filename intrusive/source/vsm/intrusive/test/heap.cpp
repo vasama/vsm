@@ -43,7 +43,7 @@ struct two_heaps
 
 	int pop()
 	{
-		int const vsm_value = vsm_heap.pop()->value;
+		int const vsm_value = vsm_heap.pop().value;
 
 		std::ranges::pop_heap(std_heap);
 		int const std_value = std_heap.back();
@@ -70,7 +70,7 @@ struct two_heaps
 		{
 			std_heap.erase(std_it);
 			std::ranges::make_heap(std_heap);
-			vsm_heap.remove(&*vsm_it);
+			vsm_heap.remove(*vsm_it);
 		}
 
 		return vsm_found;
@@ -122,7 +122,9 @@ TEST_CASE("heap mass test", "[intrusive][heap]")
 	elements e;
 
 	auto&& rng = Catch::sharedRng();
-	Catch::uniform_integer_distribution distribution(0, std::numeric_limits<int>::max());
+	Catch::uniform_integer_distribution distribution(
+		0,
+		std::numeric_limits<int>::max());
 
 	for (size_t i = 0; i < 10000; ++i)
 	{
@@ -137,7 +139,7 @@ TEST_CASE("heap mass test", "[intrusive][heap]")
 	for (int const value : array)
 	{
 		REQUIRE(!heap.empty());
-		CHECK(value == heap.pop()->value);
+		CHECK(value == heap.pop().value);
 	}
 
 	CHECK(heap.empty());

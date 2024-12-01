@@ -36,7 +36,7 @@ struct two_trees
 	{
 		auto const it = list.insert(list.end(), element(value));
 
-		auto const vsm_result = vsm_tree.insert(&*it);
+		auto const vsm_result = vsm_tree.insert(*it);
 		auto const std_result = std_tree.insert(value);
 		REQUIRE(vsm_result.inserted == std_result.second);
 
@@ -48,19 +48,20 @@ struct two_trees
 		return vsm_result;
 	}
 
-	bool remove(int const value)
+	bool erase(int const value)
 	{
-		element* const element = vsm_tree.find(value);
-		auto const it = std_tree.find(value);
+		auto const vsm_it = vsm_tree.find(value);
+		auto const std_it = std_tree.find(value);
 
-		REQUIRE((element != nullptr) == (it != std_tree.end()));
-		if (element == nullptr)
+		REQUIRE((vsm_it != vsm_tree.end()) == (std_it != std_tree.end()));
+
+		if (vsm_it == vsm_tree.end())
 		{
 			return false;
 		}
 
-		vsm_tree.remove(element);
-		std_tree.erase(it);
+		vsm_tree.erase(vsm_it);
+		std_tree.erase(std_it);
 
 		return true;
 	}
@@ -102,14 +103,14 @@ TEST_CASE("avl_tree::insert", "[intrusive][avl_tree]")
 	REQUIRE(tree.size() == 6);
 }
 
-TEST_CASE("avl_tree::remove", "[intrusive][avl_tree]")
+TEST_CASE("avl_tree::erase", "[intrusive][avl_tree]")
 {
 	two_trees trees;
 
 	SECTION("One element tree")
 	{
 		trees.insert(0);
-		REQUIRE(trees.remove(0));
+		REQUIRE(trees.erase(0));
 		REQUIRE(trees.equal());
 	}
 
@@ -136,7 +137,7 @@ TEST_CASE("avl_tree::remove", "[intrusive][avl_tree]")
 
 		SECTION("Remove a leaf")
 		{
-			REQUIRE(trees.remove(GENERATE(1, 3, 5, 7) * 10));
+			REQUIRE(trees.erase(GENERATE(1, 3, 5, 7) * 10));
 			REQUIRE(trees.equal());
 		}
 
@@ -145,10 +146,10 @@ TEST_CASE("avl_tree::remove", "[intrusive][avl_tree]")
 			int const branch = GENERATE(2, 6) * 10;
 
 			// Try with 0, 1 and 2 children removed.
-			if (GENERATE(false, true)) trees.remove(branch - 10);
-			if (GENERATE(false, true)) trees.remove(branch + 10);
+			if (GENERATE(false, true)) trees.erase(branch - 10);
+			if (GENERATE(false, true)) trees.erase(branch + 10);
 
-			REQUIRE(trees.remove(branch));
+			REQUIRE(trees.erase(branch));
 			REQUIRE(trees.equal());
 		}
 
@@ -170,14 +171,14 @@ TEST_CASE("avl_tree::remove", "[intrusive][avl_tree]")
 			else
 			{
 				// Try with 0, 1 and 2 children removed from branch1.
-				if (GENERATE(false, true)) trees.remove(branch1 - 10);
-				if (GENERATE(false, true)) trees.remove(branch1 + 10);
+				if (GENERATE(false, true)) trees.erase(branch1 - 10);
+				if (GENERATE(false, true)) trees.erase(branch1 + 10);
 			}
 
 			// Try with one of the children removed from branch2.
-			if (GENERATE(false, true)) trees.remove(branch2 + GENERATE(-1, +1) * 10);
+			if (GENERATE(false, true)) trees.erase(branch2 + GENERATE(-1, +1) * 10);
 
-			REQUIRE(trees.remove(40));
+			REQUIRE(trees.erase(40));
 			REQUIRE(trees.equal());
 		}
 	}

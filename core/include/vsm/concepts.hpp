@@ -2,8 +2,6 @@
 
 #include <vsm/type_traits.hpp>
 
-#include <concepts>
-
 namespace vsm {
 
 /* type comparison */
@@ -106,6 +104,11 @@ concept instance_of = is_instance_of_v<T, Template>;
 
 template<typename T, template<typename...> typename Template>
 concept no_instance_of = !is_instance_of_v<T, Template>;
+
+template<typename From, typename To>
+concept losslessly_convertible_to =
+	std::convertible_to<From, To> &&
+	requires { To{ std::declval<From>() }; };
 
 template<typename T, typename U>
 concept convertible_from = std::convertible_to<U, T>;

@@ -1,0 +1,13 @@
+[settings]
+arch=x86_64
+compiler=gcc
+compiler.cppstd=23
+compiler.libcxx=libstdc++11
+compiler.version=13
+os=Linux
+
+[conf]
+tools.build:compiler_executables={"c": "gcc-13", "cpp": "g++-13"}
+tools.build:cxxflags+=["-march=nehalem"]
+tools.cmake.cmake_layout:build_folder_vars+=["const.vsm", "settings.os", "settings.compiler", "settings.build_type"]
+tools.cmake.cmaketoolchain:generator=Ninja

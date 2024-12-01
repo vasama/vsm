@@ -94,10 +94,6 @@ Fancy to_pointer(From&& from, To* const to)
 	{
 		return Fancy(vsm_forward(from), to);
 	}
-	else if constexpr (requires { std::pointer_traits<Fancy>::to_pointer(to); })
-	{
-		return std::pointer_traits<Fancy>::to_pointer(to);
-	}
 	else
 	{
 		return to;
@@ -160,7 +156,7 @@ template<non_cvref To, typename From>
 	using from_element_type = typename pointer_traits::element_type;
 	using from_type = remove_cv_t<from_element_type>;
 	using to_element_type = copy_cv_t<from_element_type, To>;
-	using to_ptr_type = typename pointer_traits::template rebind<To>;
+	using to_ptr_type = typename pointer_traits::template rebind<to_element_type>;
 
 	if (static_cast<From const&>(p_from))
 	{
@@ -293,9 +289,10 @@ struct cast_traits<To, From>
 };
 
 template<typename To, typename From>
-	requires
-		detail::_has_member_cast<To, From> ||
-		detail::_has_member_try_cast<To, From>
+	requires (
+		!detail::_explicitly_convertible<To, From> && (
+			detail::_has_member_cast<To, From> ||
+			detail::_has_member_try_cast<To, From>))
 struct cast_traits<To, From>
 {
 	static To const* cast(From const& from)

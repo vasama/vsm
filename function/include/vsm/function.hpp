@@ -1,7 +1,7 @@
 #pragma once
 
+#include <vsm/allocator.hpp>
 #include <vsm/detail/function.hpp>
-#include <vsm/default_allocator.hpp>
 
 #include <memory>
 
@@ -22,8 +22,8 @@ class _function_dynamic
 {
 	struct storage
 	{
-		Callable callable;
-		Allocator allocator;
+		vsm_no_unique_address Callable callable;
+		vsm_no_unique_address Allocator allocator;
 	};
 
 	struct deleter
@@ -50,7 +50,8 @@ public:
 	auto operator()(this Self&& self, Args&&... args)
 		noexcept(std::is_nothrow_invocable_v<copy_cvref_t<Self, Callable>, Args...>)
 	{
-		return static_cast<copy_cvref_t<Self, Callable>&&>(self.m_storage->callable)(vsm_forward(args)...);
+		return static_cast<copy_cvref_t<Self, Callable>&&>(self.m_storage->callable)(
+			vsm_forward(args)...);
 	}
 };
 
@@ -118,12 +119,15 @@ private:
 		{
 			using type = value_type;
 			static_assert(alignof(type) <= alignof(std::max_align_t), "not implemented");
-			base_type::template construct<type, typename base_type::template view_type<type>>(vsm_forward(args)...);
+			base_type::template construct<type, typename base_type::template view_type<type>>(
+				vsm_forward(args)...);
 		}
 		else
 		{
 			using type = detail::_function_dynamic<Allocator, value_type>;
-			base_type::template construct<type, typename base_type::template view_type<type>>(allocator, vsm_forward(args)...);
+			base_type::template construct<type, typename base_type::template view_type<type>>(
+				allocator,
+				vsm_forward(args)...);
 		}
 	}
 };

@@ -1,5 +1,8 @@
 include_guard(GLOBAL)
 
+include("${CMAKE_CURRENT_LIST_DIR}/detail/directory_test.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/detail/force_include.cmake")
+
 set(vsm_detail_configure_opt_1
 	FOLDER
 )
@@ -53,38 +56,9 @@ macro(vsm_detail_configure_parse type opt_0 opt_1 opt_n)
 	)
 
 	if(DEFINED VSM_OPT_UNPARSED_ARGUMENTS)
-		message(ERROR "vsm_configure: unrecognized arguments: ${VSM_OPT_UNPARSED_ARGUMENTS}")
+		message(SEND_ERROR "vsm_configure: unrecognized arguments: ${VSM_OPT_UNPARSED_ARGUMENTS}")
 	endif()
 endmacro()
-
-function(vsm_detail_add_directory_test)
-	get_property(directory_test_set DIRECTORY PROPERTY "vsm_detail_directory_test" SET)
-
-	if(NOT ${directory_test_set})
-		cmake_path(
-			RELATIVE_PATH CMAKE_CURRENT_SOURCE_DIR
-			BASE_DIRECTORY PROJECT_SOURCE_DIR
-			OUTPUT_VARIABLE relative_current_source_dir)
-
-		add_test(
-			NAME "${relative_current_source_dir} configuration"
-			COMMAND
-				cmake
-					-D "DIRTEST_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
-					-D "DIRTEST_BINARY_DIR=${CMAKE_CURRENT_BINARY_DIR}"
-					-P "${vsm_detail_cmake_root}/detail/directory_test.cmake"
-		)
-
-		file(REMOVE_RECURSE "${CMAKE_CURRENT_BINARY_DIR}/vsm_detail_directory_test")
-
-		set_property(DIRECTORY PROPERTY "vsm_detail_directory_test" ON)
-	endif()
-endfunction()
-
-function(vsm_detail_add_directory_files file_set files)
-	list(JOIN files "\n" lines)
-	file(APPEND "${CMAKE_CURRENT_BINARY_DIR}/vsm_detail_directory_test/${file_set}.txt" "${lines}\n")
-endfunction()
 
 function(vsm_detail_add_file_set)
 	cmake_parse_arguments(
@@ -119,7 +93,7 @@ function(vsm_detail_add_file_set)
 			)
 
 			set(destination "${VSM_OPT2_BASE_DIR}")
-			if(NOT "${VSM_OPT2_DESTINATION}" STREQUAL "<UNDEFINED>")
+			if(DEFINED VSM_OPT2_DESTINATION)
 				set(destination "${destination}/${VSM_OPT2_DESTINATION}")
 			endif()
 
@@ -132,7 +106,7 @@ function(vsm_detail_add_file_set)
 			set(configure ON)
 		endif()
 
-		if(NOT "${VSM_OPT2_CONFIGURE_VAR}" STREQUAL "<UNDEFINED>")
+		if(DEFINED VSM_OPT2_CONFIGURE_VAR)
 			set("${VSM_OPT2_CONFIGURE_VAR}" ${configure} PARENT_SCOPE)
 		endif()
 	endif()
@@ -172,36 +146,47 @@ function(vsm_detail_configure target public_type)
 		)
 
 		if(${configure_visualizers})
-			set(visualizers_module "${PROJECT_BINARY_DIR}/cmake_build_modules/vsm_add_visualizers.cmake")
-
-			get_property(
-				has_visualizers_module
-				DIRECTORY "${PROJECT_BINARY_DIR}"
-				PROPERTY vsm_detail_visualizers_module SET
-			)
-
-			if(NOT ${has_visualizers_module})
-				set_property(
-					DIRECTORY "${PROJECT_BINARY_DIR}"
-					PROPERTY vsm_detail_visualizers_module ON
-				)
-
-				file(WRITE "${visualizers_module}" "")
-
-				install(
-					FILES "${visualizers_module}"
-					DESTINATION "cmake_build_modules"
-				)
-			endif()
-
+#			set(visualizers_module "${PROJECT_BINARY_DIR}/vsm_cmake_build_modules/import_visualizers.cmake")
+#
+#			get_property(
+#				has_visualizers_module
+#				DIRECTORY "${PROJECT_BINARY_DIR}"
+#				PROPERTY vsm_detail_visualizers_module SET
+#			)
+#
+#			if(NOT ${has_visualizers_module})
+#				set_property(
+#					DIRECTORY "${PROJECT_BINARY_DIR}"
+#					PROPERTY vsm_detail_visualizers_module ON
+#				)
+#
+#				file(WRITE "${visualizers_module}" "")
+#
+#				install(
+#					FILES "${visualizers_module}"
+#					DESTINATION "cmake_build_modules"
+#				)
+#			endif()
+#
 			set(visualizers "${VSM_OPT_VISUALIZERS}")
-			list(TRANSFORM visualizers PREPEND "\${CMAKE_CURRENT_LIST_DIR}/../")
+			#list(TRANSFORM visualizers PREPEND "\${CMAKE_CURRENT_LIST_DIR}/../")
 			list(JOIN visualizers " " visualizers)
+#
+#			file(
+#				APPEND "${visualizers_module}"
+#				"TARGET ${name} VISUALIZERS ${visualizers}\n"
+#			)
 
-			file(
-				APPEND "${visualizers_module}"
-				"target_sources(${name} INTERFACE ${visualizers})\n"
-				"source_group(Visualizers ${visualizers})\n"
+#			vsm_detail_add_cmake_build_module(
+#				vsm_import_visualizers
+#				COPY_FILE "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/detail/import_visualizers.cmake"
+#				"vsm_detail_import_visualizers(${name} ${visualizers})\n"
+#			)
+
+			vsm_detail_add_force_include(
+				import_visualizers
+				COPY_FILE "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/detail/import_visualizers.cmake"
+				"vsm_detail_import_visualizers(${name} ${visualizers})\n"
 			)
 		endif()
 	endif()

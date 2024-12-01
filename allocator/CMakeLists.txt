@@ -12,7 +12,6 @@ vsm_add_library(vsm::allocator
 		include/vsm/new_allocator.hpp
 
 	HEADER_DEPENDENCIES
-		vsm::allocator_core
 		vsm::any
 		vsm::core
 

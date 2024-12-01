@@ -50,22 +50,35 @@ TEST_CASE("bit_ref assignment", "[bit][bit_ref]")
 	bit_ref<uint32_t>(word, 1) = true;
 	CHECK(word == 3u);
 	word = 0;
+
+	{
+		bit_ref<uint32_t> const ref(word, 0);
+		ref = true;
+		CHECK(word == 1u);
+	}
+	word = 0;
 }
 
 TEST_CASE("bit_ptr iteration", "[bit][bit_ptr]")
 {
 	uint32_t word = 0;
 
-	Catch::uniform_integer_distribution<uint32_t> d(0, UINT32_MAX);
-	uint32_t const random_word = d(Catch::sharedRng());
+	Catch::uniform_integer_distribution<uint32_t> distribution(
+		0,
+		std::numeric_limits<uint32_t>::max());
+
+	uint32_t const random_word = distribution(Catch::sharedRng());
 
 	auto const beg = bit_ptr(&word, 0);
-	auto const end = beg + 32;
+	auto const end = bit_ptr(&word + 1, 0);
+	REQUIRE(end - beg == 32);
 
-	for (auto pos = beg; pos != end; ++pos)
+	bit_ptrdiff_t i = 0;
+	for (auto pos = beg; pos != end; ++pos, ++i)
 	{
-		auto const i = pos - beg;
 		REQUIRE(i < 32);
+		REQUIRE(i == pos - beg);
+
 		if (random_word & 1u << i)
 		{
 			*pos = true;

@@ -2,18 +2,18 @@
 
 #include <vsm/concepts.hpp>
 #include <vsm/detail/categories.hpp>
-#include <vsm/detail/expected.hpp>
 #include <vsm/preprocessor.h>
 #include <vsm/standard.hpp>
 #include <vsm/tag_invoke.hpp>
 
+#include <expected>
 #include <iterator>
 #include <system_error>
 
 namespace vsm {
 
-using detail::expected_namespace::expected;
-using detail::expected_namespace::unexpected;
+using std::expected;
+using std::unexpected;
 
 struct has_error_t
 {
@@ -57,10 +57,10 @@ struct propagate_error_t
 inline constexpr propagate_error_t propagate_error = {};
 
 template<typename T, typename E = std::error_code>
-using result = detail::expected_namespace::expected<T, E>;
+using result = std::expected<T, E>;
 
-inline constexpr auto const& result_value = detail::expected_namespace::in_place;
-inline constexpr auto const& result_error = detail::expected_namespace::unexpect;
+inline constexpr auto const& result_value = std::in_place;
+inline constexpr auto const& result_error = std::unexpect;
 
 inline result<void> as_result(std::error_code const error) noexcept
 {
@@ -157,14 +157,15 @@ success(T) -> success<T>;
 	vsm_detail_try_1(co_return, spec, __VA_ARGS__)
 
 
-/// @brief Evaluate an expression and unwrap its non-void result into a new variable.
+/// @brief Evaluate an expression, unwrap and dereference its non-void pointer result into a new
+///        reference.
 ///        Returns from the current subroutine if the result contains an error.
 /// @param spec Name and optionally the type of the introduced variable.
 /// @param ... Expression to evaluate.
 #define vsm_try_ptr(spec, ...) \
 	vsm_detail_try_ptr_1(return, spec, __VA_ARGS__)
 
-/// @brief Evaluate an expression and unwrap and dereference its non-void pointer result into a new
+/// @brief Evaluate an expression, unwrap and dereference its non-void pointer result into a new
 ///        reference.
 ///        Returns from the current coroutine if the result contains an error.
 /// @param spec Name and optionally the type of the introduced variable.

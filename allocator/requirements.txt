@@ -1,3 +1,2 @@
-vsm-allocator_core 0.1
 vsm-any 0.1
 vsm-test_allocator 0.1 TEST

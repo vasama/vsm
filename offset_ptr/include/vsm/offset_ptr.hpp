@@ -40,6 +40,7 @@ public:
 	}
 
 	template<typename OtherT, typename OtherOffset>
+		requires std::convertible_to<OtherT*, T*> && losslessly_convertible_to<OtherOffset, Offset>
 	offset_ptr(offset_ptr<OtherT, OtherOffset> const& other)
 		: m_offset(get_offset(other.get()))
 	{
@@ -64,7 +65,8 @@ public:
 	}
 
 	template<typename OtherT, typename OtherOffset>
-	offset_ptr& operator=(offset_ptr<OtherT, OtherOffset> const& other)
+		requires std::convertible_to<OtherT*, T*> && losslessly_convertible_to<OtherOffset, Offset>
+	offset_ptr& operator=(offset_ptr<OtherT, OtherOffset> const& other) &
 	{
 		m_offset = get_offset(other.get());
 		return *this;
@@ -144,16 +146,30 @@ public:
 		return ptr.get() - offset;
 	}
 
-	[[nodiscard]] friend ptrdiff_t operator-(offset_ptr const& lhs, offset_ptr const& rhs);
-	[[nodiscard]] friend ptrdiff_t operator-(offset_ptr const& lhs, T* const rhs);
-	[[nodiscard]] friend ptrdiff_t operator-(T* const lhs, offset_ptr const& rhs);
+	[[nodiscard]] friend ptrdiff_t operator-(offset_ptr const& lhs, offset_ptr const& rhs)
+	{
+		return lhs.get() - rhs.get();
+	}
+
+	[[nodiscard]] friend ptrdiff_t operator-(offset_ptr const& lhs, T* const rhs)
+	{
+		return lhs.get() - rhs;
+	}
+
+	[[nodiscard]] friend ptrdiff_t operator-(T* const lhs, offset_ptr const& rhs)
+	{
+		return lhs - rhs.get();
+	}
 
 	[[nodiscard]] explicit operator bool() const
 	{
 		return m_offset != 0;
 	}
 
-	[[nodiscard]] friend bool operator==(offset_ptr const& lhs, offset_ptr const& rhs) = default;
+	[[nodiscard]] friend bool operator==(offset_ptr const& lhs, offset_ptr const& rhs)
+	{
+		return lhs.get() == rhs.get();
+	}
 
 	[[nodiscard]] friend bool operator==(offset_ptr const& ptr, decltype(nullptr))
 	{
@@ -203,6 +219,8 @@ struct detail::prop_cv_traits<offset_ptr<T, Offset>>
 {
 	using get_type = T*;
 	using get_const_type = T const*;
+
+	using size_type = size_t;
 	using difference_type = ptrdiff_t;
 
 	static get_type get(offset_ptr<T, Offset> const& ptr)
