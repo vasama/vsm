@@ -9,6 +9,7 @@ vsm_add_library(
 
 	HEADERS
 		include/vsm/result.hpp
+		include/vsm/try_for.hpp
 
 	HEADER_DEPENDENCIES
 		vsm::core

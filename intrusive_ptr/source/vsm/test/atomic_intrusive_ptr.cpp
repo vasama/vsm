@@ -21,7 +21,7 @@ TEST_CASE("atomic_intrusive_ptr: single thread", "[intrusive_ptr][atomic]")
 	test::scoped_count instance_count;
 	{
 		shared_object* const shared = new shared_object();
-		atomic_intrusive_ptr atomic = atomic_intrusive_ptr(shared);
+		atomic_intrusive_ptr<shared_object> atomic(shared);
 
 		intrusive_ptr pointer = atomic.load();
 		REQUIRE(pointer.get() == shared);

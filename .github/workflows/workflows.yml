@@ -1,3 +1,8 @@
+on:
+  push:
+    branches:
+      - review-ci
+
 jobs:
   build-and-test:
     runs-on: ${{ matrix.os }}-latest
@@ -8,25 +13,34 @@ jobs:
       matrix:
         os:
           - windows
-          - ubuntu
+#          - ubuntu
         tool:
           - msvc
-          - clang
-          - clang-cl
-          - gcc
+#          - clang
+#          - clang-cl
+#          - gcc
         config:
           - Debug
-          - Release
-        exclude:
-          - os: windows
-            tool: gcc
-          - os: ubuntu
-            tool: msvc
-          - os: ubuntu
-            tool: clang-cl
+#          - Release
+#        exclude:
+#          - os: windows
+#            tool: gcc
+#          - os: ubuntu
+#            tool: msvc
+#          - os: ubuntu
+#            tool: clang-cl
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install conan
+        run: pip3 install conan
+
+      - name: Create vsm-cmake
+        run: conan editable add cmake
+
+      - name: Create vsm-conan
+        run: conan editable add conan
 
       #- uses: actions/cache@v3
       #  with:

@@ -9,6 +9,7 @@ vsm_add_library(
 
 	HEADERS
 		include/vsm/default_hash.hpp
+		include/vsm/xxhash.hpp
 
 	HEADER_DEPENDENCIES
 		vsm::core

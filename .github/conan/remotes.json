@@ -1,0 +1,14 @@
+{
+ "remotes": [
+  {
+   "name": "conancenter",
+   "url": "https://center.conan.io",
+   "verify_ssl": true
+  },
+  {
+   "name": "vasama.org",
+   "url": "https://conan.vasama.org",
+   "verify_ssl": true
+  }
+ ]
+}

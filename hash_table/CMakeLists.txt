@@ -9,6 +9,7 @@ vsm_add_library(
 
 	HEADERS
 		include/vsm/detail/deterministic_table.hpp
+		include/vsm/detail/hash_table.hpp
 		include/vsm/detail/swiss_table.hpp
 		include/vsm/detail/swiss_table.ipp
 
@@ -17,6 +18,7 @@ vsm_add_library(
 
 		include/vsm/deterministic_map.hpp
 		include/vsm/deterministic_set.hpp
+
 		include/vsm/swiss_map.hpp
 		include/vsm/swiss_set.hpp
 

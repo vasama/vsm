@@ -9,7 +9,7 @@
 
 namespace vsm {
 
-template<non_ref T, detail::_intrusive_ptr_nothrow_manager Manager = default_refcount_manager>
+template<non_ref T, detail::_intrusive_ptr_nothrow_manager<T> Manager = default_refcount_manager>
 class atomic_intrusive_ptr
 {
 	static_assert(std::is_nothrow_copy_constructible_v<Manager>);
@@ -20,10 +20,10 @@ class atomic_intrusive_ptr
 		// The object of which this intrusive pointer is a shared owner.
 		T* ptr;
 
-		// The number of temporary references to the shared object. A temporary reference is
-		// as good for using the shared object as a reference placed on the shared object itself.
-		// Any mutation of the atomic_intrusive_ptr, i.e. replacement of the internal pointer,
-		// transfers temporary references to the shared object itself.
+		// The number of temporary references to the shared object. A temporary reference is as good
+		// for using the shared object as a reference placed on the shared object itself. Any
+		// mutation of the atomic_intrusive_ptr, i.e. replacement of the internal pointer, transfers
+		// temporary references to the shared object itself.
 		size_t refcount;
 	};
 
@@ -33,9 +33,9 @@ class atomic_intrusive_ptr
 public:
 	atomic_intrusive_ptr() = default;
 
-	explicit atomic_intrusive_ptr(T* const ptr) noexcept
-		requires std::is_default_constructible_v<Manager>
+	explicit atomic_intrusive_ptr(T* const ptr)
 		noexcept(std::is_nothrow_default_constructible_v<Manager>)
+		requires std::is_default_constructible_v<Manager>
 		: m_atom({ ptr, 0 })
 	{
 		if (ptr != nullptr)
@@ -68,13 +68,12 @@ public:
 
 	~atomic_intrusive_ptr()
 	{
-		// Destructors never race. Any other thread using this object
-		// must have been synchronised with using some other mechanism.
-		// Therefore a relaxed load is fine here.
+		// Destructors never race. Any other thread using this object must have been synchronised
+		// with using some other mechanism. Therefore a relaxed load is fine here.
 		atom const atom = m_atom.load(std::memory_order::relaxed);
 
-		// Mutations always flush the temporary refcount as the last step.
-		// A non-zero refcount could only ever be observed here as a result of a race.
+		// Mutations always flush the temporary refcount as the last step. A non-zero refcount could
+		// only ever be observed here as a result of a race.
 		vsm_assert(atom.refcount == 0);
 
 		if (atom.ptr != nullptr)
@@ -136,10 +135,12 @@ public:
 		// Increment the local atom's refcount to reflect the mutation applied to the shared atom.
 		++atom.refcount;
 
-		// Having created a temporary reference, the shared object may now be safely used by this thread.
+		// Having created a temporary reference, the shared object may now be safely used by this
+		// thread.
 		T* const ptr = atom.ptr;
 
-		// The shared object's refcount is incremented in order to acquire long term shared ownership.
+		// The shared object's refcount is incremented in order to acquire long term shared
+		// ownership.
 		m_manager.acquire(ptr, 1);
 
 		// The previously created temporary reference must now be removed.
@@ -158,10 +159,10 @@ public:
 			if (atom.ptr != ptr || atom.refcount == 0)
 			{
 				// If the pointer has changed, another thread has transferred this thread's
-				// temporary reference to the shared object, meaning this thread must now
-				// remove the reference from the shared object instead of the shared atom.
-				// If the temporary refcount is 0, other threads must have replaced the
-				// shared object, and subsequently restored the original.
+				// temporary reference to the shared object, meaning this thread must now remove the
+				// reference from the shared object instead of the shared atom. If the temporary
+				// refcount is 0, other threads must have replaced the shared object, and
+				// subsequently restored the original.
 				m_manager.release(ptr, 1);
 
 				// With the pointer changed, there is no longer any need to mutate the atom.
@@ -201,9 +202,9 @@ public:
 	/// @brief Exchange the shared object.
 	[[nodiscard]] intrusive_ptr<T, Manager> exchange(intrusive_ptr<T, Manager> new_ptr) noexcept
 	{
-		// Releasing the pointer to the new shared object from the local intrusive_ptr and
-		// into the desired atom ensures ownership of this atomic_intrusive_ptr.
-		// This function will eventually replace the shared atom with the desired atom.
+		// Releasing the pointer to the new shared object from the local intrusive_ptr and into the
+		// desired atom ensures ownership of this atomic_intrusive_ptr. This function will
+		// eventually replace the shared atom with the desired atom.
 		atom const desired = { new_ptr.release(), 0 };
 
 		while (true)

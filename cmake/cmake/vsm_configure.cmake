@@ -64,8 +64,8 @@ function(vsm_detail_add_file_set)
 	cmake_parse_arguments(
 		VSM_OPT2
 		""
-		"FILE_SET;TYPE;BASE_DIR;FILES;DESTINATION;CONFIGURE_VAR"
-		""
+		"FILE_SET;TYPE;BASE_DIR;DESTINATION;CONFIGURE_VAR"
+		"FILES"
 		${ARGN}
 	)
 
@@ -123,7 +123,7 @@ function(vsm_detail_configure target public_type)
 			FILE_SET "HEADERS"
 			TYPE "HEADERS"
 			BASE_DIR "include"
-			FILES "${VSM_OPT_HEADERS}"
+			FILES ${VSM_OPT_HEADERS}
 			#TODO: Revisit this: DESTINATION "${target}" # Install in subdirectory: include/target/...
 		)
 	endif()
@@ -207,8 +207,8 @@ function(vsm_detail_configure target public_type)
 		target_compile_definitions(${target} PRIVATE ${VSM_OPT_SOURCE_DEFINITIONS})
 	endif()
 
-	if(do_configure)
-		if(DEFINED VSM_OPT_TEST_SOURCES)
+	if(DEFINED VSM_OPT_TEST_SOURCES)
+		if(do_configure)
 			get_target_property(test_target ${target} vsm_detail_test_target)
 
 			if(${test_target} STREQUAL "test_target-NOTFOUND")
@@ -248,10 +248,12 @@ function(vsm_detail_configure target public_type)
 			if(DEFINED VSM_OPT_TEST_DEPENDENCIES)
 				target_link_libraries(${test_target} PRIVATE ${VSM_OPT_TEST_DEPENDENCIES})
 			endif()
-		else()
-			if(DEFINED VSM_OPT_TEST_DEPENDENCIES)
-				message(SEND_ERROR "Cannot specify test dependencies for target ${target} without test sources.")
-			endif()
+		endif()
+
+		vsm_detail_add_directory_files("sources" "${VSM_OPT_TEST_SOURCES}")
+	else()
+		if(DEFINED VSM_OPT_TEST_DEPENDENCIES)
+			message(SEND_ERROR "Cannot specify test dependencies for target ${target} without test sources.")
 		endif()
 	endif()
 

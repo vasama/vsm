@@ -8,10 +8,12 @@ vsm_add_library(
 	vsm::core
 
 	HEADERS
+		include/vsm/allocator.hpp
 		include/vsm/array.hpp
 		include/vsm/arrow.hpp
 		include/vsm/assert.h
 		include/vsm/atomic.hpp
+		include/vsm/bit.hpp
 		include/vsm/concepts.hpp
 		include/vsm/defer.hpp
 		include/vsm/exceptions.hpp
@@ -21,7 +23,9 @@ vsm_add_library(
 		include/vsm/int128.hpp
 		include/vsm/lazy.hpp
 		include/vsm/lift.hpp
+		include/vsm/literals.hpp
 		include/vsm/memory.hpp
+		include/vsm/numeric.hpp
 		include/vsm/platform.h
 		include/vsm/preprocessor.h
 		include/vsm/relocate.hpp
@@ -35,6 +39,9 @@ vsm_add_library(
 		include/vsm/utility.hpp
 
 		include/vsm/detail/atomic/x86_64.hpp
+
+		include/vsm/detail/bit/generic/compression.hpp
+		include/vsm/detail/bit/x86.hpp
 
 		include/vsm/detail/categories.hpp
 

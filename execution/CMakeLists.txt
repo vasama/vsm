@@ -15,7 +15,7 @@ vsm_add_library(
 	HEADER_DEPENDENCIES
 		vsm::core
 		vsm::intrusive
-		P2300::P2300
+		stdexec::stdexec
 
 	TEST_SOURCES
 		source/vsm/test/run_queue.cpp

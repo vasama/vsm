@@ -43,7 +43,7 @@ if (!$Step -or $Step -eq 'conan-install') {
 		$ConanArguments += @("-b=$ConanBuild")
 	}
 
-	Invoke-NativeCommand conan install -pr $ConanProfile @ConanArguments .
+	Invoke-NativeCommand conan install '-pr:a' $ConanProfile @ConanArguments .
 }
 
 if (!$Step -or $Step -eq 'cmake-configure') {
@@ -55,7 +55,7 @@ if ((!$Step -and $Analysis -eq $null) -or $Step -eq 'cmake-build') {
 }
 
 if ((!$Step -and $Analysis -eq $null) -or $Step -eq 'ctest') {
-	Invoke-NativeCommand ctest --preset "$CMakePreset-$($Config.ToLowerInvariant())"
+	Invoke-NativeCommand ctest --preset $CMakePreset
 }
 
 if ((!$Step -and $Analysis -ne $null) -or $Step -eq 'analyze') {

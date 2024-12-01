@@ -32,6 +32,8 @@ vsm_add_library(
 		vsm::tag_ptr
 
 	TEST_SOURCES
+		source/vsm/intrusive/test/elements.hpp
+
 		source/vsm/intrusive/test/avl_tree.cpp
 		source/vsm/intrusive/test/forward_list.cpp
 		source/vsm/intrusive/test/heap.cpp
