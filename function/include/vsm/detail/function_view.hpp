@@ -1,35 +1,10 @@
 #pragma once
 
+#include <vsm/detail/function_ptr.hpp>
 #include <vsm/platform.h>
 #include <vsm/utility.hpp>
 
 namespace vsm::detail {
-
-#define vsm_detail_function_ptr_constexpr
-
-class function_ptr_t
-{
-	struct incomplete_type;
-	using function_type = void(incomplete_type);
-
-	function_type* m_function;
-
-public:
-	template<typename F>
-	constexpr function_ptr_t(F* const function)
-		requires std::is_function_v<F>
-		: m_function(reinterpret_cast<function_type*>(function))
-	{
-	}
-
-	template<typename F>
-	explicit constexpr operator F*() const
-		requires std::is_function_v<F>
-	{
-		return reinterpret_cast<F*>(m_function);
-	}
-};
-
 
 struct function_unused {};
 

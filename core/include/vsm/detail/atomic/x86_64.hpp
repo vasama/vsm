@@ -9,7 +9,7 @@ namespace vsm::detail {
 
 #pragma push_macro("cmpxchg16")
 
-#ifdef _MSC_VER
+#if vsm_compiler_msvc
 #	pragma intrinsic(_InterlockedCompareExchange128)
 
 #	define cmpxchg16(object, expected, desired) \
@@ -21,14 +21,14 @@ namespace vsm::detail {
 		)
 #else
 template<typename T>
-vsm_always_inline bool cmpxchg16(T& object, T& expected, T const& desired)
+inline vsm_always_inline bool cmpxchg16(T& object, T& expected, T const& desired)
 {
 	// Read the bits of the expected value.
 	__uint128_t const old_expected = __builtin_bit_cast(__uint128_t, expected);
 
 	// Compare-exchange the bits at object, returning previous bits.
 	__uint128_t const old_object = __sync_val_compare_and_swap(
-		reinterpret_cast<__uint128_t*>(&object),
+		reinterpret_cast<__uint128_t*>(std::addressof(object)),
 		old_expected,
 		__builtin_bit_cast(__uint128_t, desired));
 
@@ -43,6 +43,16 @@ vsm_always_inline bool cmpxchg16(T& object, T& expected, T const& desired)
 template<typename T>
 class atomic_ref_base
 {
+#if vsm_compiler_clang
+// LLVM produces bad code for cmpxchg16b in some cases:
+// https://github.com/llvm/llvm-project/issues/119959
+#define vsm_detail_atomic_inline vsm_never_inline
+#else
+#define vsm_detail_atomic_inline
+#endif
+
+	static_assert(std::is_trivially_copyable_v<T>);
+
 	T* m_object;
 
 public:
@@ -58,14 +68,17 @@ public:
 	vsm_clang_diagnostic(ignored "-Wold-style-cast")
 
 
-	T load([[maybe_unused]] std::memory_order const memory_order) const noexcept
+	vsm_detail_atomic_inline T load(
+		[[maybe_unused]] std::memory_order const memory_order) const noexcept
 	{
 		T expected = {};
 		cmpxchg16(*m_object, expected, expected);
 		return expected;
 	}
 
-	void store(T const value, [[maybe_unused]] std::memory_order const memory_order) const noexcept
+	vsm_detail_atomic_inline void store(
+		T const value,
+		[[maybe_unused]] std::memory_order const memory_order) const noexcept
 	{
 		T& object = *m_object;
 
@@ -73,7 +86,9 @@ public:
 		while (!cmpxchg16(object, expected, value));
 	}
 
-	T exchange(T const value, [[maybe_unused]] std::memory_order const memory_order) const noexcept
+	vsm_detail_atomic_inline T exchange(
+		T const value,
+		[[maybe_unused]] std::memory_order const memory_order) const noexcept
 	{
 		T& object = *m_object;
 
@@ -82,7 +97,7 @@ public:
 		return expected;
 	}
 
-	bool compare_exchange_weak(
+	vsm_detail_atomic_inline bool compare_exchange_weak(
 		T& expected,
 		T const desired,
 		[[maybe_unused]] std::memory_order const success,
@@ -91,7 +106,7 @@ public:
 		return cmpxchg16(*m_object, expected, desired);
 	}
 
-	bool compare_exchange_strong(
+	vsm_detail_atomic_inline bool compare_exchange_strong(
 		T& expected,
 		T const desired,
 		[[maybe_unused]] std::memory_order const success,
@@ -101,6 +116,8 @@ public:
 	}
 
 	vsm_clang_diagnostic(pop)
+
+#undef vsm_detail_atomic_inline
 };
 
 #define vsm_detail_atomic_ref_base(T) \

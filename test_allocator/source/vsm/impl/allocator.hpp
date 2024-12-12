@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 namespace vsm::test {
 
 size_t virtual_page_size();

@@ -55,6 +55,7 @@ if("${vsm_compiler_frontend}" STREQUAL "GNU" OR DEFINED "gnu_prefix")
 			${gnu_prefix}-Wno-invalid-offsetof
 			${gnu_prefix}-Wno-missing-field-initializers #TODO: Consider turning this back on
 			${gnu_prefix}-Wno-nested-anon-types
+			${gnu_prefix}-Wno-parentheses
 			${gnu_prefix}-Wno-unused-parameter
 			${gnu_prefix}-Wno-zero-length-array
 

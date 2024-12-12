@@ -9,6 +9,6 @@ os=Windows
 [conf]
 tools.build:compiler_executables={"c": "cl", "cpp": "cl"}
 tools.build:cxxflags+=["/permissive-", "/Zc:preprocessor", "/Zc:__cplusplus", "/arch:SSE4.2"]
-tools.cmake.cmake_layout:build_folder_vars+=["const.vsm", "settings.os", "settings.compiler", "const.intellisense", "settings.build_type"]
+tools.cmake.cmake_layout:build_folder_vars+=["const.vsm", "settings.os", "const.intellisense", "settings.build_type"]
 tools.cmake.cmaketoolchain:generator=Ninja
 tools.cmake.cmaketoolchain:extra_variables={"CMAKE_EXPORT_COMPILE_COMMANDS": "ON"}

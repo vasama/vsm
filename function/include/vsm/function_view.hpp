@@ -4,6 +4,8 @@
 #include <vsm/detail/function_view.hpp>
 #include <vsm/utility.hpp>
 
+#include <memory>
+
 namespace vsm {
 
 namespace detail {

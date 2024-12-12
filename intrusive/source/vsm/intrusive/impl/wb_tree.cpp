@@ -105,66 +105,6 @@ static void rebalance(hook** const root, hook** node, bool l, bool const insert)
 	}
 }
 
-[[maybe_unused]] static bool invariant(_wb const& self)
-{
-	if (const hook* node = self.m_root)
-	{
-		struct frame
-		{
-			uint32_t visit : 2;
-			uint32_t l_weight : 30;
-		};
-
-		frame stack[sizeof(size_t) * CHAR_BIT + 1];
-
-		int32_t height = 0;
-		stack[0].visit = 0;
-		uint32_t r_weight = 0;
-
-		while (height >= 0)
-		{
-		next_iteration:
-			frame& frame = stack[height];
-
-			for (uint32_t visit; (visit = frame.visit++) < 2;)
-			{
-				frame.l_weight = std::exchange(r_weight, static_cast<uint32_t>(0));
-
-				if (const hook* const child = node->children[visit])
-				{
-					if (child->parent != node->children)
-					{
-						return false;
-					}
-
-					node = child;
-					stack[++height].visit = 0;
-					goto next_iteration;
-				}
-			}
-
-			uint32_t const l_weight = frame.l_weight;
-
-			if (l_weight + r_weight > 1 &&
-				(l_weight >= r_weight * delta || r_weight >= l_weight * delta))
-			{
-				return false;
-			}
-
-			r_weight = l_weight + r_weight + 1;
-			if (node->weight != r_weight)
-			{
-				return false;
-			}
-
-			node = vsm_detail_wb_hook_from_children(node->parent);
-			--height;
-		}
-	}
-
-	return true;
-}
-
 
 hook* _wb::select(size_t rank) const
 {
@@ -220,8 +160,6 @@ void _wb::insert(hook* const node, ptr<hook*> const parent_and_side)
 	parent[l] = node;
 
 	rebalance(&m_root, parent, l, true);
-
-	//vsm_assert_slow(invariant(*this));
 }
 
 void _wb::erase(hook* const node)
@@ -294,8 +232,6 @@ void _wb::erase(hook* const node)
 	}
 
 	rebalance(&m_root, balance_node, balance_l, false);
-
-	//vsm_assert_slow(invariant(*this));
 }
 
 void _wb::clear()
@@ -321,8 +257,6 @@ void _wb::clear()
 
 		m_root = nullptr;
 	}
-
-	//vsm_assert_slow(invariant(*this));
 }
 
 _list::hook* _wb::flatten()

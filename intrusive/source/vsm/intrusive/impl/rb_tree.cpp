@@ -62,6 +62,7 @@ static void rotate(hook* const root, bool const l)
 	parent[root != parent[0]] = pivot;
 }
 
+#if 0
 [[maybe_unused]] static bool invariant(_rb const& self)
 {
 	size_t size = 0;
@@ -136,6 +137,7 @@ static void rotate(hook* const root, bool const l)
 
 	return size == self.m_size;
 }
+#endif
 
 
 static void rebalance_after_insert(hook** const root, hook* node)
@@ -201,8 +203,6 @@ void _rb::insert(hook* node, ptr<hook*> const parent_and_side)
 	parent_and_side[parent_and_side.tag()] = node;
 
 	rebalance_after_insert(&m_root, node);
-
-	//vsm_assert_slow(invariant(*this));
 }
 
 void _rb::erase(hook* const node)

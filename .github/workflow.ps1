@@ -1,3 +1,5 @@
+#!/usr/bin/pwsh
+
 param(
 	[string]$Tool,
 	[string]$Config,
@@ -34,7 +36,7 @@ $ConanArguments = @($ConanSettings | ForEach-Object { "-s=$_" })
 $ConanPreset = "$ConanProfile-$($Config.ToLowerInvariant())"
 $CMakePreset = "conan-$ConanPreset"
 
-if (!$Step -or $Step -eq 'conan-install-profile') {
+if (!$Step -or $Step -eq 'conan-config') {
 	Invoke-NativeCommand conan config install .github/conan
 }
 
@@ -55,7 +57,7 @@ if ((!$Step -and $Analysis -eq $null) -or $Step -eq 'cmake-build') {
 }
 
 if ((!$Step -and $Analysis -eq $null) -or $Step -eq 'ctest') {
-	Invoke-NativeCommand ctest --preset $CMakePreset
+	Invoke-NativeCommand ctest --preset $CMakePreset --output-on-failure
 }
 
 if ((!$Step -and $Analysis -ne $null) -or $Step -eq 'analyze') {

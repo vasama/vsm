@@ -120,83 +120,6 @@ static void rebalance(ptr<hook>* const root, ptr<hook>* node, bool l, bool const
 	}
 }
 
-[[maybe_unused]] static bool invariant(_avl const& self)
-{
-	if (self.m_root.tag() != 0)
-	{
-		return false;
-	}
-
-	size_t size = 0;
-	if (hook const* node = self.m_root.ptr())
-	{
-		struct frame
-		{
-			uint8_t visit : 2;
-			uint8_t l_height : 6;
-		};
-
-		frame stack[sizeof(size_t) * CHAR_BIT];
-		static_assert(std::size(stack) <= 1 << 6);
-
-		uint8_t height = 0;
-		stack[0].visit = 0;
-		uint8_t r_height = 0;
-
-		while (height >= 0)
-		{
-		next_iteration:
-			frame& frame = stack[height];
-
-			for (uint8_t visit; (visit = frame.visit++) < 2;)
-			{
-				frame.l_height = std::exchange(r_height, static_cast<uint8_t>(0));
-
-				if (hook const* const child = node->children[visit].ptr())
-				{
-					if (child->parent != node->children)
-					{
-						return false;
-					}
-
-					node = child;
-					stack[++height].visit = 0;
-					goto next_iteration;
-				}
-
-				if (node->children[visit].tag())
-				{
-					return false;
-				}
-			}
-
-			uint8_t const l_height = frame.l_height;
-
-			if (std::abs(l_height - r_height) > 1)
-			{
-				return false;
-			}
-			if (node->children[0].tag() != (l_height > r_height))
-			{
-				return false;
-			}
-			if (node->children[1].tag() != (r_height > l_height))
-			{
-				return false;
-			}
-
-			r_height = static_cast<uint8_t>(std::max(l_height, r_height) + 1);
-
-			node = vsm_detail_avl_hook_from_children(node->parent);
-			--height;
-
-			++size;
-		}
-	}
-
-	return size == self.m_size;
-}
-
 
 ptr<hook> const* _avl::lower_bound(ptr<ptr<hook> const> const parent_and_side) const
 {
@@ -230,8 +153,6 @@ void _avl::insert(hook* const node, ptr<ptr<hook>> const parent_and_side)
 	parent[l].set_ptr(node);
 
 	rebalance(&m_root, parent, l, true);
-
-	//vsm_assert_slow(invariant(*this));
 }
 
 void _avl::erase(hook* const node)
@@ -302,8 +223,6 @@ void _avl::erase(hook* const node)
 	}
 
 	rebalance(&m_root, balance_node, balance_l, false);
-
-	//vsm_assert_slow(invariant(*this));
 }
 
 void _avl::replace(hook* const existing_node, hook* const new_node)
@@ -314,8 +233,6 @@ void _avl::replace(hook* const existing_node, hook* const new_node)
 	node.children[0]->parent = new_node->children;
 	node.children[1]->parent = new_node->children;
 	node.parent[node.parent->ptr() != existing_node].set_ptr(new_node);
-
-	//vsm_assert_slow(invariant(*this));
 }
 
 void _avl::clear()
@@ -342,8 +259,6 @@ void _avl::clear()
 		m_root = nullptr;
 		m_size = 0;
 	}
-
-	//vsm_assert_slow(invariant(*this));
 }
 
 _list::hook* _avl::flatten()

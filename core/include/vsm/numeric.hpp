@@ -3,6 +3,7 @@
 #include <vsm/assert.h>
 #include <vsm/concepts.hpp>
 
+#include <algorithm>
 #include <bit>
 #include <expected>
 #include <limits>

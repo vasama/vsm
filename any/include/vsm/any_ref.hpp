@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vsm/concepts.hpp>
+#include <vsm/detail/function_ptr.hpp>
+#include <vsm/platform.h>
 #include <vsm/type_list.hpp>
 #include <vsm/utility.hpp>
 
@@ -119,8 +121,6 @@ struct _any_traits<R(Ps...) const>
 template<typename F>
 using _any_traits_for = _any_traits<typename F::signature_type>;
 
-using _any_function = void(struct _any_parameter);
-
 template<typename... Fs>
 struct _any_functions
 {
@@ -131,20 +131,20 @@ struct _any_functions
 		(std::is_const_v<typename _any_traits_for<Fs>::context_type> && ...);
 
 	template<typename T, bool Packed = false>
-	static _any_function* const table[sizeof...(Fs)];
+	static function_ptr_t const table[sizeof...(Fs)];
 };
 
 template<typename T, bool Packed, typename... Fs>
-inline _any_function* const _any_function_table[sizeof...(Fs)] =
+inline function_ptr_t const _any_function_table[sizeof...(Fs)] =
 {
-	reinterpret_cast<_any_function*>(_any_traits_for<Fs>::template invoke<Fs, T, Packed>)...
+	_any_traits_for<Fs>::template invoke<Fs, T, Packed>...
 };
 
 template<typename... Fs>
 template<typename T, bool Packed>
-_any_function* const _any_functions<Fs...>::table[sizeof...(Fs)] =
+function_ptr_t const _any_functions<Fs...>::table[sizeof...(Fs)] =
 {
-	reinterpret_cast<_any_function*>(_any_traits_for<Fs>::template invoke<Fs, T, Packed>)...
+	_any_traits_for<Fs>::template invoke<Fs, T, Packed>...
 };
 
 template<typename F, typename Cvref, typename... Args>
@@ -161,7 +161,7 @@ class any_ref
 	using functions_type = detail::_any_functions<Functions...>;
 	using context_type = select_t<functions_type::fully_const, void const, void>;
 
-	detail::_any_function* const* m_functions;
+	detail::function_ptr_t const* m_functions;
 	context_type* m_context;
 
 public:
@@ -212,7 +212,7 @@ public:
 	{
 		auto const function = m_functions[pack_index<F, Functions...>];
 		using function_type = typename detail::_any_traits_for<F>::function_type;
-		return reinterpret_cast<function_type*>(function)(m_context, vsm_forward(args)...);
+		return static_cast<function_type*>(function)(m_context, vsm_forward(args)...);
 	}
 
 	template<typename F, typename... Args>
@@ -221,7 +221,7 @@ public:
 	{
 		auto const function = m_functions[pack_index<F, Functions...>];
 		using function_type = typename detail::_any_traits_for<F>::function_type;
-		return reinterpret_cast<function_type*>(function)(m_context, vsm_forward(args)...);
+		return static_cast<function_type*>(function)(m_context, vsm_forward(args)...);
 	}
 
 private:

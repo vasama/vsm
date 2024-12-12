@@ -26,3 +26,12 @@ vsm_configure(
 	SOURCES
 		source/vsm/impl/windows/allocator.cpp
 )
+
+vsm_configure(
+	vsm::test_allocator
+
+	PLATFORM Linux
+
+	SOURCES
+		source/vsm/impl/posix/allocator.cpp
+)

@@ -2,6 +2,8 @@
 
 #include <vsm/intrusive/test/elements.hpp>
 
+#include <vsm/utility.hpp>
+
 #include <catch2/catch_all.hpp>
 
 #include <initializer_list>
@@ -131,7 +133,7 @@ TEST_CASE("forward_list self assignment", "[intrusive][forward_list]")
 	list_type l1;
 	l1.push_back(e(1));
 
-	l1 = std::move(l1);
+	l1 = vsm_move(l1);
 
 	REQUIRE(l1.pop_front().value == 1);
 }

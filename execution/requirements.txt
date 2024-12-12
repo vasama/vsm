@@ -1,4 +1,0 @@
-vsm-core 0.1
-vsm-intrusive 0.1
-
-stdexec 0.0.20241211 USER vasama

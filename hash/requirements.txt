@@ -1,5 +1,5 @@
 vsm-core 0.1
-xxhash 0.8.2
+xxhash 0.8.2 FIND xxHash
 
 #TODO: Use header-only when available.
 #xxhash 0.8.2 HEADER_ONLY

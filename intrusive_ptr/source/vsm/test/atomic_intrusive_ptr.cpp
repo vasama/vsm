@@ -67,12 +67,8 @@ TEST_CASE("atomic_intrusive_ptr: multiple threads", "[intrusive_ptr][atomic]")
 	{
 		alignas(64) shared_object objects[thread_count + 1];
 		alignas(64) atomic_intrusive_ptr<shared_object> p;
-
-		struct alignas(64)
-		{
-			std::atomic<size_t> started;
-			std::atomic_flag timeout;
-		};
+		alignas(64) std::atomic<size_t> started;
+		alignas(64) std::atomic_flag timeout;
 	}
 	shared;
 
@@ -105,7 +101,11 @@ TEST_CASE("atomic_intrusive_ptr: multiple threads", "[intrusive_ptr][atomic]")
 			});
 		}
 
-		while (shared.started.load() < thread_count);
+		while (shared.started.load() < thread_count)
+		{
+			std::this_thread::yield();
+		}
+
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 		shared.timeout.test_and_set();
 	}

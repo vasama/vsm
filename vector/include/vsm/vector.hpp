@@ -122,7 +122,7 @@ struct _vector_capacity<true>
 };
 
 template<bool Local>
-vsm_always_inline bool _vector_dynamic(_vector const& self, std::byte const* const beg)
+inline vsm_always_inline bool _vector_dynamic(_vector const& self, std::byte const* const beg)
 {
 	if constexpr (Local)
 	{
@@ -135,7 +135,9 @@ vsm_always_inline bool _vector_dynamic(_vector const& self, std::byte const* con
 }
 
 template<bool Local>
-vsm_always_inline bool _vector_requires_dynamic(_vector_capacity<Local> const local, size_t const size)
+inline vsm_always_inline bool _vector_requires_dynamic(
+	_vector_capacity<Local> const local,
+	size_t const size)
 {
 	if constexpr (Local)
 	{
@@ -198,7 +200,7 @@ std::byte* _vector_allocate(_vector_allocator<A>& self, size_t& new_capacity)
 }
 
 template<size_t Size, typename A, bool Local>
-vsm_always_inline std::byte* _vector_allocate_local(
+inline vsm_always_inline std::byte* _vector_allocate_local(
 	_vector_allocator<A>& self,
 	_vector_capacity<Local> const local,
 	size_t& new_capacity)
@@ -216,7 +218,7 @@ vsm_always_inline std::byte* _vector_allocate_local(
 }
 
 template<typename A, bool Local>
-static vsm_always_inline std::byte* _vector_local_allocate(
+inline vsm_always_inline std::byte* _vector_local_allocate(
 	_vector_allocator<A>& self,
 	_vector_capacity<Local> const local,
 	size_t& new_capacity)
@@ -1572,7 +1574,7 @@ public:
 	}
 
 	template<typename... Args>
-	vsm_always_inline T& emplace_back(Args&&... args)
+	T& emplace_back(Args&&... args)
 		requires std::constructible_from<T, Args...>
 	{
 		std::byte* const storage = detail::_vector_push<relo_t, local, sizeof(T)>(
@@ -1623,7 +1625,7 @@ public:
 			count * sizeof(T));
 	}
 
-	[[nodiscard]] vsm_always_inline T _pop_back_value()
+	[[nodiscard]] T _pop_back_value()
 	{
 		vsm_assert(!empty());
 
@@ -1671,7 +1673,7 @@ public:
 		}
 	}
 
-	vsm_always_inline void resize(size_t const count)
+	void resize(size_t const count)
 		requires std::is_default_constructible_v<T>
 	{
 		auto const storage = detail::_vector_resize<relo_t, dtor_t, local, sizeof(T)>(
@@ -1694,7 +1696,7 @@ public:
 		}
 	}
 
-	vsm_always_inline void _resize_default(size_t const count)
+	void _resize_default(size_t const count)
 		requires std::is_default_constructible_v<T>
 	{
 		auto const storage = detail::_vector_resize<relo_t, dtor_t, local, sizeof(T)>(

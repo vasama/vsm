@@ -24,7 +24,9 @@ struct hash_table_policies
 namespace detail {
 
 template<typename Key, typename KeySelector, typename K>
-vsm_always_inline decltype(auto) get_lookup_key(KeySelector const& key_selector, K const& key)
+inline vsm_always_inline decltype(auto) get_lookup_key(
+	KeySelector const& key_selector,
+	K const& key)
 {
 	if constexpr (std::is_same_v<K, Key> || requires { key_selector(key); })
 	{

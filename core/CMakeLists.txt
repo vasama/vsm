@@ -51,6 +51,8 @@ vsm_add_library(
 		include/vsm/detail/float16/x86_32.h
 		include/vsm/detail/float16/x86_64.h
 
+		include/vsm/detail/function_ptr.hpp
+
 		include/vsm/detail/msvc_delete.hpp
 
 		include/vsm/detail/platform/arch.h

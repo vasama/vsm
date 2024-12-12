@@ -4,37 +4,70 @@ on:
       - review-ci
 
 jobs:
-  build-and-test:
-    runs-on: ${{ matrix.os }}-latest
-    name: Build - ${{ matrix.os }} - ${{ matrix.tool }} - ${{ matrix.config }}
+  build-linux:
+    runs-on: ubuntu-24.04
+    name: Build - linux - ${{ matrix.tool }} - ${{ matrix.config }}
 
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - windows
-#          - ubuntu
         tool:
-          - msvc
 #          - clang
-#          - clang-cl
 #          - gcc
+          - clang-tidy
         config:
           - Debug
-#          - Release
-#        exclude:
-#          - os: windows
-#            tool: gcc
-#          - os: ubuntu
-#            tool: msvc
-#          - os: ubuntu
-#            tool: clang-cl
+          - Release
+
+    container:
+      image: ghcr.io/vasama/actions:2024121302
+
+    steps:
+      - uses: actions/checkout@v4
+
+#      - name: Install ninja
+#        run: sudo apt-get update && sudo apt-get install -y ninja-build
+#
+#      - name: Install conan
+#        run: pip3 install conan
+
+      - name: Create vsm-cmake
+        run: conan editable add cmake
+
+      - name: Create vsm-conan
+        run: conan editable add conan
+
+      - name: CMake/CTest (linux - ${{ matrix.tool }} - ${{ matrix.config }})
+        shell: pwsh
+        run: .github/workflow.ps1 ${{ matrix.tool }} -Config ${{ matrix.config }} -ConanBuild missing
+
+  build-windows:
+    runs-on: windows-2022
+    name: Build - windows - ${{ matrix.tool }} - ${{ matrix.config }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        tool:
+#          - msvc
+#          - clang-cl
+          - intellisense
+        config:
+          - Debug
+          - Release
+        exclude:
+          - tool: intellisense
+            config: Release
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Install conan
         run: pip3 install conan
+
+      - name: Install ninja
+        run: choco install ninja
+        if: '${{ matrix.tool }}' == 'intellisense'
 
       - name: Create vsm-cmake
         run: conan editable add cmake
@@ -47,30 +80,6 @@ jobs:
       #    path: ~/.conan2
       #    key: vsm-build-${{ matrix.os }}-${{ matrix.tool }}-${{ matrix.config }}
 
-      - name: CMake/CTest (${{ matrix.os }} - ${{ matrix.tool }} - ${{ matrix.config }})
+      - name: CMake/CTest (windows - ${{ matrix.tool }} - ${{ matrix.config }})
         shell: pwsh
         run: .github/workflow.ps1 ${{ matrix.tool }} -Config ${{ matrix.config }} -ConanBuild missing
-
-  analyze:
-    runs-on: ${{ matrix.os }}-latest
-    name: Analysis - ${{ matrix.tool }}
-    needs: build-and-test
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu
-            tool: clang-tidy
-            config: Release
-
-          - os: windows
-            tool: intellisense
-            config: Debug
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Analysis - ${{ matrix.tool }}
-        shell: pwsh
-        run: .github/workflow.ps1 intellisense -Config Debug -ConanBuild missing

@@ -9,25 +9,6 @@ struct dependent_context
 	template<bool>
 	struct select;
 
-	template<>
-	struct select<0>
-	{
-		template<typename T>
-		static T identity(T);
-	};
-
-	template<>
-	struct select<1>
-	{
-		static constexpr bool value = true;
-
-		template<typename T>
-		using type = T;
-
-		template<typename T>
-		static T&& identity(T&&);
-	};
-
 	dependent_context(auto lambda)
 	{
 		static_assert(select<std::is_void_v<decltype(lambda())>>::value);
@@ -38,6 +19,25 @@ struct dependent_context
 
 	template<bool Bool, typename T>
 	using value = select<Bool && std::is_reference_v<T>>;
+};
+
+template<>
+struct dependent_context::select<0>
+{
+	template<typename T>
+	static T identity(T);
+};
+
+template<>
+struct dependent_context::select<1>
+{
+	static constexpr bool value = true;
+
+	template<typename T>
+	using type = T;
+
+	template<typename T>
+	static T&& identity(T&&);
 };
 
 } // namespace vsm::detail

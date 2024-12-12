@@ -3,6 +3,8 @@
 #include <compare>
 #include <type_traits>
 
+#include <cstddef>
+
 namespace vsm::test {
 namespace detail {
 

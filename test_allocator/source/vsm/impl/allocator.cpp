@@ -3,7 +3,10 @@
 #include <vsm/assert.h>
 #include <vsm/impl/allocator.hpp>
 
+#include <algorithm>
 #include <unordered_map>
+
+#include <cstring>
 
 using namespace vsm::test;
 

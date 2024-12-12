@@ -3,6 +3,7 @@
 #include <vsm/utility.hpp>
 
 #include <algorithm>
+#include <functional>
 
 namespace vsm {
 

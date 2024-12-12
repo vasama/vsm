@@ -1,9 +1,12 @@
 #pragma once
 
 #include <concepts>
-#include <stdfloat>
 
-#if __STDCPP_FLOAT16_T__
+#if __has_include(<stdfloat>)
+#	include <stdfloat>
+#endif
+
+#ifdef __STDCPP_FLOAT16_T__
 #	define vsm_detail_float16 std::float16_t
 #else
 #	include <vsm/platform.h>

@@ -10,6 +10,8 @@
 
 #include <bit>
 
+#include <cstring>
+
 namespace vsm::detail::deterministic_table {
 
 template<typename I>
@@ -453,7 +455,7 @@ public:
 
 	[[nodiscard]] friend ptrdiff_t operator-(iterator const lhs, iterator const rhs)
 	{
-		return iterator(rhs.m_element_end - lhs.m_element_end);
+		return rhs.m_element_end - lhs.m_element_end;
 	}
 
 	friend auto operator<=>(iterator const&, iterator const&) = default;
@@ -632,18 +634,12 @@ public:
 	}
 
 
-	[[nodiscard]] void swap(const_iterator const lhs, const_iterator const rhs)
+	void swap(const_iterator const lhs, const_iterator const rhs)
 	{
 		deterministic_table::swap_elements<sizeof(T)>(
 			m,
 			reinterpret_cast<std::byte const*>(lhs.m_element_end),
 			reinterpret_cast<std::byte const*>(rhs.m_element_end));
-	}
-
-private:
-	[[nodiscard]] size_t index_of(iterator const it)
-	{
-		
 	}
 
 #	pragma pop_macro("destroy_type")

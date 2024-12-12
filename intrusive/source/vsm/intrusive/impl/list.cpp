@@ -9,35 +9,6 @@ using hook = _list::hook;
 static_assert(sizeof(hook) == sizeof(list_link));
 
 
-[[maybe_unused]] static bool invariant(_list const& self)
-{
-	size_t size = 0;
-
-	hook const* hare = &self.m_root;
-	hook const* tortoise = hare;
-
-	while (true)
-	{
-		hare = hare->siblings[0]->siblings[0];
-
-		const hook* const next = tortoise->siblings[0];
-		if (next->siblings[1] != tortoise)
-		{
-			return false;
-		}
-		tortoise = next;
-
-		if (tortoise == hare)
-		{
-			break;
-		}
-
-		++size;
-	}
-
-	return size == self.m_size;
-}
-
 void _list::adopt(hook* const head, size_t const size)
 {
 	hook* const tail = m_root.siblings[1];
@@ -50,8 +21,6 @@ void _list::adopt(hook* const head, size_t const size)
 	tail->siblings[0] = &m_root;
 
 	m_size = size;
-
-	//vsm_assert_slow(invariant(*this));
 }
 
 void _list::insert(hook* const prev, hook* const node, bool const before)
@@ -65,8 +34,6 @@ void _list::insert(hook* const prev, hook* const node, bool const before)
 
 	prev->siblings[before] = node;
 	next->siblings[!before] = node;
-
-	//vsm_assert_slow(invariant(*this));
 }
 
 void _list::remove(hook* const node)
@@ -78,8 +45,6 @@ void _list::remove(hook* const node)
 
 	prev->siblings[0] = next;
 	next->siblings[1] = prev;
-
-	//vsm_assert_slow(invariant(*this));
 }
 
 void _list::splice(_list& other, hook* const next)
@@ -102,7 +67,4 @@ void _list::splice(_list& other, hook* const next)
 	other.m_root.loop();
 	m_size += other.m_size;
 	other.m_size = 0;
-
-	//vsm_assert_slow(invariant(*this));
-	vsm_assert_slow(invariant(other));
 }

@@ -115,77 +115,6 @@ static void percolate_to_root(
 	}
 }
 
-[[maybe_unused]] static bool invariant(_heap const& self)
-{
-	size_t size = 0;
-	if (hook const* node = self.m_root)
-	{
-		uint8_t min_height = std::numeric_limits<uint8_t>::max();
-		uint8_t max_height = 0;
-
-		struct frame
-		{
-			uint8_t visit;
-			uint8_t l_height;
-		};
-
-		frame stack[sizeof(size_t) * CHAR_BIT];
-
-		uint8_t height = 0;
-		stack[0].visit = 0;
-		uint8_t r_height = 0;
-
-		while (height >= 0)
-		{
-		next_iteration:
-			frame& frame = stack[height];
-
-			for (uint8_t visit; (visit = frame.visit++) < 2;)
-			{
-				frame.l_height = std::exchange(r_height, static_cast<uint8_t>(0));
-
-				if (const hook* const child = node->children[visit])
-				{
-					if (child->parent != node->children)
-					{
-						return false;
-					}
-
-					node = child;
-					stack[++height].visit = 0;
-					goto next_iteration;
-				}
-			}
-
-			uint8_t const l_height = frame.l_height;
-			if (l_height < r_height)
-			{
-				return false;
-			}
-
-			if (l_height == 0)
-			{
-				min_height = std::min(min_height, height);
-				max_height = std::max(max_height, height);
-			}
-
-			r_height = static_cast<uint8_t>(std::max(l_height, r_height) + 1);
-
-			node = reinterpret_cast<const hook*>(node->parent);
-			--height;
-
-			++size;
-		}
-
-		vsm_assert(min_height <= max_height);
-		if (max_height - min_height > 1)
-		{
-			return false;
-		}
-	}
-	return size == self.m_size;
-}
-
 
 void _heap::push(hook* const node, comparator* const comparator)
 {
@@ -202,8 +131,6 @@ void _heap::push(hook* const node, comparator* const comparator)
 
 	// Percolate node toward the root.
 	percolate_to_root(*this, node, comparator);
-
-	//vsm_assert_slow(invariant(*this));
 }
 
 void _heap::remove(hook* const node, comparator* const comparator)
@@ -260,8 +187,6 @@ void _heap::remove(hook* const node, comparator* const comparator)
 	}
 
 	percolate_to_root(*this, last, comparator);
-
-	//vsm_assert_slow(invariant(*this));
 }
 
 hook* _heap::pop(comparator* const comparator)
@@ -296,8 +221,6 @@ void _heap::clear()
 		m_root = nullptr;
 		m_size = 0;
 	}
-
-	//vsm_assert_slow(invariant(*this));
 }
 
 // NOLINTEND(readability-implicit-bool-conversion)

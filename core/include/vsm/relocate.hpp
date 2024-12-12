@@ -9,6 +9,8 @@
 #include <memory>
 #include <new>
 
+#include <cstring>
+
 namespace vsm {
 namespace detail {
 
