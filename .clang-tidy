@@ -7,20 +7,28 @@ Checks: >
   -clang-analyzer-optin.core.EnumCastOutOfRange,
   misc-*,
   -misc-include-cleaner,
+  -misc-non-private-member-variables-in-classes,
   -misc-use-anonymous-namespace,
   modernize-*,
   -modernize-avoid-c-arrays,
   -modernize-use-auto,
+  -modernize-use-designated-initializers,
   -modernize-use-ranges,
   -modernize-use-trailing-return-type,
   readability-*,
+  -readability-convert-member-functions-to-static,
+  -readability-function-cognitive-complexity,
   -readability-identifier-length,
   -readability-magic-numbers,
+  -readability-math-missing-parentheses,
+  -readability-named-parameter,
   -readability-qualified-auto,
   -readability-static-definition-in-anonymous-namespace,
+  -readability-uppercase-literal-suffix,
 CheckOptions:
   - { key: readability-identifier-naming.ClassCase,                     value: lower_case }
   - { key: readability-identifier-naming.ClassMemberPrefix,             value: m_ }
+  - { key: readability-identifier-naming.ClassMemberIgnoredRegexp,      value: 's_[_a-zA-Z0-9]+' }
   - { key: readability-identifier-naming.ConstantCase,                  value: lower_case }
   - { key: readability-identifier-naming.EnumCase,                      value: lower_case }
   - { key: readability-identifier-naming.FunctionCase,                  value: lower_case }

@@ -107,9 +107,8 @@ TEST_CASE("forward_list move constructor", "[intrusive][forward_list]")
 
 	list_type l2 = std::move(l1);
 
-	REQUIRE(l1.empty());
+	REQUIRE(l1.empty()); // NOLINT(bugprone-use-after-move)
 	REQUIRE(l2.pop_front().value == 1);
-
 }
 
 TEST_CASE("forward_list move assignment", "[intrusive][forward_list]")
@@ -122,7 +121,7 @@ TEST_CASE("forward_list move assignment", "[intrusive][forward_list]")
 	list_type l2;
 	l2 = std::move(l1);
 
-	REQUIRE(l1.empty());
+	REQUIRE(l1.empty()); // NOLINT(bugprone-use-after-move)
 	REQUIRE(l2.pop_front().value == 1);
 }
 

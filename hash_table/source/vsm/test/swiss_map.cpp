@@ -36,7 +36,7 @@ TEMPLATE_LIST_TEST_CASE("swiss_map default constructor", "[hash_table][swiss_tab
 	using key_type = size_t;
 	using map_type = typename TestType::template type<key_type, key_type>;
 
-	map_type map;
+	map_type const map;
 	CHECK(map.empty());
 	CHECK(map.size() == 0);
 }

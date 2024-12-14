@@ -26,7 +26,7 @@ struct two_heaps
 	max_heap<element, key_selector> vsm_heap;
 	elements e;
 
-	bool empty() const
+	[[nodiscard]] bool empty() const
 	{
 		bool const empty = vsm_heap.empty();
 		REQUIRE(empty == std_heap.empty());

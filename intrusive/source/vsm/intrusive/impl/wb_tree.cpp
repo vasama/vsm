@@ -2,6 +2,9 @@
 
 #include <array>
 
+// NOLINTBEGIN(modernize-use-bool-literals)
+// NOLINTBEGIN(readability-implicit-bool-conversion)
+
 using namespace vsm;
 using namespace vsm::intrusive;
 using namespace vsm::intrusive::detail;
@@ -191,6 +194,10 @@ void _wb::erase(hook* const node)
 		balance_node = l_child->children;
 		balance_l = succ_l;
 
+		// Clang thinks l_child might be null because we test for either l_child or r_child,
+		// however in the case that l_child is null, the two are swapped due to the non-null child
+		// always having a greater weight than the null child.
+		// NOLINTNEXTLINE(clang-analyzer-core.NullDereference)
 		if (l_child->children[succ_r] != nullptr)
 		{
 			successor = leftmost(l_child, succ_r);
@@ -336,3 +343,6 @@ hook** _wb::iterator_advance(hook** const children, bool const l)
 
 	return node->parent;
 }
+
+// NOLINTEND(readability-implicit-bool-conversion)
+// NOLINTEND(modernize-use-bool-literals)

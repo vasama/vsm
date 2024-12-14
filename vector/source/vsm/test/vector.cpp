@@ -48,7 +48,7 @@ struct non_trivial : test::counted
 		return *this;
 	}
 
-	~non_trivial()
+	~non_trivial() // NOLINT(modernize-use-equals-default)
 	{
 	}
 };
@@ -75,7 +75,7 @@ using vector_types = std::tuple
 
 TEMPLATE_LIST_TEST_CASE("vector default constructor", "[container][vector]", vector_types)
 {
-	test::scoped_count instance_count;
+	test::scoped_count const instance_count;
 
 	TestType vec;
 	REQUIRE(vec.size() == 0);
@@ -85,14 +85,14 @@ TEMPLATE_LIST_TEST_CASE("vector default constructor", "[container][vector]", vec
 
 TEMPLATE_LIST_TEST_CASE("vector swap", "[container][vector]", vector_types)
 {
-	test::scoped_count instance_count;
+	test::scoped_count const instance_count;
 	{
 		auto const generate_vector = [](size_t const size) -> TestType
 		{
 			TestType vector;
 			for (size_t i = 0; i < size; ++i)
 			{
-				vector.emplace_back(static_cast<size_t>(i));
+				vector.emplace_back(i);
 			}
 			return vector;
 		};
@@ -126,7 +126,7 @@ TEMPLATE_LIST_TEST_CASE("vector swap", "[container][vector]", vector_types)
 
 TEMPLATE_LIST_TEST_CASE("vector push_back & emplace_back", "[container][vector]", vector_types)
 {
-	test::scoped_count instance_count;
+	test::scoped_count const instance_count;
 	{
 		TestType vec;
 

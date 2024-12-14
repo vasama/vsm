@@ -66,12 +66,12 @@ struct two_trees
 		return true;
 	}
 
-	auto values() const
+	[[nodiscard]] auto values() const
 	{
 		return test::values(vsm_tree);
 	}
 
-	bool equal() const
+	[[nodiscard]] bool equal() const
 	{
 		return std::ranges::equal(std_tree, values());
 	}
@@ -103,9 +103,11 @@ TEST_CASE("rb_tree::insert", "[intrusive][rb_tree]")
 	REQUIRE(tree.size() == 6);
 }
 
-#if 0
+#if 0 //TODO: Enable this
 TEST_CASE("rb_tree::erase", "[intrusive][rb_tree]")
 {
+	// NOLINTBEGIN(readability-braces-around-statements)
+
 	two_trees trees;
 
 	SECTION("One element tree")
@@ -183,6 +185,8 @@ TEST_CASE("rb_tree::erase", "[intrusive][rb_tree]")
 			REQUIRE(trees.equal());
 		}
 	}
+
+	// NOLINTEND(readability-braces-around-statements)
 }
 #endif
 
@@ -215,7 +219,7 @@ TEST_CASE("rb_tree iteration", "[intrusive][rb_tree]")
 
 	tree_type tree;
 
-	for (int i : std::views::iota(1, 100) | std::views::reverse)
+	for (int const i : std::views::iota(1, 100) | std::views::reverse)
 	{
 		tree.insert(e(i));
 	}

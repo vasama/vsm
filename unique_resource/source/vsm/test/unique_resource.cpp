@@ -151,7 +151,7 @@ TEMPLATE_LIST_TEST_CASE("unique_resource move construction", "[unique_resource]"
 
 	TestType r2 = std::move(r1);
 
-	CHECK(!static_cast<bool>(r1));
+	CHECK(!static_cast<bool>(r1)); // NOLINT(bugprone-use-after-move)
 	CHECK(static_cast<bool>(r2) == init);
 }
 
@@ -171,7 +171,7 @@ TEMPLATE_LIST_TEST_CASE("unique_resource move assignment", "[unique_resource]", 
 
 	r2 = std::move(r1);
 
-	CHECK(!static_cast<bool>(r1));
+	CHECK(!static_cast<bool>(r1)); // NOLINT(bugprone-use-after-move)
 	CHECK(static_cast<bool>(r2) == init);
 }
 

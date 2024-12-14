@@ -32,7 +32,7 @@ TEMPLATE_LIST_TEST_CASE(
 	using key_type = size_t;
 	using map_type = typename TestType::template type<key_type, key_type>;
 
-	map_type map;
+	map_type const map;
 	CHECK(map.empty());
 	CHECK(map.size() == 0);
 }

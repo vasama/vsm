@@ -11,8 +11,8 @@ namespace {
 template<size_t Alignment>
 struct alignas(Alignment) s;
 
-using incomplete_ptr_1 = incomplete_tag_ptr<s<1>, bool, 1>;
-using incomplete_ptr_2 = incomplete_tag_ptr<s<2>, bool, 1>;
+using incomplete_ptr_1 = incomplete_tag_ptr<s<1>, bool, true>;
+using incomplete_ptr_2 = incomplete_tag_ptr<s<2>, bool, true>;
 
 
 template<size_t Alignment>

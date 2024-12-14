@@ -31,8 +31,8 @@ bool _mpscq::push_all(hook* const head, hook* const tail)
 	{
 		return hook_pair
 		{
-			head,
-			atom.tail == nullptr
+			.head = head,
+			.tail = atom.tail == nullptr
 				? tail
 				: atom.tail,
 		};

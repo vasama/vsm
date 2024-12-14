@@ -10,7 +10,9 @@
 
 using namespace vsm::test;
 
-#if 0
+// NOLINTBEGIN(bugprone-sizeof-expression)
+
+#if 0 // NOLINT(readability-avoid-unconditional-preprocessor-if)
 #define vsm_printf(...) printf(__VA_ARGS__)
 #else
 #define vsm_printf(...) ((void)sizeof(__VA_ARGS__))
@@ -243,3 +245,5 @@ size_t detail::get_scope_allocation_count(void* const ptr)
 	auto const scope = static_cast<allocation_scope_info*>(ptr);
 	return scope->allocation_count;
 }
+
+// NOLINTEND(bugprone-sizeof-expression)

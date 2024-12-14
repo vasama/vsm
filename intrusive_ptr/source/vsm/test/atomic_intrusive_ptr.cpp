@@ -18,7 +18,7 @@ TEST_CASE("atomic_intrusive_ptr: single thread", "[intrusive_ptr][atomic]")
 {
 	struct shared_object : intrusive_refcount, test::counted {};
 
-	test::scoped_count instance_count;
+	test::scoped_count const instance_count;
 	{
 		shared_object* const shared = new shared_object();
 		atomic_intrusive_ptr<shared_object> atomic(shared);
@@ -59,8 +59,6 @@ TEST_CASE("atomic_intrusive_ptr: multiple threads", "[intrusive_ptr][atomic]")
 {
 	using shared_object = mt_shared_object;
 
-	std::atomic_flag failed;
-
 	static constexpr size_t thread_count = 8;
 
 	struct
@@ -71,6 +69,12 @@ TEST_CASE("atomic_intrusive_ptr: multiple threads", "[intrusive_ptr][atomic]")
 		alignas(64) std::atomic_flag timeout;
 	}
 	shared;
+
+	std::atomic_flag failed;
+	for (shared_object& object : shared.objects)
+	{
+		object.failed = &failed;
+	}
 
 	using iptr = intrusive_ptr<shared_object>;
 	shared.p.store_relaxed(iptr(&shared.objects[thread_count]));
@@ -85,7 +89,10 @@ TEST_CASE("atomic_intrusive_ptr: multiple threads", "[intrusive_ptr][atomic]")
 				iptr q;
 
 				shared.started.fetch_add(1);
-				while (shared.started.load() < thread_count);
+				while (shared.started.load() < thread_count)
+				{
+					std::this_thread::yield();
+				}
 
 				for (bool exchange = false; !shared.timeout.test(); exchange = !exchange)
 				{

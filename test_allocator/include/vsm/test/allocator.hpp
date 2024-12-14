@@ -15,9 +15,9 @@ struct allocation_scope_options
 };
 
 void* enter_allocation_scope(allocation_scope_options const& options);
-void leave_allocation_scope(void* scope);
+void leave_allocation_scope(void* ptr);
 
-size_t get_scope_allocation_count(void* scope);
+size_t get_scope_allocation_count(void* ptr);
 
 } // namespace detail
 

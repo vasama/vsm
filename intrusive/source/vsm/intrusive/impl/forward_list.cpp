@@ -21,7 +21,7 @@ void _flist::push_front(hook* const head, hook* const tail)
 
 void _flist::push_front(hook* const node)
 {
-	return push_front(node, node);
+	push_front(node, node);
 }
 
 void _flist::splice_front(_flist& list)

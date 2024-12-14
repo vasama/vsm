@@ -119,8 +119,6 @@ public:
 				return intrusive_ptr<T, Manager>(nullptr, m_manager);
 			}
 
-			vsm_assert_slow(atom.refcount >= 0);
-
 			// Loop until the atom's temporary refcount is succesfully incremented.
 			if (m_atom.compare_exchange_weak(
 				atom,
@@ -171,6 +169,10 @@ public:
 		}
 
 		// This thread is left holding one reference on the shared object.
+		// Clang thinks ptr has been deleted by the earlier release, however it does not understand
+		// the preceding acquire and the invariant that any change to the shared atom converts
+		// temporary references into references on the shared object.
+		// NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDelete)
 		return intrusive_ptr<T, Manager>::adopt(ptr, m_manager);
 	}
 

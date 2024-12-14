@@ -67,12 +67,12 @@ struct two_trees
 		return true;
 	}
 
-	auto values() const
+	[[nodiscard]] auto values() const
 	{
 		return test::values(vsm_tree);
 	}
 
-	bool equal() const
+	[[nodiscard]] bool equal() const
 	{
 		return std::ranges::equal(std_tree, values());
 	}
@@ -295,7 +295,7 @@ TEST_CASE("wb_tree iteration.", "[intrusive][wb_tree]")
 
 	tree_type tree;
 
-	for (int i : std::views::iota(1, 100) | std::views::reverse)
+	for (int const i : std::views::iota(1, 100) | std::views::reverse)
 	{
 		tree.insert(e(i));
 	}

@@ -4,6 +4,9 @@
 
 #include <cmath>
 
+// NOLINTBEGIN(modernize-use-bool-literals)
+// NOLINTBEGIN(readability-implicit-bool-conversion)
+
 using namespace vsm;
 using namespace vsm::intrusive;
 using namespace vsm::intrusive::detail;
@@ -340,3 +343,6 @@ ptr<hook>* _avl::iterator_advance(ptr<hook>* const children, bool const l)
 
 	return node->parent;
 }
+
+// NOLINTEND(readability-implicit-bool-conversion)
+// NOLINTEND(modernize-use-bool-literals)

@@ -1,8 +1,8 @@
 #include <vsm/impl/allocator.hpp>
 
+#include <cerrno>
 #include <cstdlib>
 
-#include <errno.h>
 #include <sys/mman.h>
 #include <unistd.h>
 

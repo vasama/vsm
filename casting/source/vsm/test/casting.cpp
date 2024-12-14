@@ -24,11 +24,11 @@ protected:
 	{
 	}
 
-	shape(shape const&)
+	shape([[maybe_unused]] shape const& other)
 	{
 	}
 
-	shape& operator=(shape const&) &
+	shape& operator=([[maybe_unused]] shape const& other) &
 	{
 		return *this;
 	}

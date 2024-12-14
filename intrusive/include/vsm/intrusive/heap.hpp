@@ -69,9 +69,9 @@ struct _heap
 		}
 	}
 
-	void push(hook* node, comparator* cmp);
-	void remove(hook* node, comparator* cmp);
-	hook* pop(comparator* cmp);
+	void push(hook* node, comparator* comparator);
+	void remove(hook* node, comparator* comparator);
+	hook* pop(comparator* comparator);
 	void clear();
 };
 

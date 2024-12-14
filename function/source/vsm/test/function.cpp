@@ -32,7 +32,7 @@ struct alignas(256) big_adder : adder
 
 TEST_CASE("function", "[function]")
 {
-	test::allocation_scope scope;
+	test::allocation_scope const scope;
 	{
 		function<int(int)> f;
 		size_t expected_allocation_count = 0;

@@ -10,7 +10,7 @@ namespace {
 
 TEST_CASE("any_allocator", "[any][allocator]")
 {
-	test::allocation_scope scope;
+	test::allocation_scope const scope;
 	auto const allocator = any_allocator(test::allocator());
 
 	auto allocation = allocator.allocate(100);
