@@ -11,9 +11,11 @@ Checks: >
   modernize-*,
   -modernize-avoid-c-arrays,
   -modernize-use-auto,
+  -modernize-use-ranges,
   -modernize-use-trailing-return-type,
   readability-*,
   -readability-identifier-length,
+  -readability-magic-numbers,
   -readability-qualified-auto,
   -readability-static-definition-in-anonymous-namespace,
 CheckOptions:
@@ -28,4 +30,5 @@ CheckOptions:
   - { key: readability-identifier-naming.TypeAliasCase,                 value: lower_case }
   - { key: readability-identifier-naming.UnionCase,                     value: lower_case }
   - { key: readability-identifier-naming.VariableCase,                  value: lower_case }
+WarningsAsErrors: '*'
 ---

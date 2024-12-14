@@ -70,7 +70,7 @@ if ((!$Step -and $Analysis -ne $null) -or $Step -eq 'analyze') {
 		return @{
 			File = $_.file;
 			ExitCode = $LastExitCode;
-			Output = $CommandOutput;
+			Output = $Output;
 		}
 	}
 

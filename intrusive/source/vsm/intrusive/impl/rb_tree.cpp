@@ -62,83 +62,6 @@ static void rotate(hook* const root, bool const l)
 	parent[root != parent[0]] = pivot;
 }
 
-#if 0
-[[maybe_unused]] static bool invariant(_rb const& self)
-{
-	size_t size = 0;
-
-	hook* const* node_children = self.m_root->children;
-	bool node_side = 0;
-
-	while (node_children != &self.m_root)
-	{
-		hook const* node = reinterpret_cast<hook const*>(node_children);
-
-		if (node_side == 0)
-		{
-			++size;
-
-			uint8_t children = 0;
-			uint8_t red_children = 0;
-
-			for (hook const* const child : node->children)
-			{
-				if (child != nullptr)
-				{
-					++children;
-					if (get_color(child) == red)
-					{
-						++red_children;
-					}
-				}
-			}
-
-			// Red nodes have no red children.
-			if (get_color(node) == red && red_children != 0)
-			{
-				return false;
-			}
-
-			// All only children are red.
-			if (children == 1 && red_children != 1)
-			{
-				return false;
-			}
-
-			if (hook const* const child = node->children[0])
-			{
-				node_children = child->children;
-				node_side = 0;
-				continue;
-			}
-		}
-
-		if (hook const* const child = node->children[1])
-		{
-			node_children = child->children;
-			node_side = 0;
-			continue;
-		}
-
-		node_side = 0;
-		while (node_children != &self.m_root)
-		{
-			node_children = node->parent.ptr();
-
-			if (node_children[0] == node)
-			{
-				node_side = 1;
-				break;
-			}
-
-			node = reinterpret_cast<hook const*>(node_children);
-		}
-	}
-
-	return size == self.m_size;
-}
-#endif
-
 
 static void rebalance_after_insert(hook** const root, hook* node)
 {
@@ -294,3 +217,6 @@ hook** _rb::iterator_advance(hook** const children, bool const l)
 
 	return node->parent.ptr();
 }
+
+// NOLINTEND(readability-implicit-bool-conversion)
+// NOLINTEND(modernize-use-bool-literals)
