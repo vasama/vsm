@@ -31,25 +31,29 @@ extern "C" {
 /// @return Returns true if the program should raise a debuggable interrupt at the callsite.
 bool vsm_assert_fail(char const* file, int line, char const* expr);
 
-#define vsm_detail_assert_2(...) ( \
+#define vsm_detail_assert_3(...) ( \
 		vsm_assert_fail(__FILE__, __LINE__, #__VA_ARGS__) \
 			? vsm_debugbreak() \
 			: (void)0 \
 	)
 
-#define vsm_detail_assert_1(...) ( \
-		vsm_detail_assert_bool(__VA_ARGS__) \
-			? (void)0 \
-			: vsm_detail_assert_2(__VA_ARGS__) \
-	)
-
 #if vsm_static_analyzer
+#	define vsm_detail_assert_2(...) ((void)(__VA_ARGS__), vsm_unreachable())
+
 #	define vsm_detail_assert(...) vsm_platform_assume(__VA_ARGS__)
 #	define vsm_detail_verify(...) ((__VA_ARGS__) ? (void)0 : vsm_unreachable())
 #else
+#	define vsm_detail_assert_2(...) (__VA_ARGS__)
+
 #	define vsm_detail_assert(...) ((void)0)
 #	define vsm_detail_verify(...) ((void)(__VA_ARGS__))
 #endif
+
+#define vsm_detail_assert_1(...) ( \
+		vsm_detail_assert_bool(__VA_ARGS__) \
+			? (void)0 \
+			: vsm_detail_assert_2(vsm_detail_assert_3(__VA_ARGS__)) \
+	)
 
 #if vsm_config_assert > 0
 #	define vsm_assert(...) vsm_detail_assert_1(__VA_ARGS__)
