@@ -57,3 +57,7 @@
 #ifndef vsm_compiler_preview
 #	define vsm_compiler_preview 0
 #endif
+
+#ifndef vsm_static_analyzer
+#	define vsm_static_analyzer 0
+#endif

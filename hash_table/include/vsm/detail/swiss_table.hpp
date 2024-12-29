@@ -50,7 +50,7 @@ public:
 
 		[[nodiscard]] size_t operator*() const
 		{
-			return std::countr_zero(m_bits) / Multiplier;
+			return static_cast<size_t>(std::countr_zero(m_bits)) / Multiplier;
 		}
 
 		iterator& operator++() &
@@ -85,12 +85,12 @@ public:
 
 	[[nodiscard]] size_t countl_zero() const
 	{
-		return std::countl_zero(m_bits) / Multiplier;
+		return static_cast<size_t>(std::countl_zero(m_bits)) / Multiplier;
 	}
 
 	[[nodiscard]] size_t countr_zero() const
 	{
-		return std::countr_zero(m_bits) / Multiplier;
+		return static_cast<size_t>(std::countr_zero(m_bits)) / Multiplier;
 	}
 
 	[[nodiscard]] iterator begin() const
@@ -129,7 +129,7 @@ public:
 		// See https://graphics.stanford.edu/~seander/bithacks.html##ValueInWord
 
 		static constexpr Integer m = non_msb_bytes;
-		Integer const z = m_ctrl ^ (lsb_bytes * h2);
+		Integer const z = m_ctrl ^ (lsb_bytes * static_cast<uint8_t>(h2));
 		return iterator_type(~((z & m) + m | m | z));
 	}
 
@@ -148,7 +148,8 @@ public:
 	// Matches ctrl_empty, ctrl_tomb, or ctrl_end.
 	[[nodiscard]] size_t count_leading_free_or_end() const
 	{
-		return std::countr_zero((m_ctrl | ~(m_ctrl >> 7)) & lsb_bytes) / CHAR_BIT;
+		size_t const mask = (m_ctrl | ~(m_ctrl >> 7)) & lsb_bytes;
+		return static_cast<size_t>(std::countr_zero(mask)) / CHAR_BIT;
 	}
 
 	static void convert_special_to_empty_and_full_to_tomb(ctrl* const group)

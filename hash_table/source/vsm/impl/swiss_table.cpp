@@ -50,7 +50,7 @@ size_t swiss_table::find_free_slot(
 
 		if (auto const mask = group.match_free())
 		{
-			return probe.get_offset(static_cast<size_t>(mask.countr_zero()));
+			return probe.get_offset(mask.countr_zero());
 		}
 
 		vsm_assert(probe.index < capacity);
@@ -107,8 +107,8 @@ void swiss_table::erase_slot(_table& table, size_t const element_size, size_t co
 	auto const left_mask = group(ctrls + left_index).match_empty();
 	auto const slot_mask = group(ctrls + slot_index).match_empty();
 
-	size_t const r_zero_left = static_cast<size_t>(left_mask.countr_zero());
-	size_t const l_zero_slot = static_cast<size_t>(slot_mask.countl_zero());
+	size_t const r_zero_left = left_mask.countr_zero();
+	size_t const l_zero_slot = slot_mask.countl_zero();
 
 	bool const reuse_slot =
 		left_mask &&

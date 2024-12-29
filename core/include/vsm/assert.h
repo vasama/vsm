@@ -31,36 +31,44 @@ extern "C" {
 /// @return Returns true if the program should raise a debuggable interrupt at the callsite.
 bool vsm_assert_fail(char const* file, int line, char const* expr);
 
-#define vsm_detail_assert_fail(...) ( \
+#define vsm_detail_assert_2(...) ( \
 		vsm_assert_fail(__FILE__, __LINE__, #__VA_ARGS__) \
 			? vsm_debugbreak() \
 			: (void)0 \
 	)
 
-#define vsm_detail_assert(...) ( \
+#define vsm_detail_assert_1(...) ( \
 		vsm_detail_assert_bool(__VA_ARGS__) \
 			? (void)0 \
-			: vsm_detail_assert_fail(__VA_ARGS__) \
+			: vsm_detail_assert_2(__VA_ARGS__) \
 	)
 
-#if vsm_config_assert > 0
-#	define vsm_assert(...) vsm_detail_assert(__VA_ARGS__)
-#	define vsm_assume(...) vsm_detail_assert(__VA_ARGS__)
-#	define vsm_verify(...) vsm_detail_assert(__VA_ARGS__)
+#if vsm_static_analyzer
+#	define vsm_detail_assert(...) vsm_platform_assume(__VA_ARGS__)
+#	define vsm_detail_verify(...) ((__VA_ARGS__) ? (void)0 : vsm_unreachable())
 #else
-#	define vsm_assert(...) ((void)0)
+#	define vsm_detail_assert(...) ((void)0)
+#	define vsm_detail_verify(...) ((void)(__VA_ARGS__))
+#endif
+
+#if vsm_config_assert > 0
+#	define vsm_assert(...) vsm_detail_assert_1(__VA_ARGS__)
+#	define vsm_assume(...) vsm_detail_assert_1(__VA_ARGS__)
+#	define vsm_verify(...) vsm_detail_assert_1(__VA_ARGS__)
+#else
+#	define vsm_assert(...) vsm_detail_assert(__VA_ARGS__)
 #	define vsm_assume(...) vsm_platform_assume(__VA_ARGS__)
-#	define vsm_verify(...) ((void)(__VA_ARGS__))
+#	define vsm_verify(...) vsm_detail_verify(__VA_ARGS__)
 #endif
 
 #if vsm_config_assert > 1
-#	define vsm_assert_slow(...) vsm_detail_assert(__VA_ARGS__)
-#	define vsm_assume_slow(...) vsm_detail_assert(__VA_ARGS__)
-#	define vsm_verify_slow(...) vsm_detail_assert(__VA_ARGS__)
+#	define vsm_assert_slow(...) vsm_detail_assert_1(__VA_ARGS__)
+#	define vsm_assume_slow(...) vsm_detail_assert_1(__VA_ARGS__)
+#	define vsm_verify_slow(...) vsm_detail_assert_1(__VA_ARGS__)
 #else
-#	define vsm_assert_slow(...) ((void)0)
+#	define vsm_assert_slow(...) vsm_detail_assert(__VA_ARGS__)
 #	define vsm_assume_slow(...) vsm_platform_assume(__VA_ARGS__)
-#	define vsm_verify_slow(...) ((void)(__VA_ARGS__))
+#	define vsm_verify_slow(...) vsm_detail_verify(__VA_ARGS__)
 #endif
 
 #if __cplusplus

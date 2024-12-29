@@ -35,13 +35,6 @@ TEMPLATE_LIST_TEST_CASE("swiss table group hash matching", "[hash_table][swiss_t
 		auto const match = group(ctrls.data()).match(static_cast<ctrl>(i));
 		size_t const indices[] = { 0, group::size - 1 };
 
-		[[maybe_unused]] std::vector<size_t> vv(std::from_range, match);
-
-		if (!std::ranges::equal(match, indices))
-		{
-			[[maybe_unused]] int x = 0;
-		}
-
 		REQUIRE(std::ranges::equal(match, indices));
 	}
 }

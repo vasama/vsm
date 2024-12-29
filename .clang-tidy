@@ -1,4 +1,5 @@
 ---
+ExtraArgsBefore: ["-D__clang_tidy__"]
 Checks: >
   bugprone-*,
   -bugprone-easily-swappable-parameters,
