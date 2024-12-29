@@ -1,1 +1,1 @@
-vsm-test_core 0.1 TEST
+vsm-testing-core 0.1 TEST

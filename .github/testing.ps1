@@ -1,8 +1,6 @@
 #!/usr/bin/pwsh
 
 param(
-	[switch]$VcVars=$false,
-
 	[string]$Tool,
 	[string]$Config,
 
@@ -18,7 +16,7 @@ function Invoke-NativeCommand($Command) {
 	}
 }
 
-if ($VcVars) {
+if ($IsWindows) {
 	Push-Location 'C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build'
 	Invoke-NativeCommand cmd /c 'vcvarsall.bat x64 > nul & set' | ForEach-Object {
 		if ($_ -match '^(.+?)=(.*)$') {

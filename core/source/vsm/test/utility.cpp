@@ -1,6 +1,6 @@
 #include <vsm/utility.hpp>
 
-#include <vsm/test/dependent_context.hpp>
+#include <vsm/testing/dependent_context.hpp>
 
 namespace {
 

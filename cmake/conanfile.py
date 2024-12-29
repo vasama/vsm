@@ -9,7 +9,7 @@ class package(ConanFile):
 	version = "0.1"
 
 	requires = (
-		"catch2/[^3.4]"
+		"catch2/[^3.4]",
 	)
 
 	def layout(self):

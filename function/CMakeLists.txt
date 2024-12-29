@@ -25,5 +25,5 @@ vsm_add_library(
 		source/vsm/test/inplace_function.cpp
 
 	TEST_DEPENDENCIES
-		vsm::test_allocator
+		vsm::testing::allocator
 )

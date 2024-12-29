@@ -1,5 +1,5 @@
 vsm-algorithm 0.1
 vsm-allocator 0.1
 vsm-core 0.1
-vsm-test_allocator 0.1 TEST
-vsm-test_core 0.1 TEST
+vsm-testing-allocator 0.1 TEST
+vsm-testing-core 0.1 TEST

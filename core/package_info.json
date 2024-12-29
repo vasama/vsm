@@ -2,7 +2,7 @@
 	"package_type": "static-library",
 	"requirements": [
 		{
-			"package": "vsm-test_core",
+			"package": "vsm-testing-core",
 			"version": "0.1",
 			"visible": false,
 			"test": true

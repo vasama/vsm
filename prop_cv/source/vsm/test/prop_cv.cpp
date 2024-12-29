@@ -1,6 +1,6 @@
 #include <vsm/prop_cv.hpp>
 
-#include <vsm/test/dependent_context.hpp>
+#include <vsm/testing/dependent_context.hpp>
 
 #include <catch2/catch_all.hpp>
 

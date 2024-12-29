@@ -2,4 +2,4 @@ vsm-allocator 0.1
 vsm-container_core 0.1
 vsm-core 0.1
 vsm-hash 0.1
-vsm-test_allocator 0.1 TEST
+vsm-testing-allocator 0.1 TEST

@@ -1,6 +1,6 @@
 #include <vsm/any_allocator.hpp>
 
-#include <vsm/test/allocator.hpp>
+#include <vsm/testing/allocator.hpp>
 
 #include <catch2/catch_all.hpp>
 

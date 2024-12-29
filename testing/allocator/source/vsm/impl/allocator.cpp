@@ -1,4 +1,4 @@
-#include <vsm/test/allocator.hpp>
+#include <vsm/testing/allocator.hpp>
 
 #include <vsm/assert.h>
 #include <vsm/impl/allocator.hpp>

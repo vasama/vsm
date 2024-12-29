@@ -1,4 +1,4 @@
-#include <vsm/test/instance_counter.hpp>
+#include <vsm/testing/instance_counter.hpp>
 
 using namespace vsm::test;
 using namespace vsm::test::detail;

@@ -8,14 +8,12 @@ jobs:
     name: "Trigger conan-index workflow"
 
     steps:
-      - name: "Trigger conan-index workflow"
-        run: |
-          .github/trigger-conan-index.ps1 \
-            -GitHubSourceUser ${{ github.event.repository.owner }} \
-            -GitHubSourceRepository ${{ github.event.repository.name }} \
-            -GitHubSourceRef '${{ github.ref }}' \
-            -GitHubIndexUser ${{ github.event.repository.owner }} \
-            -GitHubIndexRepository conan-index \
-            -GitHubIndexEvent create-package \
-            -GitHubIndexToken ${{ secrets.CONAN_INDEX_TOKEN }} \
-            -PackageBase ${{ github.event.repository.name }}
+    - name: "Trigger conan-index workflow"
+      run: |
+        .github/trigger-conan-index.ps1 \
+          -GitHubSourceRepository ${{ github.repository }} \
+          -GitHubSourceReference '${{ github.ref }}' \
+          -GitHubIndexUser ${{ github.event.repository.owner }} \
+          -GitHubIndexRepository conan-index \
+          -GitHubIndexToken ${{ secrets.CONAN_INDEX_TOKEN }} \
+          -PackageBase ${{ github.event.repository.name }}

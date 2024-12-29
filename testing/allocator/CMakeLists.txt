@@ -5,10 +5,10 @@ find_package(vsm-cmake REQUIRED)
 vsm_find_requirements()
 
 vsm_add_library(
-	vsm::test_allocator
+	vsm::testing::allocator
 
 	HEADERS
-		include/vsm/test/allocator.hpp
+		include/vsm/testing/allocator.hpp
 
 	SOURCES
 		source/vsm/impl/allocator.hpp
@@ -19,7 +19,7 @@ vsm_add_library(
 )
 
 vsm_configure(
-	vsm::test_allocator
+	vsm::testing::allocator
 
 	PLATFORM Windows
 
@@ -28,7 +28,7 @@ vsm_configure(
 )
 
 vsm_configure(
-	vsm::test_allocator
+	vsm::testing::allocator
 
 	PLATFORM Linux
 

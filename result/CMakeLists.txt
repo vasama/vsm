@@ -18,5 +18,5 @@ vsm_add_library(
 		source/vsm/test/result.cpp
 
 	TEST_DEPENDENCIES
-		vsm::test_core
+		vsm::testing::core
 )

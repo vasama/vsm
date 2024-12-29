@@ -20,5 +20,5 @@ vsm_add_library(
 		source/vsm/test/tag_ptr.cpp
 
 	TEST_DEPENDENCIES
-		vsm::test_core
+		vsm::testing::core
 )

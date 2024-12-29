@@ -84,7 +84,7 @@ vsm_add_library(
 		source/vsm/test/utility.cpp
 
 	TEST_DEPENDENCIES
-		vsm::test_core
+		vsm::testing::core
 )
 vsm_configure(
 	vsm::core

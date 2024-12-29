@@ -43,5 +43,5 @@ vsm_add_library(
 		source/vsm/test/swiss_table.cpp
 
 	TEST_DEPENDENCIES
-		vsm::test_allocator
+		vsm::testing::allocator
 )

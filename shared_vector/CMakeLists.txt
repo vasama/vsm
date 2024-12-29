@@ -19,6 +19,6 @@ vsm_add_library(
 		source/vsm/test/shared_vector.cpp
 
 	TEST_DEPENDENCIES
-		vsm::test_allocator
-		vsm::test_core
+		vsm::testing::allocator
+		vsm::testing::core
 )

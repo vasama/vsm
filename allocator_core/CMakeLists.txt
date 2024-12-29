@@ -24,6 +24,6 @@ if(DEFINED vsm_aggregate_test_target)
 			source/vsm/test/allocator.cpp
 	
 		TEST_DEPENDENCIES
-			vsm::test_core
+			vsm::testing::core
 	)
 endif()

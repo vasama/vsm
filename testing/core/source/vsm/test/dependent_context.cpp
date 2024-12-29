@@ -1,4 +1,4 @@
-#include <vsm/test/dependent_context.hpp>
+#include <vsm/testing/dependent_context.hpp>
 
 vsm_dependent_context
 {

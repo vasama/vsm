@@ -19,5 +19,5 @@ vsm_add_library(vsm::allocator
 		source/vsm/test/any_allocator.cpp
 
 	TEST_DEPENDENCIES
-		vsm::test_allocator
+		vsm::testing::allocator
 )

@@ -19,5 +19,5 @@ vsm_add_library(
 		source/vsm/test/intrusive_ptr.cpp
 
 	TEST_DEPENDENCIES
-		vsm::test_core
+		vsm::testing::core
 )

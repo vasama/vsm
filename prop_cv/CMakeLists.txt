@@ -17,5 +17,5 @@ vsm_add_library(
 		source/vsm/test/prop_cv.cpp
 
 	TEST_DEPENDENCIES
-		vsm::test_core
+		vsm::testing::core
 )

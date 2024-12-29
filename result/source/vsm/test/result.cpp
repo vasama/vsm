@@ -1,7 +1,7 @@
 #include <vsm/result.hpp>
 
 #include <vsm/concepts.hpp>
-#include <vsm/test/instance_counter.hpp>
+#include <vsm/testing/instance_counter.hpp>
 #include <vsm/utility.hpp>
 
 #include <catch2/catch_all.hpp>

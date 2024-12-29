@@ -1,7 +1,7 @@
 #include <vsm/vector.hpp>
 
-#include <vsm/test/allocator.hpp>
-#include <vsm/test/instance_counter.hpp>
+#include <vsm/testing/allocator.hpp>
+#include <vsm/testing/instance_counter.hpp>
 
 #include <catch2/catch_all.hpp>
 
