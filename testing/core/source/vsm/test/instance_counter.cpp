@@ -26,15 +26,15 @@ TEST_CASE("instance_counter with scope", "[testing][instance_counter]")
 	{
 		counted const c1;
 		REQUIRE(s1.count() == 1);
-
 		{
 			scoped_count const s2;
+			REQUIRE(s2.count() == 0);
 			{
 				counted const c2;
 				REQUIRE(s1.count() == 1);
 				REQUIRE(s2.count() == 1);
 			}
-			REQUIRE(s1.count() == 0);
+			REQUIRE(s2.count() == 0);
 		}
 		REQUIRE(s1.count() == 1);
 	}
