@@ -19,7 +19,7 @@ class package(ConanFile):
 		copy(
 			self,
 			"*.cmake",
-			join(self.source_folder, "cmake"),
+			join(self.source_folder, "cmake", "cmake"),
 			join(self.package_folder, "cmake"))
 
 	def package_info(self):

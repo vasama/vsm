@@ -15,4 +15,5 @@ vsm_add_library(
 
 	TEST_SOURCES
 		source/vsm/test/dependent_context.cpp
+		source/vsm/test/instance_counter.cpp
 )
