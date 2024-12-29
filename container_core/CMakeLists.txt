@@ -8,6 +8,7 @@ vsm_add_library(
 	vsm::container_core
 
 	HEADERS
+		include/vsm/array_view.hpp
 		include/vsm/insert_result.hpp
 		include/vsm/key_selector.hpp
 		include/vsm/key_value_pair.hpp

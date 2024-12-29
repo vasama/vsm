@@ -12,8 +12,8 @@ jobs:
       fail-fast: false
       matrix:
         tool:
-#          - clang
-#          - gcc
+          - clang
+          - gcc
           - clang-tidy
         config:
           - Debug
@@ -42,8 +42,8 @@ jobs:
       fail-fast: false
       matrix:
         tool:
-#          - msvc
-#          - clang-cl
+          - msvc
+          - clang-cl
           - intellisense
         config:
           - Debug
@@ -68,11 +68,10 @@ jobs:
       - name: Create vsm-conan
         run: conan editable add conan
 
-      #- uses: actions/cache@v3
-      #  with:
-      #    path: ~/.conan2
-      #    key: vsm-build-${{ matrix.os }}-${{ matrix.tool }}-${{ matrix.config }}
+#      - uses: actions/cache@v3
+#        with:
+#          path: ~/.conan2
+#          key: vsm-build-${{ matrix.os }}-${{ matrix.tool }}-${{ matrix.config }}
 
       - name: CMake/CTest (windows - ${{ matrix.tool }} - ${{ matrix.config }})
-        shell: pwsh
         run: .github/testing.ps1 -VcVars ${{ matrix.tool }} -Config ${{ matrix.config }} -ConanBuild missing
