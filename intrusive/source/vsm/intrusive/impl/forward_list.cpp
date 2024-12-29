@@ -6,6 +6,7 @@ using namespace vsm::intrusive::detail;
 
 using hook = _flist::hook;
 static_assert(sizeof(hook) == sizeof(forward_list_link));
+static_assert(std::is_standard_layout_v<hook>);
 
 
 void _flist::push_front(hook* const head, hook* const tail)

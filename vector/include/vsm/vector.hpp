@@ -194,7 +194,7 @@ void _vector_destroy(_vector_allocator<A>& self)
 template<size_t Size, typename A>
 std::byte* _vector_allocate(_vector_allocator<A>& self, size_t& new_capacity)
 {
-	allocation const allocation = self.allocator.allocate(new_capacity);
+	auto const allocation = vsm::allocate_or_throw(self.allocator, new_capacity);
 	new_capacity = allocation.size - allocation.size % Size;
 	return reinterpret_cast<std::byte*>(allocation.buffer);
 }
@@ -343,7 +343,7 @@ void _vector_move_assign(
 		if (new_allocation_size == 0)
 		{
 			self.allocator.deallocate(old_allocation);
-			allocation const new_allocation = self.allocator.allocate(capacity);
+			auto const new_allocation = vsm::allocate_or_throw(self.allocator, capacity);
 			self.beg = reinterpret_cast<std::byte*>(new_allocation.buffer);
 			new_allocation_size = new_allocation.size;
 		}
@@ -705,14 +705,14 @@ void _vector_shrink(_vector_allocator<A>& self, _vector_capacity<Local> const lo
 		}
 		else
 		{
-			new_beg = self.allocator.allocate(new_capacity);
+			new_beg = vsm::allocate_or_throw(self.allocator, new_capacity);
 		}
 	}
 	else
 	{
 		if (new_capacity > 0)
 		{
-			new_beg = self.allocator.allocate(new_capacity);
+			new_beg = vsm::allocate_or_throw(self.allocator, new_capacity);
 		}
 		else
 		{

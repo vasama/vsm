@@ -10,13 +10,9 @@ vsm_add_library(
 	HEADERS
 		include/vsm/any_ref.hpp
 
-		include/vsm/any_ref.hpp
-		include/vsm/any.hpp
-
 	HEADER_DEPENDENCIES
 		vsm::core
 
 	TEST_SOURCES
 		source/vsm/test/any_ref.cpp
-		source/vsm/test/any.cpp
 )

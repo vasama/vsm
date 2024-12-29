@@ -7,6 +7,7 @@ using namespace vsm::intrusive::detail;
 using hook = _list::hook;
 
 static_assert(sizeof(hook) == sizeof(list_link));
+static_assert(std::is_standard_layout_v<hook>);
 
 
 void _list::adopt(hook* const head, size_t const size)

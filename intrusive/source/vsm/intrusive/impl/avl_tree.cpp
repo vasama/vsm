@@ -13,6 +13,7 @@ using namespace vsm::intrusive::detail;
 
 using hook = _avl::hook;
 static_assert(sizeof(hook) == sizeof(avl_tree_link));
+static_assert(std::is_standard_layout_v<hook>);
 
 template<typename T>
 using ptr = _avl::ptr<T>;

@@ -1,5 +1,13 @@
 {
 	"authors": "Lauri Vasama",
 	"license": "MIT",
-	"src_url": "https://github.com/vasama/vsm"
+	"src_url": "https://github.com/vasama/vsm",
+
+	"requirements": [
+		{
+			"package": "vsm-cmake",
+			"version": "0.1",
+			"visible": false
+		}
+	]
 }

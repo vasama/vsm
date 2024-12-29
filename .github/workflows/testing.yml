@@ -25,12 +25,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-#      - name: Install ninja
-#        run: sudo apt-get update && sudo apt-get install -y ninja-build
-#
-#      - name: Install conan
-#        run: pip3 install conan
-
       - name: Create vsm-cmake
         run: conan editable add cmake
 
@@ -38,8 +32,7 @@ jobs:
         run: conan editable add conan
 
       - name: CMake/CTest (linux - ${{ matrix.tool }} - ${{ matrix.config }})
-        shell: pwsh
-        run: .github/workflow.ps1 ${{ matrix.tool }} -Config ${{ matrix.config }} -ConanBuild missing
+        run: .github/testing.ps1 ${{ matrix.tool }} -Config ${{ matrix.config }} -ConanBuild missing
 
   build-windows:
     runs-on: windows-2022
@@ -67,7 +60,7 @@ jobs:
 
       - name: Install ninja
         run: choco install ninja
-        if: '${{ matrix.tool }}' == 'intellisense'
+        if: "'${{ matrix.tool }}' == 'intellisense'"
 
       - name: Create vsm-cmake
         run: conan editable add cmake
@@ -82,4 +75,4 @@ jobs:
 
       - name: CMake/CTest (windows - ${{ matrix.tool }} - ${{ matrix.config }})
         shell: pwsh
-        run: .github/workflow.ps1 ${{ matrix.tool }} -Config ${{ matrix.config }} -ConanBuild missing
+        run: .github/testing.ps1 -VcVars ${{ matrix.tool }} -Config ${{ matrix.config }} -ConanBuild missing

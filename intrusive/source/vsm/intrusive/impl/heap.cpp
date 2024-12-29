@@ -15,6 +15,7 @@ using namespace vsm::intrusive::detail;
 
 using hook = _heap::hook;
 static_assert(sizeof(hook) == sizeof(heap_link));
+static_assert(std::is_standard_layout_v<hook>);
 
 
 static hook* leftmost(hook* node, bool const l)

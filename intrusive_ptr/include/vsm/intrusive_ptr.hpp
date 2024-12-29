@@ -227,7 +227,7 @@ public:
 	template<typename T>
 	void deleter(T* const object) const noexcept
 	{
-		vsm::delete_via(m_allocator, object);
+		vsm::delete_via(object, m_allocator);
 	}
 
 	template<typename T>

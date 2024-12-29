@@ -186,17 +186,15 @@ public:
 	{
 	}
 
-#if 0 //TODO: Enable this
 	template<non_cvref T>
 	constexpr any_ref(std::in_place_type_t<T>)
 		requires
-			// no_instance_of<T, any_ref> &&
+			no_instance_of<T, any_ref> &&
 			std::is_empty_v<T> &&
 			functions_type::template requirement<T>
 		: m_functions(functions_type::template table<T, /* Packed: */ true>)
 	{
 	}
-#endif
 
 	template<typename... ExtraFunctions>
 	constexpr any_ref(any_ref<Functions..., ExtraFunctions...> const& other)

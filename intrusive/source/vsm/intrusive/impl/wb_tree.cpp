@@ -11,6 +11,7 @@ using namespace vsm::intrusive::detail;
 
 using hook = _wb::hook;
 static_assert(sizeof(hook) == sizeof(wb_tree_link));
+static_assert(std::is_standard_layout_v<hook>);
 
 
 template<typename T>

@@ -77,7 +77,7 @@ template<
 	T const& value,
 	Comparator comparator)
 {
-	if (near == end || vsm_as_const(comparator)(value, *near))
+	if (near == end || !vsm_as_const(comparator)(*near, value))
 	{
 		constexpr auto make_reverse_comparator = [](Comparator&& comparator)
 		{

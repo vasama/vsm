@@ -30,7 +30,7 @@ class _function_dynamic
 	{
 		vsm_static_operator void operator()(storage* const object) vsm_static_operator_const
 		{
-			vsm::delete_via(Allocator(vsm_move(object->allocator)), object);
+			vsm::delete_via(object, Allocator(vsm_move(object->allocator)));
 		}
 	};
 

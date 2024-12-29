@@ -28,9 +28,12 @@ static_assert(std::ranges::bidirectional_range<tree_type>);
 
 struct two_trees
 {
+	using vsm_tree_type = rb_tree<element, key_selector>;
+	using const_iterator = vsm_tree_type::const_iterator;
+
 	std::list<element> list;
 	std::set<int> std_tree;
-	rb_tree<element, key_selector> vsm_tree;
+	vsm_tree_type vsm_tree;
 
 	auto insert(int const value)
 	{
@@ -64,6 +67,12 @@ struct two_trees
 		std_tree.erase(std_it);
 
 		return true;
+	}
+
+	void erase(const_iterator const pos)
+	{
+		std_tree.erase(pos->value);
+		vsm_tree.erase(pos);
 	}
 
 	[[nodiscard]] auto values() const
@@ -103,7 +112,6 @@ TEST_CASE("rb_tree::insert", "[intrusive][rb_tree]")
 	REQUIRE(tree.size() == 6);
 }
 
-#if 0 //TODO: Enable this
 TEST_CASE("rb_tree::erase", "[intrusive][rb_tree]")
 {
 	// NOLINTBEGIN(readability-braces-around-statements)
@@ -188,7 +196,6 @@ TEST_CASE("rb_tree::erase", "[intrusive][rb_tree]")
 
 	// NOLINTEND(readability-braces-around-statements)
 }
-#endif
 
 TEST_CASE("rb_tree::clear", "[intrusive][rb_tree]")
 {
@@ -229,22 +236,37 @@ TEST_CASE("rb_tree iteration", "[intrusive][rb_tree]")
 
 TEST_CASE("rb_tree mass test", "[intrusive][rb_tree]")
 {
-	elements e;
+	static constexpr size_t count = 10'000;
 
 	auto&& rng = Catch::sharedRng();
-	Catch::uniform_integer_distribution distribution(0, std::numeric_limits<int>::max());
+	Catch::uniform_integer_distribution distribution(
+		0,
+		std::numeric_limits<int>::max());
 
-	tree_type tree;
-	std::set<int> std_tree;
+	two_trees trees;
 
-	for (size_t i = 0; i < 10000; ++i)
+	std::vector<two_trees::const_iterator> iterators;
+	iterators.reserve(count);
+
+	for (size_t i = 0; i < count; ++i)
 	{
-		int const value = distribution(rng);
-		bool const inserted = std_tree.insert(value).second;
-		REQUIRE(tree.insert(e(value)).inserted == inserted);
+		auto const [iterator, inserted] = trees.insert(distribution(rng));
+
+		if (inserted)
+		{
+			iterators.push_back(iterator);
+		}
 	}
 
-	REQUIRE(std::ranges::equal(std_tree, values(tree)));
+	REQUIRE(trees.equal());
+
+	std::ranges::shuffle(iterators, rng);
+
+	for (two_trees::const_iterator const iterator : iterators)
+	{
+		trees.erase(iterator);
+		REQUIRE(trees.equal());
+	}
 }
 
 } // namespace

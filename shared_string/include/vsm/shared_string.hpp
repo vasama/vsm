@@ -1,10 +1,10 @@
 #pragma once
 
+#include <vsm/allocator.hpp>
 #include <vsm/array.hpp>
 #include <vsm/atomic.hpp>
 #include <vsm/assert.h>
 #include <vsm/concepts.hpp>
-#include <vsm/default_allocator.hpp>
 #include <vsm/key_selector.hpp>
 #include <vsm/standard.hpp>
 #include <vsm/type_traits.hpp>
@@ -294,7 +294,7 @@ public:
 
 	void append(string_view_type const string)
 	{
-		vector_type::_push_back_range(string);
+		vector_type::append_range(string);
 	}
 
 

@@ -88,7 +88,7 @@ static constexpr hash_append_bits_cpo hash_append_bits = {};
 struct hash_append_cpo
 {
 	template<typename State>
-	friend void tag_invoke(hash_append_cpo, State& state, bool const value)
+	friend void tag_invoke(hash_append_cpo, State& state, std::same_as<bool> auto const value)
 	{
 		hash_append_bits(state, static_cast<unsigned char>(value));
 	}
@@ -110,10 +110,16 @@ struct hash_append_cpo
 		hash_append_bits(state, static_cast<void const*>(&value), sizeof(T));
 	}
 
-	template<typename State>
-	friend void tag_invoke(hash_append_cpo, State& state, void const* const ptr)
+	template<typename State, typename T, size_t Size>
+	friend void tag_invoke(hash_append_cpo, State& state, T const(& array)[Size])
 	{
-		auto const value = reinterpret_cast<uintptr_t>(ptr);
+		hash_append_cpo()(state, static_cast<T const*>(array), static_cast<T const*>(array) + Size);
+	}
+
+	template<typename State, object_pointer Pointer>
+	friend void tag_invoke(hash_append_cpo, State& state, Pointer const ptr)
+	{
+		auto const value = reinterpret_cast<uintptr_t>(static_cast<void const*>(ptr));
 		uintptr_t const data[2] = { value, value };
 		hash_append_bits(state, static_cast<void const*>(data), sizeof(data));
 	}
@@ -178,8 +184,7 @@ using detail::is_trivially_hashable_v;
 
 [[nodiscard]] inline size_t get_aslr_seed()
 {
-	return 0; //TODO: Debugging
-	//return static_cast<size_t>(reinterpret_cast<uintptr_t>(&detail::aslr_seed));
+	return static_cast<size_t>(reinterpret_cast<uintptr_t>(&detail::aslr_seed));
 }
 
 

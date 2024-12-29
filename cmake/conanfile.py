@@ -4,7 +4,6 @@ from os.path import join
 
 class package(ConanFile):
 	no_copy_source = True
-	#package_type = "build-scripts"
 
 	name = "vsm-cmake"
 	version = "0.1"

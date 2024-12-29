@@ -6,6 +6,7 @@ using namespace vsm::intrusive::detail;
 
 using hook = _mpscq::hook;
 static_assert(sizeof(hook) == sizeof(mpsc_queue_link));
+static_assert(std::is_standard_layout_v<hook>);
 
 
 static hook* reverse_list(hook* head)

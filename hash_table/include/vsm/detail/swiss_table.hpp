@@ -1,14 +1,17 @@
 #pragma once
 
+#include <vsm/allocator.hpp>
 #include <vsm/detail/hash_table.hpp>
 #include <vsm/insert_result.hpp>
 #include <vsm/key_selector.hpp>
 #include <vsm/memory.hpp>
 #include <vsm/numeric.hpp>
 #include <vsm/platform.h>
+#include <vsm/relocate.hpp>
 #include <vsm/standard.hpp>
 #include <vsm/type_traits.hpp>
 
+#include <array>
 #include <bit>
 
 #include <cstddef>
@@ -25,45 +28,197 @@ enum ctrl : int8_t
 	ctrl_end            = static_cast<int8_t>(0xFF),
 };
 
-inline constexpr size_t group_size = 16;
-extern ctrl const empty_group[group_size];
 
-
-struct group
+template<std::unsigned_integral Integer, Integer Multiplier = 1>
+class bit_mask
 {
+public:
+	class iterator
+	{
+		Integer m_bits;
+
+	public:
+		using value_type = size_t;
+		using difference_type = ptrdiff_t;
+
+		iterator() = default;
+
+		explicit iterator(Integer const bits)
+			: m_bits(bits)
+		{
+		}
+
+		[[nodiscard]] size_t operator*() const
+		{
+			return std::countr_zero(m_bits) / Multiplier;
+		}
+
+		iterator& operator++() &
+		{
+			m_bits &= m_bits - 1;
+			return *this;
+		}
+
+		[[nodiscard]] iterator operator++(int) &
+		{
+			auto result = *this;
+			m_bits &= m_bits - 1;
+			return result;
+		}
+
+		[[nodiscard]] friend bool operator==(iterator const&, iterator const&) = default;
+	};
+
+	Integer m_bits;
+
+public:
+	explicit bit_mask(Integer const bits)
+		: m_bits(bits)
+	{
+	}
+
+
+	[[nodiscard]] explicit operator bool() const
+	{
+		return m_bits != 0;
+	}
+
+	[[nodiscard]] size_t countl_zero() const
+	{
+		return std::countl_zero(m_bits) / Multiplier;
+	}
+
+	[[nodiscard]] size_t countr_zero() const
+	{
+		return std::countr_zero(m_bits) / Multiplier;
+	}
+
+	[[nodiscard]] iterator begin() const
+	{
+		return iterator(m_bits);
+	}
+
+	[[nodiscard]] iterator end() const
+	{
+		return iterator(0);
+	}
+};
+
+template<std::unsigned_integral Integer>
+class group_generic
+{
+	using iterator_type = bit_mask<Integer, CHAR_BIT>;
+
+	static constexpr Integer lsb_bytes = ~static_cast<Integer>(0) / 0xFF;
+	static constexpr Integer msb_bytes = lsb_bytes << (CHAR_BIT - 1);
+	static constexpr Integer non_msb_bytes = msb_bytes - lsb_bytes;
+
+	Integer m_ctrl;
+
+public:
+	static constexpr size_t size = sizeof(Integer);
+
+	explicit group_generic(ctrl const* const ctrl)
+	{
+		std::memcpy(&m_ctrl, ctrl, sizeof(Integer));
+	}
+
+	// Matches hash exactly.
+	[[nodiscard]] iterator_type match(ctrl const h2) const
+	{
+		// See https://graphics.stanford.edu/~seander/bithacks.html##ValueInWord
+
+		static constexpr Integer m = non_msb_bytes;
+		Integer const z = m_ctrl ^ (lsb_bytes * h2);
+		return iterator_type(~((z & m) + m | m | z));
+	}
+
+	// Matches ctrl_empty.
+	[[nodiscard]] iterator_type match_empty() const
+	{
+		return iterator_type(m_ctrl & ~(m_ctrl << 6) & msb_bytes);
+	}
+
+	// Matches ctrl_empty or ctrl_tomb.
+	[[nodiscard]] iterator_type match_free() const
+	{
+		return iterator_type(m_ctrl & ~(m_ctrl << 7) & msb_bytes);
+	}
+
+	// Matches ctrl_empty, ctrl_tomb, or ctrl_end.
+	[[nodiscard]] size_t count_leading_free_or_end() const
+	{
+		return std::countr_zero((m_ctrl | ~(m_ctrl >> 7)) & lsb_bytes) / CHAR_BIT;
+	}
+
+	static void convert_special_to_empty_and_full_to_tomb(ctrl* const group)
+	{
+		Integer bits;
+
+		std::memcpy(&bits, group, sizeof(Integer));
+
+		bits = bits & msb_bytes;
+		bits = ~bits + (bits >> 7) & ~lsb_bytes;
+
+		std::memcpy(group, &bits, sizeof(Integer));
+	}
+};
+
+
+#if vsm_arch_x86
+class group_x86
+{
+	using iterator_type = bit_mask<uint16_t>;
+
 	__m128i m_ctrl;
 
-	explicit group(ctrl const* const ctrl)
+public:
+	static constexpr size_t size = 16;
+
+	explicit group_x86(ctrl const* const ctrl)
 		: m_ctrl(_mm_loadu_si128(reinterpret_cast<__m128i const*>(ctrl)))
 	{
 	}
 
-	uint32_t match(ctrl const h2) const
+	iterator_type match(ctrl const h2) const
 	{
-		return static_cast<uint32_t>(_mm_movemask_epi8(_mm_cmpeq_epi8(_mm_set1_epi8(h2), m_ctrl)));
+		return iterator_type(static_cast<uint16_t>(
+			_mm_movemask_epi8(_mm_cmpeq_epi8(_mm_set1_epi8(h2), m_ctrl))));
 	}
 
-	uint32_t match_empty() const
+	iterator_type match_empty() const
 	{
-		return static_cast<uint32_t>(_mm_movemask_epi8(_mm_sign_epi8(m_ctrl, m_ctrl)));
+		return iterator_type(static_cast<uint16_t>(
+			_mm_movemask_epi8(_mm_sign_epi8(m_ctrl, m_ctrl))));
 	}
 
-	uint32_t match_free() const
+	iterator_type match_free() const
 	{
-		return static_cast<uint32_t>(
-			_mm_movemask_epi8(_mm_cmpgt_epi8(_mm_set1_epi8(ctrl_end), m_ctrl)));
+		return iterator_type(static_cast<uint16_t>(
+			_mm_movemask_epi8(_mm_cmpgt_epi8(_mm_set1_epi8(ctrl_end), m_ctrl))));
 	}
 
-	size_t count_leading_free() const
+	size_t count_leading_free_or_end() const
 	{
 		__m128i const end = _mm_set1_epi8(ctrl_end);
 		uint32_t const mask = static_cast<uint32_t>(_mm_movemask_epi8(_mm_cmpgt_epi8(end, m_ctrl)));
-
-		return mask == 0
-			? group_size
-			: static_cast<size_t>(std::countr_one(mask));
+		return mask == 0 ? size : static_cast<size_t>(std::countr_one(mask));
 	}
+
+	static void convert_special_to_empty_and_full_to_tomb(ctrl* const group);
 };
+#endif
+
+#if vsm_arch_x86 && 0
+using group = group_x86;
+#else
+using group = group_generic<size_t>;
+#endif
+
+
+inline constexpr size_t group_size = group::size;
+extern std::array<ctrl, group_size> const empty_group;
+
 
 struct probe
 {
@@ -110,7 +265,7 @@ template<typename T, typename P, typename A, size_t C>
 using _table_storage = hash_table_storage_layout<_table_allocator<P, A>, T, C, C + group_size + 1>;
 
 
-typedef bool resize_callback_type(_table& table, size_t element_size, size_t hash);
+using resize_callback_t = void(_table& table, size_t hash);
 
 constexpr size_t get_buffer_size(size_t const capacity, size_t const element_size)
 {
@@ -119,6 +274,16 @@ constexpr size_t get_buffer_size(size_t const capacity, size_t const element_siz
 
 constexpr size_t get_max_size(size_t const capacity)
 {
+	if constexpr (group_size <= 8)
+	{
+		if (capacity <= 8)
+		{
+			return capacity == 0
+				? 0
+				: capacity - 2;
+		}
+	}
+
 	// Max load factor is 7/8.
 	return capacity - capacity / 8;
 }
@@ -142,7 +307,7 @@ constexpr std::byte* get_storage(_table_storage<T, P, A, C>& table)
 	}
 	else
 	{
-		return reinterpret_cast<std::byte*>(const_cast<ctrl*>(empty_group));
+		return reinterpret_cast<std::byte*>(const_cast<ctrl*>(empty_group.data()));
 	}
 }
 
@@ -169,7 +334,9 @@ inline void init_ctrl(ctrl* const ctrls, size_t const capacity)
 template<typename A>
 std::byte* allocate_storage(A& allocator, size_t const element_size, size_t& capacity)
 {
-	auto const new_allocation = allocator.allocate(get_buffer_size(capacity, element_size));
+	auto const new_allocation = vsm::allocate_or_throw(
+		allocator,
+		get_buffer_size(capacity, element_size));
 
 	while (true)
 	{
@@ -242,7 +409,7 @@ inline size_t get_probe_index(size_t const slot_index, size_t const capacity, si
 }
 
 size_t find_free_slot(ctrl const* ctrls, size_t capacity, size_t hash);
-void* insert2(_table& table, size_t element_size, size_t hash, resize_callback_type* callback);
+void* insert2(_table& table, size_t element_size, size_t hash, resize_callback_t* resize);
 void erase_slot(_table& table, size_t element_size, size_t slot_index);
 void convert_tomb_to_empty_and_full_to_tomb(ctrl* ctrls, size_t capacity);
 
@@ -250,7 +417,7 @@ void convert_tomb_to_empty_and_full_to_tomb(ctrl* ctrls, size_t capacity);
 #pragma push_macro("get_key")
 #define get_key(slot) (*std::launder(reinterpret_cast<K const*>(slot)))
 
-template<typename K, typename P>
+template<typename T, typename K, typename P>
 void reuse_tombs(_table_policies<P>& table, size_t const element_size)
 {
 	P const& p = table.policies;
@@ -287,14 +454,18 @@ void reuse_tombs(_table_policies<P>& table, size_t const element_size)
 		if (ctrls[new_slot_index] == ctrl_empty)
 		{
 			set_ctrl(ctrls, capacity, new_slot_index, get_h2(hash));
-			memcpy(new_slot, old_slot, element_size);
+			vsm::relocate_at(static_cast<T*>(old_slot), static_cast<T*>(new_slot));
 			set_ctrl(ctrls, capacity, old_slot_index, ctrl_empty);
 		}
 		else
 		{
 			vsm_assert(ctrls[new_slot_index] == ctrl_tomb);
 			set_ctrl(ctrls, capacity, new_slot_index, get_h2(hash));
-			memswap(new_slot, old_slot, element_size);
+			//TODO: Use relocating swap.
+			{
+				using std::swap;
+				swap(*static_cast<T*>(new_slot), *static_cast<T*>(old_slot));
+			}
 			--old_slot_index;
 		}
 	}
@@ -302,7 +473,7 @@ void reuse_tombs(_table_policies<P>& table, size_t const element_size)
 	table.free = get_max_size(capacity) - table.size;
 }
 
-template<typename K, typename P>
+template<typename T, typename K, typename P>
 void rehash(_table_policies<P> const& old_table, size_t const element_size, _table& new_table)
 {
 	P const& p = old_table.policies;
@@ -327,18 +498,19 @@ void rehash(_table_policies<P> const& old_table, size_t const element_size, _tab
 			set_ctrl(new_ctrls, new_capacity, new_slot_index, get_h2(hash));
 
 			void* const new_slot = new_slots + new_slot_index * element_size;
-			memcpy(new_slot, old_slot, element_size);
+			vsm::relocate_at(static_cast<T*>(old_slot), static_cast<T*>(new_slot));
 		}
 	}
 }
 
-template<typename K, typename P, typename A>
+template<typename T, typename K, typename P, typename A>
 void resize(
 	_table_allocator<P, A>& table,
-	size_t const element_size,
 	size_t new_capacity,
 	void const* const null_storage)
 {
+	static constexpr size_t element_size = sizeof(T);
+
 	vsm_assert(std::has_single_bit(new_capacity + 1));
 	vsm_assert(get_max_size(new_capacity) >= table.size);
 
@@ -358,7 +530,7 @@ void resize(
 
 	if (size != 0)
 	{
-		rehash<K>(table, element_size, new_table);
+		rehash<T, K>(table, element_size, new_table);
 	}
 
 	if (table.slots != null_storage)
@@ -373,21 +545,20 @@ void resize(
 	static_cast<_table&>(table) = new_table;
 }
 
-template<typename K, typename P, typename A>
+template<typename T, typename K, typename P, typename A>
 void reserve(
 	_table_allocator<P, A>& table,
-	size_t const element_size,
 	size_t const min_capacity,
 	void const* const null_storage)
 {
 	if (min_capacity != 0)
 	{
-		resize<K>(table, element_size, std::bit_ceil(min_capacity + 1) - 1, null_storage);
+		resize<T, K>(table, std::bit_ceil(min_capacity + 1) - 1, null_storage);
 	}
 }
 
-template<typename K, typename P, typename A>
-bool resize_callback2(
+template<typename T, typename K, typename P, typename A>
+void resize_callback2(
 	_table_allocator<P, A>& table,
 	size_t const element_size,
 	size_t const hash,
@@ -397,25 +568,23 @@ bool resize_callback2(
 
 	if (capacity == 0)
 	{
-		resize<K>(table, element_size, group_size - 1, null_storage);
+		resize<T, K>(table, group_size - 1, null_storage);
 	}
 	else if (table.size <= get_max_size(capacity) / 2)
 	{
-		reuse_tombs<K>(table, element_size);
+		reuse_tombs<T, K>(table, element_size);
 	}
 	else
 	{
-		resize<K>(table, element_size, capacity * 2 + 1, null_storage);
+		resize<T, K>(table, capacity * 2 + 1, null_storage);
 	}
-
-	return true;
 }
 
 template<typename T, typename K, typename P, typename A, size_t C>
-bool resize_callback(_table& table, size_t const element_size, size_t const hash)
+void resize_callback(_table& table, size_t const hash)
 {
 	auto& full_table = static_cast<_table_storage<T, P, A, C>&>(table);
-	return resize_callback2<K>(full_table, element_size, hash, get_storage(full_table));
+	resize_callback2<T, K>(full_table, sizeof(T), hash, get_storage(full_table));
 }
 
 template<typename K, typename UserK, typename P>
@@ -438,9 +607,9 @@ size_t find2(
 	{
 		group const group(ctrls + probe.offset);
 
-		for (uint32_t mask = group.match(h2); mask != 0; mask &= mask - 1)
+		for (size_t const mask_index : group.match(h2))
 		{
-			size_t const slot_index = probe.get_offset(static_cast<size_t>(std::countr_zero(mask)));
+			size_t const slot_index = probe.get_offset(mask_index);
 			void* const slot = slots + slot_index * element_size;
 
 			if (vsm_likely(p.comparator(key, p.key_selector(get_key(slot)))))
@@ -449,7 +618,7 @@ size_t find2(
 			}
 		}
 
-		if (vsm_likely(group.match_empty() != 0))
+		if (vsm_likely(group.match_empty()))
 		{
 			return static_cast<size_t>(-1);
 		}
@@ -476,7 +645,7 @@ insert_result<void*> insert(
 	_table_policies<P>& table,
 	size_t const hash,
 	input_t<UserK> key,
-	resize_callback_type* const callback)
+	resize_callback_t* const resize)
 {
 	size_t const slot_index = find2<K, UserK>(table, element_size, hash, key);
 
@@ -485,7 +654,7 @@ insert_result<void*> insert(
 		return { table.slots + slot_index * element_size, false };
 	}
 
-	return { insert2(table, element_size, hash, callback), true };
+	return { insert2(table, element_size, hash, resize), true };
 }
 
 template<typename K, typename UserK, size_t element_size, typename P>
@@ -570,7 +739,7 @@ struct iterator_n_base
 	{
 		while (*m_ctrl < ctrl_end)
 		{
-			auto const shift = group(m_ctrl).count_leading_free();
+			auto const shift = group(m_ctrl).count_leading_free_or_end();
 
 			m_slot += shift * element_size;
 			m_ctrl += shift;
@@ -680,6 +849,9 @@ public:
 template<typename T, typename Key, typename Policies, typename Allocator, size_t Capacity>
 class table
 {
+	static_assert(vsm::is_nothrow_relocatable_v<T>);
+	static_assert(std::is_nothrow_swappable_v<T>);
+
 	static constexpr size_t storage_capacity = Capacity == 0
 		? 0
 		: std::bit_ceil(Capacity + 1) - 1;
@@ -750,7 +922,7 @@ public:
 	{
 		if (get_max_size(m.capacity) < min_capacity)
 		{
-			swiss_table::reserve<Key>(m, sizeof(T), min_capacity, get_storage(m));
+			swiss_table::reserve<T, Key>(m, min_capacity, get_storage(m));
 		}
 	}
 

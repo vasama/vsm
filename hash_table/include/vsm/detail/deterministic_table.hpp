@@ -1,8 +1,8 @@
 #pragma once
 
-#include <vsm/detail/hash_table.hpp>
 #include <vsm/allocator.hpp>
 #include <vsm/assert.h>
+#include <vsm/detail/hash_table.hpp>
 #include <vsm/insert_result.hpp>
 #include <vsm/key_selector.hpp>
 #include <vsm/standard/stdexcept.hpp>
@@ -221,10 +221,17 @@ void insert_index(
 	return insert_index(buckets, hash_mask, new_bucket, new_bucket.hash & hash_mask, 0);
 }
 
+template<typename I>
+using resize_callback_t = void(_table<I>& table, size_t min_capacity);
+
 //TODO: Doesn't use P.
-template<typename I, typename P, typename A>
-void resize(_table_allocator<I, P, A>& table, size_t const element_size, size_t const min_capacity)
+template<typename T, typename I, typename P, typename A>
+void resize(_table<I>& untyped_table, size_t const min_capacity)
 {
+	static constexpr size_t element_size = sizeof(T);
+
+	auto& table = static_cast<_table_allocator<I, P, A>&>(untyped_table);
+
 	size_t const new_bucket_capacity = std::bit_ceil(min_capacity * 4 / 3);
 	size_t const new_hash_mask = new_bucket_capacity - 1;
 	vsm_assert(new_hash_mask <= std::numeric_limits<I>::max());
@@ -234,12 +241,7 @@ void resize(_table_allocator<I, P, A>& table, size_t const element_size, size_t 
 	size_t const new_buckets_size = new_bucket_capacity * sizeof(bucket<I>);
 	size_t const new_allocation_size = new_elements_size + new_buckets_size;
 
-	auto const allocation = table.allocator.allocate(new_allocation_size);
-	if (allocation.buffer == nullptr)
-	{
-		vsm_except_throw_or_terminate(std::bad_alloc());
-	}
-
+	auto const allocation = vsm::allocate_or_throw(table.allocator, new_allocation_size);
 	auto const new_elements = reinterpret_cast<std::byte*>(allocation.buffer);
 	auto const new_buckets = reinterpret_cast<bucket<I>*>(new_elements + new_elements_size);
 	std::memset(new_buckets, 0xff, new_buckets_size);
@@ -284,14 +286,14 @@ void resize(_table_allocator<I, P, A>& table, size_t const element_size, size_t 
 	table.hash_mask = static_cast<I>(new_hash_mask);
 }
 
-template<typename K, typename UserK, typename I, typename P, typename A>
+template<typename K, typename UserK, size_t ElementSize, typename I, typename P>
 insert_result<void*> insert(
-	_table_allocator<I, P, A>& table,
-	size_t const element_size,
+	_table_policies<I, P>& table,
 	size_t const hash,
-	input_t<UserK> key)
+	input_t<UserK> key,
+	resize_callback_t<I>* const resize)
 {
-	auto r = find_for_insert<K, UserK>(table, element_size, hash, key);
+	auto r = find_for_insert<K, UserK>(table, ElementSize, hash, key);
 
 	if (r.slot != nullptr)
 	{
@@ -306,7 +308,10 @@ insert_result<void*> insert(
 
 	if (table.size == get_max_elements(table.hash_mask))
 	{
-		resize(table, element_size, table.hash_mask + 2);
+		// The new minimum capacity is computed by adding two to the hash_mask, which is itself one
+		// less than the current table capacity.
+		resize(table, table.hash_mask + 2);
+
 		r.bucket_index = hash & table.hash_mask;
 		r.bucket_distance = 0;
 	}
@@ -320,7 +325,7 @@ insert_result<void*> insert(
 		r.bucket_index,
 		r.bucket_distance);
 
-	return { get_element(table.buckets, element_size, element_index), true };
+	return { get_element(table.buckets, ElementSize, element_index), true };
 }
 
 template<size_t ElementSize, typename I, typename P, typename A>
@@ -595,11 +600,11 @@ public:
 		decltype(auto) n_k = normalize_key(k);
 		using user_key_type = remove_ref_t<decltype(n_k)>;
 
-		auto const r = deterministic_table::insert<Key, user_key_type>(
+		auto const r = deterministic_table::insert<Key, user_key_type, sizeof(T)>(
 			m,
-			sizeof(T),
 			static_cast<Policies const&>(m.policies).hasher(n_k),
-			n_k);
+			n_k,
+			resize<T, I, Policies, Allocator>);
 
 		vsm_assert(r.iterator != nullptr);
 

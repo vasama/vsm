@@ -41,6 +41,13 @@ TEMPLATE_LIST_TEST_CASE("swiss_map default constructor", "[hash_table][swiss_tab
 	CHECK(map.size() == 0);
 }
 
+TEST_CASE("swiss_map string_view", "[hash_table][swiss_table][swiss_map]")
+{
+	swiss_map<std::string_view, size_t> m;
+	CHECK(m.insert("blah", 42u).inserted);
+	CHECK(m.at("blah") == 42u);
+}
+
 TEMPLATE_LIST_TEST_CASE("swiss_map insert & find", "[hash_table][swiss_table][swiss_map]", map_types)
 {
 	using key_type = uint8_t;
@@ -83,24 +90,5 @@ TEMPLATE_LIST_TEST_CASE("swiss_map insert & find", "[hash_table][swiss_table][sw
 		}
 	}
 }
-
-#if 0 //TODO: Fix this
-TEST_CASE("swiss_map string_view", "[hash_table][swiss_table][swiss_map]")
-{
-	swiss_map<std::string_view, size_t> m;
-	//TODO: DEBUG
-	{
-		using table = detail::swiss_table::table<
-			key_value_pair<std::string_view, size_t>,
-			std::string_view,
-			hash_table_policies<default_key_selector, default_hasher, std::equal_to<>>,
-			default_allocator,
-			0>;
-
-		static_assert(detail::hash_table_key<char const(&)[5], table>);
-	}
-	CHECK(m.insert("blah", 42u).inserted);
-}
-#endif
 
 } // namespace

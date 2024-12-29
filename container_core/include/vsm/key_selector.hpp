@@ -1,8 +1,11 @@
 #pragma once
 
+#include <vsm/array_view.hpp>
 #include <vsm/concepts.hpp>
 #include <vsm/standard.hpp>
 #include <vsm/tag_invoke.hpp>
+
+#include <string_view>
 
 namespace vsm {
 namespace detail {
@@ -26,6 +29,18 @@ struct select_key_cpo
 
 struct normalize_key_cpo
 {
+	template<typename T, size_t Size>
+	friend array_view<T> tag_invoke(normalize_key_cpo, T const(&array)[Size])
+	{
+		return array_view<T>(array);
+	}
+
+	template<character T, size_t Size>
+	friend std::basic_string_view<T> tag_invoke(normalize_key_cpo, T const(&array)[Size])
+	{
+		return std::basic_string_view<T>(array);
+	}
+
 	template<typename T>
 	friend T const& tag_invoke(normalize_key_cpo, T const& key)
 	{

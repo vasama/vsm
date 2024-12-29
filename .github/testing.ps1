@@ -1,6 +1,8 @@
 #!/usr/bin/pwsh
 
 param(
+	[switch]$VcVars=$false,
+
 	[string]$Tool,
 	[string]$Config,
 
@@ -16,10 +18,20 @@ function Invoke-NativeCommand($Command) {
 	}
 }
 
+if ($VcVars) {
+	Push-Location 'C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build'
+	Invoke-NativeCommand cmd /c 'vcvarsall.bat x64 > nul & set' | ForEach-Object {
+		if ($_ -match '^(.+?)=(.*)$') {
+			Set-Item -Force -Path "ENV:$($Matches[1])" -Value $Matches[2]
+		}
+	}
+	Pop-Location
+}
+
 if ($IsWindows) { $OS = 'windows' }
 if ($IsLinux) { $OS = 'linux' }
 
-$Analysis = ".github/analysis/$Tool.ps1"
+$Analysis = "$PSScriptRoot/analysis/$Tool.ps1"
 if (!(Test-Path -PathType Leaf $Analysis)) {
 	$Analysis = $null
 }
@@ -37,7 +49,7 @@ $ConanPreset = "$ConanProfile-$($Config.ToLowerInvariant())"
 $CMakePreset = "conan-$ConanPreset"
 
 if (!$Step -or $Step -eq 'conan-config') {
-	Invoke-NativeCommand conan config install .github/conan
+	Invoke-NativeCommand conan config install "$PSScriptRoot/conan"
 }
 
 if (!$Step -or $Step -eq 'conan-install') {

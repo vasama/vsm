@@ -191,8 +191,8 @@ class base:
 				options=requirement.options)
 
 	def build_requirements(self):
-		#self.requires("vsm-cmake/0.1", visible=False)
-		self.build_requires("vsm-cmake/0.1")
+		self.requires("vsm-cmake/0.1", visible=False)
+		#self.build_requires("vsm-cmake/0.1")
 
 	def layout(self):
 		cmake_layout(self)

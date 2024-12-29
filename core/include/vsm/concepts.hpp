@@ -73,6 +73,15 @@ concept _character = any_of<T, char, wchar_t, char8_t, char16_t, char32_t>;
 } // namespace detail
 
 template<typename T>
+concept pointer = std::is_pointer_v<T>;
+
+template<typename T>
+concept object_pointer = pointer<T> && std::is_object_v<remove_ptr_t<T>>;
+
+template<typename T>
+concept function_pointer = pointer<T> && std::is_function_v<remove_ptr_t<T>>;
+
+template<typename T>
 concept character = std::integral<T> && detail::_character<T>;
 
 template<typename T>

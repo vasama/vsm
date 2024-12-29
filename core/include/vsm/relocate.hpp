@@ -4,6 +4,7 @@
 #include <vsm/concepts.hpp>
 #include <vsm/defer.hpp>
 #include <vsm/exceptions.hpp>
+#include <vsm/standard.hpp>
 #include <vsm/tag_invoke.hpp>
 
 #include <memory>
@@ -127,6 +128,27 @@ concept nothrow_contiguous_iterator =
 	std::contiguous_iterator<Iterator> &&
 	nothrow_random_access_iterator<Iterator>;
 
+
+template<typename T>
+class relocate_destructor
+{
+	T* m_ptr;
+
+public:
+	vsm_always_inline relocate_destructor(T* const ptr) noexcept
+		: m_ptr(ptr)
+	{
+	}
+
+	relocate_destructor(relocate_destructor const&) = delete;
+	relocate_destructor& operator=(relocate_destructor const&) = delete;
+
+	vsm_always_inline ~relocate_destructor()
+	{
+		m_ptr->~T();
+	}
+};
+
 } // namespace detail
 
 
@@ -139,16 +161,23 @@ inline constexpr bool is_nothrow_relocatable_v =
 
 
 // P1144
-template<typename T>
-[[nodiscard]] remove_cv_t<T> relocate(T* const source)
+template<non_cvref T>
+[[nodiscard]] T relocate(T* const source) noexcept
 {
-	remove_cv_t<T> r = vsm_move(*source);
-	std::destroy_at(source);
-	return r;
+	if constexpr (std::is_nothrow_move_constructible_v<T>)
+	{
+		return (detail::relocate_destructor(source), vsm_move(*source));
+	}
+	else
+	{
+		T value = vsm_move(*source);
+		source->~T();
+		return value;
+	}
 }
 
 // P1144
-template<typename T>
+template<non_cvref T>
 T* relocate_at(T* const source, T* const destination)
 {
 	if constexpr (is_trivially_relocatable_v<T>)
@@ -156,10 +185,17 @@ T* relocate_at(T* const source, T* const destination)
 		std::memcpy(destination, source, sizeof(T));
 		return destination;
 	}
+	else if constexpr (std::is_nothrow_move_constructible_v<T>)
+	{
+		return (
+			detail::relocate_destructor(source),
+			::new (static_cast<void*>(destination)) T(vsm_move(*source)));
+	}
 	else
 	{
-		vsm_defer { std::destroy_at(source); };
-		return ::new(static_cast<void*>(destination)) T(vsm_move(*source));
+		T* const object = ::new(static_cast<void*>(destination)) T(vsm_move(*source));
+		source->~T();
+		return object;
 	}
 }
 
@@ -232,7 +268,8 @@ OutputIterator uninitialized_relocate(
 				else
 				{
 					source_type* const p = std::addressof(*c_src_beg);
-					::new (static_cast<void*>(std::to_address(c_out_pos))) output_type(vsm_move(*p));
+					::new (static_cast<void*>(std::to_address(c_out_pos))) output_type(
+						vsm_move(*p));
 					std::destroy_at(p);
 				}
 			}
@@ -311,7 +348,8 @@ std::pair<SourceIterator, OutputIterator> uninitialized_relocate_n(
 				else
 				{
 					source_type* const p = std::addressof(*c_src_beg);
-					::new (static_cast<void*>(std::to_address(c_out_pos))) output_type(vsm_move(*p));
+					::new (static_cast<void*>(std::to_address(c_out_pos))) output_type(
+						vsm_move(*p));
 					std::destroy_at(p);
 				}
 			}

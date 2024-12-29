@@ -1,0 +1,17 @@
+{
+	"package_type": "static-library",
+	"requirements": [
+		{
+			"package": "vsm-core",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm-container_core",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm-tag_ptr",
+			"version": "0.1"
+		}
+	]
+}

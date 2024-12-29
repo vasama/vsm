@@ -50,10 +50,6 @@ inline void _function_destroy_trivial(void*)
 {
 }
 
-//TODO: Deal with this warning
-vsm_msvc_warning(push)
-//vsm_msvc_warning(disable: 4268)
-
 template<bool N, typename R, typename... Ps>
 struct _function_table
 {
@@ -75,8 +71,6 @@ inline constexpr _function_table<N, R, Ps...> _function_table_v =
 		? _function_destroy_trivial
 		: _function_destroy<remove_ref_t<T>>,
 };
-
-vsm_msvc_warning(pop)
 
 template<size_t Capacity>
 struct _function_storage

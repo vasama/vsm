@@ -52,7 +52,8 @@ struct select<1>
 
 /* value category copy */
 
-#if 1 //TODO: Look into copy compile time performance
+//TODO: Look into copy compile time performance
+#if 1
 template<typename T>
 struct copy
 {

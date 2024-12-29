@@ -40,6 +40,7 @@ vsm_add_library(
 		source/vsm/test/deterministic_map.cpp
 		source/vsm/test/swiss_set.cpp
 		source/vsm/test/swiss_map.cpp
+		source/vsm/test/swiss_table.cpp
 
 	TEST_DEPENDENCIES
 		vsm::test_allocator

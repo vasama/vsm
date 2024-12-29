@@ -116,8 +116,8 @@ template<memory_resource Allocator>
 	return allocation;
 }
 
-template<memory_resource Allocator, typename T>
-constexpr void delete_via(Allocator&& allocator, T* const object)
+template<typename T, memory_resource Allocator>
+constexpr void delete_via(T* const object, Allocator&& allocator)
 {
 	if (object != nullptr)
 	{
@@ -125,47 +125,6 @@ constexpr void delete_via(Allocator&& allocator, T* const object)
 		allocator.deallocate(allocation(object, sizeof(T)));
 	}
 }
-
-#if 0
-template<typename... Args>
-class delete_with
-{
-	std::tuple<Args&&...> m_args;
-
-public:
-	explicit delete_with(Args&&... args)
-		: m_args(vsm_forward(args)...)
-	{
-	}
-	
-	delete_with(delete_with const&) = delete;
-	delete_with& operator=(delete_with const&) = delete;
-
-	template<typename Self, typename T>
-	void operator()(this Self&& self, T const* const object) noexcept
-	{
-		if (object != nullptr)
-		{
-			object->~T();
-			std::apply(
-				[](auto&&... args)
-				{
-					auto const ptr = const_cast<void*>(static_cast<void const*>(object));
-
-					if constexpr (requires { operator delete(ptr, sizeof(T), vsm_forward(args)...); })
-					{
-						operator delete(ptr, sizeof(T), vsm_forward(args)...);
-					}
-					else
-					{
-						operator delete(ptr, vsm_forward(args)...);
-					}
-				},
-				vsm_forward(self).m_args);
-		}
-	}
-};
-#endif
 
 
 class new_allocator
@@ -203,26 +162,3 @@ template<vsm::memory_resource Allocator>
 {
 	return allocator.allocate(size);
 }
-
-#if 0
-template<vsm::memory_resource Allocator>
-constexpr void operator delete(
-	void* const block,
-	size_t const size,
-	Allocator&& allocator)
-{
-	//TODO: Test that this is called correctly on exception thrown from constructor.
-	return allocator.deallocate(vsm::allocation(block, size));
-}
-
-template<vsm::memory_resource Allocator>
-constexpr void operator delete(
-	void* const block,
-	size_t const size,
-	Allocator&& allocator,
-	std::nothrow_t)
-{
-	//TODO: Test that this is called correctly on exception thrown from constructor.
-	return allocator.deallocate(vsm::allocation(block, size));
-}
-#endif
