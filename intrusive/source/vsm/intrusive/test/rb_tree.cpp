@@ -254,7 +254,7 @@ TEST_CASE("rb_tree mass test", "[intrusive][rb_tree]")
 
 		if (inserted)
 		{
-			iterators.push_back(iterator);
+			iterators.emplace_back(iterator);
 		}
 	}
 

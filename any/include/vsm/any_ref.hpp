@@ -49,6 +49,12 @@ constexpr Value bit_unpack(Container const& container)
 }
 
 
+template<typename T, typename F, typename R, typename... Ps>
+concept _any_requirement = requires
+{
+	{ F::invoke(std::declval<T>(), std::declval<Ps>()...) } -> std::convertible_to<R>;
+};
+
 template<typename Signature>
 struct _any_traits;
 
@@ -61,10 +67,7 @@ struct _any_traits<R(Ps...)>
 	void _i(Ps...);
 
 	template<typename F, typename T>
-	static constexpr bool requirement = requires
-	{
-		{ F::invoke(std::declval<T>(), std::declval<Ps>()...) } -> std::convertible_to<R>;
-	};
+	static constexpr bool requirement = _any_requirement<T, F, R, Ps...>;
 
 	using context_type = void;
 	using function_type = R(context_type*, Ps...);
@@ -93,10 +96,7 @@ struct _any_traits<R(Ps...) const>
 	void _i(Ps...) const;
 
 	template<typename F, typename T>
-	static constexpr bool requirement = requires
-	{
-		{ F::invoke(std::declval<T>(), std::declval<Ps>()...) } -> std::convertible_to<R>;
-	};
+	static constexpr bool requirement = _any_requirement<T, F, R, Ps...>;
 
 	using context_type = void;
 	using function_type = R(context_type*, Ps...);

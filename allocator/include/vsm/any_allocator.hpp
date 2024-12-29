@@ -58,8 +58,8 @@ public:
 	}
 
 	template<allocator Allocator>
-		requires std::is_empty_v<Allocator>
 	constexpr any_allocator(Allocator const allocator)
+		requires requires { any_ref(std::in_place, allocator); }
 		: any_ref(std::in_place, allocator)
 	{
 	}
@@ -74,7 +74,9 @@ public:
 		return any_ref::invoke<detail::any_allocator_deallocate>(allocation);
 	}
 
-	[[nodiscard]] constexpr size_t resize(vsm::allocation const allocation, size_t const min_size) const
+	[[nodiscard]] constexpr size_t resize(
+		vsm::allocation const allocation,
+		size_t const min_size) const
 	{
 		return any_ref::invoke<detail::any_allocator_resize>(allocation, min_size);
 	}

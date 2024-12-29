@@ -169,9 +169,8 @@ public:
 		}
 
 		// This thread is left holding one reference on the shared object.
-		// Clang thinks ptr has been deleted by the earlier release, however it does not understand
-		// the preceding acquire and the invariant that any change to the shared atom converts
-		// temporary references into references on the shared object.
+		// Clang thinks ptr has been deleted by the earlier release, failing to understand the
+		// reference owned by this function.
 		// NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDelete)
 		return intrusive_ptr<T, Manager>::adopt(ptr, m_manager);
 	}
@@ -281,6 +280,9 @@ public:
 					// The temporary reference created by this thread is cancelled out by the
 					// release to the caller of the reference on the shared object held by this
 					// atomic_intrusive_ptr.
+					// Clang thinks ptr has been deleted by the earlier release, failing to
+					// understand the reference owned by this function.
+					// NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDelete)
 					return intrusive_ptr<T, Manager>::adopt(ptr, vsm_as_const(m_manager));
 				}
 

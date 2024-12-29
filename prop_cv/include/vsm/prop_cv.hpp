@@ -42,8 +42,11 @@ concept _prop_cv_const_convertible_ptr =
 	_prop_cv_convertible_ptr<P, _prop_cv_rebind_const<P>>;
 
 
-template<typename P>
-struct _prop_cv_traits
+template<typename T>
+struct _prop_cv_traits;
+
+template<_prop_cv_ptr P>
+struct _prop_cv_traits<P>
 {
 	using get_type = typename std::pointer_traits<P>::element_type*;
 	using get_const_type = typename std::pointer_traits<P>::element_type const*;
@@ -229,34 +232,44 @@ public:
 
 
 #if __INTELLISENSE__
-// https://developercommunity.visualstudio.com/t/rejects-valid-EDG-defaulted-constexpr/10735255
+	// https://developercommunity.visualstudio.com/t/rejects-valid-EDG-defaulted-constexpr/10735255
+	friend constexpr auto operator==(prop_cv const&, prop_cv const&);
 	friend constexpr auto operator<=>(prop_cv const&, prop_cv const&);
 #else
 	[[nodiscard]] friend auto operator<=>(prop_cv const&, prop_cv const&) = default;
 #endif
 
 	template<not_same_as<Underlying> Rhs>
-	[[nodiscard]] friend constexpr bool operator==(prop_cv const& lhs, prop_cv<Rhs> const& rhs)
+	[[nodiscard]] friend constexpr bool operator==(
+		std::same_as<prop_cv> auto const& lhs,
+		prop_cv<Rhs> const& rhs)
 		requires requires { lhs.m_value == rhs.m_value; }
 	{
 		return lhs.m_value == rhs.m_value;
 	}
 
 	template<not_same_as<Underlying> Rhs>
-	[[nodiscard]] friend constexpr auto operator<=>(prop_cv const& lhs, prop_cv<Rhs> const& rhs)
+	[[nodiscard]] friend constexpr auto operator<=>(
+		std::same_as<prop_cv> auto const& lhs,
+		prop_cv<Rhs> const& rhs)
 		requires requires { lhs.m_value <=> rhs.m_value; }
 	{
 		return lhs.m_value <=> rhs.m_value;
 	}
 
 	template<not_same_as<prop_cv> Rhs>
-	[[nodiscard]] friend constexpr bool operator==(prop_cv const& lhs, Rhs const& rhs)
+	[[nodiscard]] friend constexpr bool operator==(
+		std::same_as<prop_cv> auto const& lhs,
+		Rhs const& rhs)
 		requires requires { lhs.m_value == rhs; }
 	{
 		return lhs.m_value == rhs;
 	}
+
 	template<not_same_as<prop_cv> Rhs>
-	[[nodiscard]] friend constexpr auto operator<=>(prop_cv const& lhs, Rhs const& rhs)
+	[[nodiscard]] friend constexpr auto operator<=>(
+		std::same_as<prop_cv> auto const& lhs,
+		Rhs const& rhs)
 		requires requires { lhs.m_value <=> rhs; }
 	{
 		return lhs.m_value <=> rhs;
