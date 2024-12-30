@@ -1,0 +1,14 @@
+{
+	"authors": "Lauri Vasama",
+	"license": "MIT",
+	"website": "https://github.com/vasama/vsm",
+	"package_type": "root",
+
+	"requirements": [
+		{
+			"package": "vsm.cmake",
+			"version": "0.1",
+			"visible": false
+		}
+	]
+}
