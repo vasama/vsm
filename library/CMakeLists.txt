@@ -1,6 +1,7 @@
 add_subdirectory(algorithm)
 add_subdirectory(allocator)
 add_subdirectory(any)
+add_subdirectory(container_core)
 add_subdirectory(core)
 add_subdirectory(function)
 add_subdirectory(hash)
