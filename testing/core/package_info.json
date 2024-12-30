@@ -1,0 +1,5 @@
+{
+	"package": "vsm-testing-core",
+	"version": "0.1",
+	"package_type": "static-library"
+}
