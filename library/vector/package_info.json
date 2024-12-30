@@ -1,0 +1,31 @@
+{
+	"package": "vsm.vector",
+	"version": "0.1",
+	"package_type": "header-library",
+	"requirements": [
+		{
+			"package": "vsm.algorithm",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm.allocator",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm.core",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm.testing.allocator",
+			"version": "0.1",
+			"visible": false,
+			"test": true
+		},
+		{
+			"package": "vsm.testing.core",
+			"version": "0.1",
+			"visible": false,
+			"test": true
+		}
+	]
+}
