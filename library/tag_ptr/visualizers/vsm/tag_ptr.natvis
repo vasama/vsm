@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+	<Type Name="vsm::detail::tag_ptr&lt;*&gt;">
+		<DisplayString>{($T1*)(m_value &amp; ptr_mask)}, {($T2)(m_value &amp; tag_mask)}</DisplayString>
+		<Expand>
+			<Item Name="[ptr]">($T1*)(m_value &amp; ptr_mask)</Item>
+			<Item Name="[tag]">($T2)(m_value &amp; tag_mask)</Item>
+		</Expand>
+	</Type>
+</AutoVisualizer>
