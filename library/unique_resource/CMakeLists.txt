@@ -1,0 +1,22 @@
+cmake_minimum_required(VERSION 3.24)
+project(vsm_unique_resource)
+
+find_package(vsm.cmake REQUIRED)
+vsm_define_package(vsm.unique_resource)
+
+vsm_add_library(
+	vsm::unique_resource
+
+	HEADERS
+		include/vsm/out_resource.hpp
+		include/vsm/unique_resource.hpp
+
+	HEADER_LINK_LIBRARIES
+		vsm::core
+
+	TEST_FRAMEWORK_LIBRARY
+		Catch2::Catch2WithMain
+
+	TEST_SOURCES
+		source/vsm/test/unique_resource.cpp
+)
