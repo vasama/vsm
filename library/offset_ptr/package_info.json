@@ -1,0 +1,12 @@
+{
+	"inherit": true,
+	"package": "vsm.offset_ptr",
+	"version": "0.1",
+	"package_type": "header-library",
+	"requirements": [
+		{
+			"package": "vsm.core",
+			"version": "0.1"
+		}
+	]
+}
