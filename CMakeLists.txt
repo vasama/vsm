@@ -11,4 +11,5 @@ find_package(
 
 vsm_add_root(vsm)
 
+add_subdirectory(library)
 add_subdirectory(testing)
