@@ -1,0 +1,13 @@
+{
+	"package": "vsm-core",
+	"version": "0.1",
+	"package_type": "static-library",
+	"requirements": [
+		{
+			"package": "vsm-testing-core",
+			"version": "0.1",
+			"visible": false,
+			"test": true
+		}
+	]
+}
