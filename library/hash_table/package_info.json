@@ -1,0 +1,29 @@
+{
+	"package": "vsm.hash_table",
+	"version": "0.1",
+	"package_type": "static-library",
+	"requirements": [
+		{
+			"package": "vsm.allocator",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm.container_core",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm.core",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm.hash",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm.testing.allocator",
+			"version": "0.1",
+			"visible": false,
+			"test": true
+		}
+	]
+}
