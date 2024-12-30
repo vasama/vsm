@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="vsm::small_vector&lt;*,*,*&gt;" Inheritable="false">
+    <Intrinsic Name="size" Expression="(size_t)(m.mid - m.beg) / sizeof(value_type)" />
+    <Intrinsic Name="capacity" Expression="(size_t)(m.end - m.beg) / sizeof(value_type)" />
+    <DisplayString>{{ size={size()} }}</DisplayString>
+    <Expand>
+      <Item Name="[capacity]" ExcludeView="simple">capacity()</Item>
+      <ArrayItems>
+        <Size>size()</Size>
+        <ValuePointer>(pointer)m.beg</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+</AutoVisualizer>
