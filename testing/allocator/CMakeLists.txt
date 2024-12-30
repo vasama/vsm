@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(vsm_test_allocator)
+project(vsm_testing_allocator)
 
 find_package(vsm.cmake REQUIRED)
 vsm_define_package(vsm.testing.allocator)
