@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+  <!-- vsm::swiss_map, vsm::swiss_set -->
+  <Type Name="vsm::detail::_swiss_table_base_impl&lt;*&gt;">
+    <Intrinsic Name="get_ptr" Expression="m_is_local ? get_storage() : get_storage_ptr()" />
+    <Intrinsic Name="get_storage" Expression="(void*)((vsm::detail::_swiss_table*)this + 1)" />
+    <Intrinsic Name="get_storage_ptr" Expression="*(void**)get_storage()" />
+    <DisplayString>{{ size={m_size} }}</DisplayString>
+    <Expand>
+      <Item Name="[capacity]" ExcludeView="simple">m_capacity</Item>
+      <CustomListItems>
+        <Variable Name="p_slot" InitialValue="($T1*)get_ptr()" />
+        <Variable Name="p_ctrl" InitialValue="(uint8_t*)(p_slot + m_capacity)" />
+
+        <Size>m_size</Size>
+        <Loop>
+          <Item Condition="*p_ctrl &lt; 0x80">*p_slot</Item>
+          <Exec>++p_slot</Exec>
+          <Exec>++p_ctrl</Exec>
+        </Loop>
+      </CustomListItems>
+    </Expand>
+  </Type>
+
+  <!-- vsm::array_map, vsm::array_set -->
+  <Type Name="vsm::detail::_array_table_base_impl&lt;*&gt;">
+    <Intrinsic Name="get_ptr" Expression="m_is_local ? get_storage() : get_storage_ptr()" />
+    <Intrinsic Name="get_storage" Expression="(vsm::detail::_array_table_bucket&lt;$T3&gt;*)((vsm::detail::_array_table&lt;$T3&gt;*)this + 1)" />
+    <Intrinsic Name="get_storage_ptr" Expression="*(vsm::detail::_array_table_bucket&lt;$T3&gt;**)get_storage()" />
+    <DisplayString>{{ size={m_size} }}</DisplayString>
+    <Expand>
+      <Item Name="[capacity]" ExcludeView="simple">(m_hash_mask + 1) * 3 / 4</Item>
+      <ArrayItems>
+        <Size>m_size</Size>
+        <ValuePointer>($T1*)(get_ptr() + m_hash_mask + 1)</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+</AutoVisualizer>
