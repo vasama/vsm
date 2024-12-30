@@ -1,0 +1,23 @@
+// NOLINTBEGIN(modernize-macro-to-enum)
+
+#define vsm_compiler_gnu 1
+
+#define vsm_detail_gnu_diagnostic(compiler, ...) \
+	_Pragma(vsm_pp_str(compiler diagnostic __VA_ARGS__))
+
+#if __SANITIZE_ADDRESS__
+#	define vsm_always_inline
+#else
+#	define vsm_always_inline __attribute__((always_inline))
+#endif
+
+#define vsm_never_inline __attribute__((noinline))
+
+#define vsm_likely(...) __builtin_expect((__VA_ARGS__) ? 1 : 0, 1)
+#define vsm_unlikely(...) __builtin_expect((__VA_ARGS__) ? 1 : 0, 0)
+
+#define vsm_unreachable() __builtin_unreachable()
+
+#define vsm_alloca(...) __builtin_alloca(__VA_ARGS__)
+
+// NOLINTEND(modernize-macro-to-enum)

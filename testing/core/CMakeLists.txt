@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(vsm_test_tools)
+project(vsm_testing_core)
 
 find_package(vsm.cmake REQUIRED)
 vsm_define_package(vsm.testing.core)
