@@ -21,6 +21,7 @@ jobs:
 
     container:
       image: ghcr.io/vasama/actions:2024121302
+      options: --user 1001 # GitHub runner user
 
     steps:
     - uses: actions/checkout@v4
