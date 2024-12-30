@@ -1,0 +1,16 @@
+{
+	"package": "vsm.result",
+	"version": "0.1",
+	"package_type": "header-library",
+	"requirements": [
+		{
+			"package": "vsm.core",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm.testing.core",
+			"version": "0.1",
+			"configs": "test-library"
+		}
+	]
+}
