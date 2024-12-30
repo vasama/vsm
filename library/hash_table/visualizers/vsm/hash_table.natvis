@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+
+  <!-- vsm::swiss_map, vsm::swiss_set -->
+  <Type Name="vsm::detail::swiss_table::table&lt;*&gt;">
+    <DisplayString>{{ size={m.size} }}</DisplayString>
+    <Expand>
+      <Item Name="[capacity]" ExcludeView="simple">m.capacity</Item>
+      <CustomListItems>
+        <Variable Name="p_slot" InitialValue="(pointer)m.slots" />
+        <Variable Name="p_ctrl" InitialValue="(uint8_t*)(p_slot + m.capacity)" />
+
+        <Size>m.size</Size>
+        <Loop>
+          <Item Condition="*p_ctrl &lt; 0x80">*p_slot</Item>
+          <Exec>++p_slot</Exec>
+          <Exec>++p_ctrl</Exec>
+        </Loop>
+      </CustomListItems>
+    </Expand>
+  </Type>
+
+  <!-- vsm::deterministic_map, vsm::deterministic_set -->
+  <Type Name="vsm::detail::deterministic_table::table&lt;*&gt;">
+    <DisplayString>{{ size={m.size} }}</DisplayString>
+    <Expand>
+      <Item Name="[capacity]" ExcludeView="simple">(m.hash_mask + 1) * 3 / 4</Item>
+      <ArrayItems>
+        <Size>m.size</Size>
+        <ValuePointer>(pointer)m.buckets - m.size</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+</AutoVisualizer>
