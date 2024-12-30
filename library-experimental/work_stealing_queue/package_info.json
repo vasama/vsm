@@ -1,0 +1,19 @@
+{
+	"package": "vsm-work_stealing_queue",
+	"version": "0.1",
+	"package_type": "header-library",
+	"requirements": [
+		{
+			"package": "vsm-allocator",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm-core",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm-intrusive_ptr",
+			"version": "0.1"
+		}
+	]
+}

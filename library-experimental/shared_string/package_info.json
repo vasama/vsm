@@ -1,0 +1,23 @@
+{
+	"package": "vsm-shared_string",
+	"version": "0.1",
+	"package_type": "header-library",
+	"requirements": [
+		{
+			"package": "vsm-allocator",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm-core",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm-container_core",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm-vector",
+			"version": "0.1"
+		}
+	]
+}

@@ -1,0 +1,11 @@
+{
+	"package": "vsm-ascii",
+	"version": "0.1",
+	"package_type": "static-library",
+	"requirements": [
+		{
+			"package": "vsm-core",
+			"version": "0.1"
+		}
+	]
+}
