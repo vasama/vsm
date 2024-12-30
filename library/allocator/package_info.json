@@ -1,0 +1,17 @@
+{
+	"package": "vsm.allocator",
+	"version": "0.1",
+	"package_type": "header-library",
+	"requirements": [
+		{
+			"package": "vsm.any",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm.testing.allocator",
+			"version": "0.1",
+			"visible": false,
+			"test": true
+		}
+	]
+}
