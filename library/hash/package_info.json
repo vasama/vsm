@@ -1,0 +1,16 @@
+{
+	"package": "vsm-hash",
+	"version": "0.1",
+	"package_type": "header-library",
+	"requirements": [
+		{
+			"package": "vsm-core",
+			"version": "0.1"
+		},
+		{
+			"package": "xxhash",
+			"version": "0.8.2",
+			"find_package": "xxHash"
+		}
+	]
+}
