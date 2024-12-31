@@ -1,0 +1,17 @@
+[settings]
+arch=x86_64
+compiler=clang
+compiler.cppstd=23
+compiler.runtime=dynamic
+compiler.runtime_version=v144
+compiler.version=18
+os=Windows
+
+[conf]
+# The Clang-18 on GitHub Windows runners has faulty float16 emulation.
+tools.build:cxxflags+=["/clang:-march=x86-64-v3"]
+# tools.build:cxxflags+=["/clang:-march=nehalem"]
+# tools.build:exelinkflags+=["clang_rt.builtins-x86_64.lib"]
+# tools.build:sharedlinkflags+=["clang_rt.builtins-x86_64.lib"]
+tools.cmake.cmake_layout:build_folder_vars+=["const.vsm", "settings.os", "settings.compiler", "const.cl", "settings.build_type"]
+tools.cmake.cmaketoolchain:generator=Visual Studio 17 2022
