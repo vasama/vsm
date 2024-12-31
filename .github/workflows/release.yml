@@ -1,0 +1,9 @@
+name: Release
+
+on:
+  release:
+    types: [released]
+
+jobs:
+  trigger-conan-index:
+    uses: vasama/actions/.github/workflows/cxx-conan-index-release.yml@main
