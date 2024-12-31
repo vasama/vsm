@@ -1,0 +1,79 @@
+on:
+  push:
+    branches:
+    - main
+  pull_request: {}
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-24.04
+    name: linux - ${{ matrix.tool }} - ${{ matrix.config }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        tool:
+        - clang
+        - gcc
+        - clang-tidy
+        config:
+        - Debug
+        - Release
+
+    container:
+      image: ghcr.io/vasama/actions:2024121302
+      options: --user 1001 # GitHub runner user
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Create vsm.cmake
+      run: conan editable add cmake
+
+    - name: Create vsm.conan
+      run: conan editable add conan
+
+    - name: CMake/CTest (linux - ${{ matrix.tool }} - ${{ matrix.config }})
+      run: .github/testing.ps1 ${{ matrix.tool }} -Config ${{ matrix.config }} -ConanBuild missing
+
+  build-windows:
+    runs-on: windows-2022
+    name: windows - ${{ matrix.tool }} - ${{ matrix.config }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        tool:
+        - msvc
+        - clang-cl
+        - intellisense
+        config:
+        - Debug
+        - Release
+        exclude:
+        - tool: intellisense
+          config: Release
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install conan
+      run: pip3 install conan
+
+    - name: Install ninja
+      run: choco install ninja
+      if: "'${{ matrix.tool }}' == 'intellisense'"
+
+    - name: Create vsm.cmake
+      run: conan editable add cmake
+
+    - name: Create vsm.conan
+      run: conan editable add conan
+
+#    - uses: actions/cache@v3
+#      with:
+#        path: ~/.conan2
+#        key: vsm-build-${{ matrix.os }}-${{ matrix.tool }}-${{ matrix.config }}
+
+    - name: CMake/CTest (windows - ${{ matrix.tool }} - ${{ matrix.config }})
+      run: .github/testing.ps1 -SetVcVars ${{ matrix.tool }} -Config ${{ matrix.config }} -ConanBuild missing

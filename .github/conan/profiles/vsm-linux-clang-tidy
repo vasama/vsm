@@ -1,0 +1,14 @@
+[settings]
+arch=x86_64
+compiler=clang
+compiler.cppstd=23
+compiler.libcxx=libstdc++11
+compiler.version=19
+os=Linux
+
+[conf]
+tools.build:compiler_executables={"c": "clang-19", "cpp": "clang++-19"}
+tools.build:cxxflags+=["-march=nehalem"]
+tools.cmake.cmake_layout:build_folder_vars+=["const.vsm", "settings.os", "const.clang-tidy", "settings.build_type"]
+tools.cmake.cmaketoolchain:generator=Ninja
+tools.cmake.cmaketoolchain:extra_variables={"CMAKE_EXPORT_COMPILE_COMMANDS": "ON"}
