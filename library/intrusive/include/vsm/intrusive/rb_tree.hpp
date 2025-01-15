@@ -61,12 +61,12 @@ struct _rb
 
 		[[nodiscard]] T& operator*() const
 		{
-			return *links::get_elem<T, Tag>(reinterpret_cast<hook*>(m_children));
+			return *linker::get_elem<T, Tag>(reinterpret_cast<hook*>(m_children));
 		}
 
 		[[nodiscard]] T* operator->() const
 		{
-			return links::get_elem<T, Tag>(reinterpret_cast<hook*>(m_children));
+			return linker::get_elem<T, Tag>(reinterpret_cast<hook*>(m_children));
 		}
 
 
@@ -309,7 +309,7 @@ public:
 		}
 
 		_rb::insert(
-			detail::links::construct<hook, tag_type>(std::addressof(element)),
+			detail::linker::construct<hook, tag_type>(std::addressof(element)),
 			const_pointer_cast<ptr<hook*>>(r.parent));
 
 		return { iterator(get_hook(std::addressof(element))->children), true };
@@ -387,12 +387,12 @@ public:
 private:
 	[[nodiscard]] static auto* get_hook(auto* const element)
 	{
-		return detail::links::get_hook<hook, tag_type>(element);
+		return detail::linker::get_hook<hook, tag_type>(element);
 	}
 
 	[[nodiscard]] static auto* get_elem(auto* const hook)
 	{
-		return detail::links::get_elem<element_type, tag_type>(hook);
+		return detail::linker::get_elem<element_type, tag_type>(hook);
 	}
 
 	template<typename Key>

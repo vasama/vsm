@@ -35,12 +35,12 @@ struct _flist
 
 		[[nodiscard]] T& operator*() const
 		{
-			return *links::get_elem<T, Tag>(m_node);
+			return *linker::get_elem<T, Tag>(m_node);
 		}
 
 		[[nodiscard]] T* operator->() const
 		{
-			return links::get_elem<T, Tag>(m_node);
+			return linker::get_elem<T, Tag>(m_node);
 		}
 
 
@@ -272,17 +272,17 @@ public:
 private:
 	[[nodiscard]] static hook* make_hook(element_type* const element)
 	{
-		return detail::links::construct<hook, tag_type>(element);
+		return detail::linker::construct<hook, tag_type>(element);
 	}
 
 	[[nodiscard]] static auto* get_hook(auto* const element)
 	{
-		return detail::links::get_hook<hook, tag_type>(element);
+		return detail::linker::get_hook<hook, tag_type>(element);
 	}
 
 	[[nodiscard]] static auto* get_elem(auto* const hook)
 	{
-		return detail::links::get_elem<element_type, tag_type>(hook);
+		return detail::linker::get_elem<element_type, tag_type>(hook);
 	}
 };
 

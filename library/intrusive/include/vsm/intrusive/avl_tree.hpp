@@ -53,7 +53,7 @@ struct _avl
 		}
 
 		explicit iterator(T* const element)
-			: m_children(detail::links::get_hook<hook, Tag>(element)->children)
+			: m_children(detail::linker::get_hook<hook, Tag>(element)->children)
 		{
 		}
 
@@ -67,13 +67,13 @@ struct _avl
 		[[nodiscard]] T& operator*() const
 		{
 			static_assert(check<T, Tag, hook>);
-			return *links::get_elem<T, Tag>(vsm_detail_avl_hook_from_children(m_children));
+			return *linker::get_elem<T, Tag>(vsm_detail_avl_hook_from_children(m_children));
 		}
 
 		[[nodiscard]] T* operator->() const
 		{
 			static_assert(check<T, Tag, hook>);
-			return links::get_elem<T, Tag>(vsm_detail_avl_hook_from_children(m_children));
+			return linker::get_elem<T, Tag>(vsm_detail_avl_hook_from_children(m_children));
 		}
 
 
@@ -345,7 +345,7 @@ public:
 		}
 
 		_avl::insert(
-			detail::links::construct<hook, tag_type>(std::addressof(element)),
+			detail::linker::construct<hook, tag_type>(std::addressof(element)),
 			const_pointer_cast<ptr<ptr<hook>>>(r.parent));
 
 		return { iterator(get_hook(std::addressof(element))->children), true };
@@ -369,7 +369,7 @@ public:
 		}
 
 		_avl::insert(
-			detail::links::construct<hook, tag_type>(element),
+			detail::linker::construct<hook, tag_type>(element),
 			const_pointer_cast<ptr<ptr<hook>>>(r.parent));
 
 		return { element, true };
@@ -492,12 +492,12 @@ public:
 private:
 	[[nodiscard]] static auto* get_hook(auto* const element)
 	{
-		return detail::links::get_hook<hook, tag_type>(element);
+		return detail::linker::get_hook<hook, tag_type>(element);
 	}
 
 	[[nodiscard]] static auto* get_elem(auto* const hook)
 	{
-		return detail::links::get_elem<element_type, tag_type>(hook);
+		return detail::linker::get_elem<element_type, tag_type>(hook);
 	}
 
 	template<typename Key>

@@ -155,7 +155,7 @@ public:
 	/// @pre @p element is not part of any container.
 	void push(element_type& element)
 	{
-		_heap::push(detail::links::construct<hook, tag_type>(std::addressof(element)), comparator);
+		_heap::push(detail::linker::construct<hook, tag_type>(std::addressof(element)), comparator);
 	}
 
 	/// @brief Remove an element from the heap.
@@ -186,12 +186,12 @@ public:
 private:
 	[[nodiscard]] static auto* get_hook(auto* const element)
 	{
-		return detail::links::get_hook<hook, tag_type>(element);
+		return detail::linker::get_hook<hook, tag_type>(element);
 	}
 
 	[[nodiscard]] static auto* get_elem(auto* const hook)
 	{
-		return detail::links::get_elem<element_type, tag_type>(hook);
+		return detail::linker::get_elem<element_type, tag_type>(hook);
 	}
 
 	static bool comparator(_heap const& base, hook const* const lhs, hook const* const rhs)

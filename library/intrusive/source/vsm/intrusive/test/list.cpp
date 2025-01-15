@@ -146,4 +146,16 @@ TEST_CASE("list::remove during iteration.", "[intrusive][list]")
 	CHECK(++beg == end);
 }
 
+TEST_CASE("list element with private link", "[intrusive][list]")
+{
+	class private_element : list_link
+	{
+		friend vsm::intrusive::access;
+	};
+
+	private_element e;
+	vsm::intrusive::list<private_element> list;
+	list.push_back(e);
+}
+
 } // namespace

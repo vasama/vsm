@@ -65,8 +65,7 @@ _mpscq::hook_pair _mpscq::pop_all_lifo()
 
 	pair = m_atom.exchange(hook_pair{}, std::memory_order_acq_rel);
 
-	// Only the consumer can make the head null
-	// and the consumer is externally synchronized.
+	// Only the consumer can make the head null and the consumer is externally synchronized.
 	vsm_assert(pair.head != nullptr);
 
 	return pair;

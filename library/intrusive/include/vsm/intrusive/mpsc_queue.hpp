@@ -51,7 +51,7 @@ public:
 	/// @pre @p element is not null.
 	bool push_back(element_type& element)
 	{
-		return _mpscq::push_one(detail::links::construct<hook, tag_type>(std::addressof(element)));
+		return _mpscq::push_one(detail::linker::construct<hook, tag_type>(std::addressof(element)));
 	}
 
 	/// @brief Splice a list of elements at the end of the queue.
