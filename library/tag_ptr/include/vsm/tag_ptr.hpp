@@ -226,7 +226,7 @@ public:
 		return reinterpret_cast<T*>(m_value & ptr_mask);
 	}
 
-	[[nodiscard]] T& operator[](ptrdiff_t const index) const
+	[[nodiscard]] std::add_lvalue_reference_t<T> operator[](ptrdiff_t const index) const
 	{
 		return reinterpret_cast<T*>(m_value & ptr_mask)[index];
 	}
