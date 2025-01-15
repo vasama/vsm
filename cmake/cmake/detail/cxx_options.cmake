@@ -32,18 +32,13 @@ if("${vsm_compiler_frontend}" STREQUAL "GNU" OR DEFINED "gnu_prefix")
 		INTERFACE
 			${gnu_prefix}-Wall
 			${gnu_prefix}-Wextra
-			${gnu_prefix}-Wpedantic
 			${gnu_prefix}-Werror
 
 			# Disable default warnings
-			${gnu_prefix}-Wno-c99-extensions
-			${gnu_prefix}-Wno-gnu-anonymous-struct
 			${gnu_prefix}-Wno-invalid-offsetof
 			${gnu_prefix}-Wno-missing-field-initializers #TODO: Consider turning this back on
-			${gnu_prefix}-Wno-nested-anon-types
 			${gnu_prefix}-Wno-parentheses
 			${gnu_prefix}-Wno-unused-parameter
-			${gnu_prefix}-Wno-zero-length-array
 
 			# C/C++
 			${gnu_prefix}-Wconversion
@@ -75,6 +70,11 @@ if("${vsm_compiler_frontend}" STREQUAL "GNU" OR DEFINED "gnu_prefix")
 			INTERFACE
 				${gnu_prefix}-Wformat-overflow
 				${gnu_prefix}-Wmissing-prototypes
+
+				${gnu_prefix}-Wno-c99-extensions
+				${gnu_prefix}-Wno-gnu-anonymous-struct
+				${gnu_prefix}-Wno-nested-anon-types
+				${gnu_prefix}-Wno-zero-length-array
 		)
 	endif()
 endif()
