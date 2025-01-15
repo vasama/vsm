@@ -84,7 +84,7 @@ public:
 			reinterpret_cast<uintptr_t>(this) + static_cast<uintptr_t>(m_offset));
 	}
 
-	[[nodiscard]] T& operator*() const
+	[[nodiscard]] std::add_lvalue_reference_t<T> operator*() const
 	{
 		vsm_assert(m_offset != 0);
 
@@ -100,9 +100,10 @@ public:
 			reinterpret_cast<uintptr_t>(this) + static_cast<uintptr_t>(m_offset));
 	}
 
-	[[nodiscard]] T& operator[](ptrdiff_t const offset) const
+	[[nodiscard]] std::add_lvalue_reference_t<T> operator[](ptrdiff_t const offset) const
 	{
 		vsm_assert(m_offset != 0);
+
 		return reinterpret_cast<T*>(
 			reinterpret_cast<uintptr_t>(this) + static_cast<uintptr_t>(m_offset))[offset];
 	}
