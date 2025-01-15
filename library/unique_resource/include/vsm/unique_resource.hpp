@@ -33,42 +33,42 @@ public:
 	static constexpr sentinel_type sentinel = Sentinel;
 
 
-	[[nodiscard]] Resource const& get() const noexcept
+	[[nodiscard]] constexpr Resource const& get() const noexcept
 	{
 		vsm_assert(m_resource != Sentinel);
 		return m_resource;
 	}
 
-	[[nodiscard]] explicit operator bool() const noexcept
+	[[nodiscard]] explicit constexpr operator bool() const noexcept
 	{
 		return m_resource != Sentinel;
 	}
 
 private:
-	unique_resource_storage(Resource const resource = Sentinel) noexcept
+	constexpr unique_resource_storage(Resource const resource = Sentinel) noexcept
 		: m_resource(resource)
 	{
 	}
 
-	unique_resource_storage(unique_resource_storage&& source) noexcept
+	constexpr unique_resource_storage(unique_resource_storage&& source) noexcept
 		: m_resource(source.m_resource)
 	{
 		source.m_resource = Sentinel;
 	}
 
-	unique_resource_storage& operator=(unique_resource_storage&& source) noexcept
+	constexpr unique_resource_storage& operator=(unique_resource_storage&& source) noexcept
 	{
 		m_resource = source.m_resource;
 		source.m_resource = Sentinel;
 		return *this;
 	}
 
-	void set(Resource const resource) noexcept
+	constexpr void set(Resource const resource) noexcept
 	{
 		m_resource = resource;
 	}
 
-	void clear() noexcept
+	constexpr void clear() noexcept
 	{
 		m_resource = Sentinel;
 	}
@@ -83,12 +83,12 @@ class unique_resource_storage<Resource, unique_resource_sentinel>
 	std::optional<Resource> m_resource;
 
 public:
-	[[nodiscard]] Resource const& get() const noexcept
+	[[nodiscard]] constexpr Resource const& get() const noexcept
 	{
 		return *m_resource;
 	}
 
-	[[nodiscard]] explicit operator bool() const noexcept
+	[[nodiscard]] explicit constexpr operator bool() const noexcept
 	{
 		return m_resource.has_value();
 	}
@@ -96,30 +96,30 @@ public:
 private:
 	unique_resource_storage() = default;
 
-	unique_resource_storage(Resource const resource) noexcept
+	constexpr unique_resource_storage(Resource const resource) noexcept
 		: m_resource(resource)
 	{
 	}
 
-	unique_resource_storage(unique_resource_storage&& source) noexcept
+	constexpr unique_resource_storage(unique_resource_storage&& source) noexcept
 		: m_resource(source.m_resource)
 	{
 		source.m_resource.reset();
 	}
 
-	unique_resource_storage& operator=(unique_resource_storage&& source) noexcept
+	constexpr unique_resource_storage& operator=(unique_resource_storage&& source) noexcept
 	{
 		m_resource = source.m_resource;
 		source.m_resource.reset();
 		return *this;
 	}
 
-	void set(Resource const resource) noexcept
+	constexpr void set(Resource const resource) noexcept
 	{
 		m_resource = resource;
 	}
 
-	void clear() noexcept
+	constexpr void clear() noexcept
 	{
 		m_resource.reset();
 	}
