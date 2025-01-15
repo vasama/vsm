@@ -205,20 +205,25 @@ class root:
 		root_prefix_regex = f"{re.escape(self.name)}[\\.\\+\\-].+"
 		package_versions = {}
 
+		def visit_directory(path, filter_root_prefix):
+			for requirement in _vsm_read_package_requirements(path, recurse=False):
+				if filter_root_prefix and re.match(root_prefix_regex, requirement.package):
+					continue
+
+				previous_version = package_versions.get(requirement.package)
+				if previous_version is not None:
+					if requirement.version != previous_version:
+						raise ConanException(f"Mismatched version requirements: '{requirement.version}' and '{previous_version}'")
+					continue
+				package_versions[requirement.package] = requirement.version
+
+				self.requires(str(requirement), **requirement.arguments)
+
+		visit_directory(self.recipe_folder, filter_root_prefix=False)
+
 		for subdirectory in self.conan_data.get("subdirectories", []):
 			for path in glob.iglob(os.path.join(self.recipe_folder, subdirectory)):
 				if not os.path.isdir(path):
 					continue
 
-				for requirement in _vsm_read_package_requirements(path, recurse=False):
-					if re.match(root_prefix_regex, requirement.package):
-						continue
-
-					previous_version = package_versions.get(requirement.package)
-					if previous_version is not None:
-						if requirement.version != previous_version:
-							raise ConanException(f"Mismatched version requirements: '{requirement.version}' and '{previous_version}'")
-						continue
-					package_versions[requirement.package] = requirement.version
-
-					self.requires(str(requirement), **requirement.arguments)
+				visit_directory(path, filter_root_prefix=True)
