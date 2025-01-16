@@ -18,6 +18,13 @@ static_assert(std::bidirectional_iterator<list_type::iterator>);
 static_assert(std::bidirectional_iterator<list_type::const_iterator>);
 static_assert(std::ranges::bidirectional_range<list_type>);
 
+static bool check_values(list_type const& list, std::initializer_list<int> const values)
+{
+	return std::ranges::equal(
+		list | std::views::transform([](element const& e) { return e.value; }),
+		values);
+}
+
 TEST_CASE("list::push_back", "[intrusive][list]")
 {
 	list_type list;
@@ -58,6 +65,40 @@ TEST_CASE("list::push_front", "[intrusive][list]")
 	CHECK(list.size() == 3);
 	CHECK(list.front().value == 3);
 	CHECK(list.back().value == 1);
+}
+
+TEST_CASE("list::insert_before and insert_after", "[intrusive][list]")
+{
+	list_type list;
+	elements e;
+
+	auto& e1 = e(1);
+	list.push_back(e1);
+
+	auto& e3 = e(3);
+	list.push_back(e3);
+
+	SECTION("insert_before e3")
+	{
+		list.insert_before(e3, e(2));
+	}
+
+	SECTION("insert_before e3 iterator")
+	{
+		list.insert_before(list.make_iterator(e3), e(2));
+	}
+
+	SECTION("insert_after e1")
+	{
+		list.insert_after(e1, e(2));
+	}
+
+	SECTION("insert_after e1 iterator")
+	{
+		list.insert_after(list.make_iterator(e1), e(2));
+	}
+
+	CHECK(check_values(list, { 1, 2, 3 }));
 }
 
 TEST_CASE("list iteration.", "[intrusive][list]")

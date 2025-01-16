@@ -11,6 +11,10 @@
 #include <utility>
 
 namespace vsm::intrusive {
+
+template<typename T>
+class list;
+
 namespace detail {
 
 struct _list
@@ -29,7 +33,7 @@ struct _list
 	template<typename T, typename Tag, bool Direction = 0>
 	class iterator
 	{
-		hook* m_node;
+		hook* m_hook;
 
 	public:
 		using difference_type = ptrdiff_t;
@@ -41,7 +45,7 @@ struct _list
 		iterator() = default;
 
 		explicit iterator(hook* const node)
-			: m_node(node)
+			: m_hook(node)
 		{
 		}
 
@@ -49,44 +53,48 @@ struct _list
 		[[nodiscard]] T& operator*() const
 		{
 			static_assert(check<T, Tag, hook>);
-			return *linker::get_elem<remove_cv_t<T>, Tag>(m_node);
+			return *linker::get_elem<remove_cv_t<T>, Tag>(m_hook);
 		}
 
 		[[nodiscard]] T* operator->() const
 		{
 			static_assert(check<T, Tag, hook>);
-			return linker::get_elem<remove_cv_t<T>, Tag>(m_node);
+			return linker::get_elem<remove_cv_t<T>, Tag>(m_hook);
 		}
 
 
 		iterator& operator++() &
 		{
-			m_node = m_node->siblings[Direction];
+			m_hook = m_hook->siblings[Direction];
 			return *this;
 		}
 
 		[[nodiscard]] iterator operator++(int) &
 		{
 			iterator result = *this;
-			m_node = m_node->siblings[Direction];
+			m_hook = m_hook->siblings[Direction];
 			return result;
 		}
 
 		iterator& operator--() &
 		{
-			m_node = m_node->siblings[!Direction];
+			m_hook = m_hook->siblings[!Direction];
 			return *this;
 		}
 
 		[[nodiscard]] iterator operator--(int) &
 		{
 			iterator result = *this;
-			m_node = m_node->siblings[!Direction];
+			m_hook = m_hook->siblings[!Direction];
 			return result;
 		}
 
 
 		[[nodiscard]] friend bool operator==(iterator const&, iterator const&) = default;
+
+	private:
+		template<typename>
+		friend class intrusive::list;
 	};
 
 
@@ -274,10 +282,17 @@ public:
 		_list::insert(
 			get_hook(std::addressof(existing)),
 			make_hook(std::addressof(element)),
-			/* before: */ false);
+			/* before: */ true);
 	}
 
-	void insert_before(iterator const existing, element_type& element);
+	void insert_before(iterator const existing, element_type& element)
+	{
+		static_assert(detail::check<element_type, tag_type, hook>);
+		_list::insert(
+			existing.m_hook,
+			make_hook(std::addressof(element)),
+			/* before: */ true);
+	}
 
 	void splice_before(element_type& existing, list<T>&& list);
 	void splice_before(iterator const existing, list<T>&& list);
@@ -293,10 +308,17 @@ public:
 		_list::insert(
 			get_hook(std::addressof(existing)),
 			make_hook(std::addressof(element)),
-			/* before: */ true);
+			/* before: */ false);
 	}
 
-	void insert_after(iterator const existing, element_type& element);
+	void insert_after(iterator const existing, element_type& element)
+	{
+		static_assert(detail::check<element_type, tag_type, hook>);
+		_list::insert(
+			existing.m_hook,
+			make_hook(std::addressof(element)),
+			/* before: */ false);
+	}
 
 	void splice_after(element_type& existing, list<T>&& list);
 	void splice_after(iterator const existing, list<T>&& list);
