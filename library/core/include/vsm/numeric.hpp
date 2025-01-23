@@ -123,6 +123,20 @@ constexpr bool _loses_precision(From const from)
 struct loses_precision_t {};
 
 
+template<std::integral To, std::integral From>
+constexpr bool loses_precision(From const from)
+{
+	if constexpr (detail::_may_lose_precision<To, From>())
+	{
+		if (detail::_loses_precision<To>(from))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+
 template<std::integral To, std::unsigned_integral From>
 constexpr To saturate(From const from)
 {
