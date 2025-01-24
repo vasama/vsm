@@ -11,132 +11,86 @@
 namespace vsm {
 namespace detail {
 
-enum { unique_resource_sentinel };
+struct unique_resource_sentinel_t {};
+inline constexpr unique_resource_sentinel_t unique_resource_no_sentinel = {};
 
 struct null_resource_t {};
 inline constexpr null_resource_t null_resource = {};
 
-template<typename Resource, typename Deleter, auto Sentinel = unique_resource_sentinel>
+template<typename Resource, typename Deleter, auto Sentinel = unique_resource_no_sentinel>
 class unique_resource;
 
-template<typename Resource, auto Sentinel = unique_resource_sentinel>
-class unique_resource_storage
+template<typename Resource, Resource Sentinel>
+class unique_resource_optional
 {
-	Resource m_resource;
+	Resource m_value;
 
 public:
-	using resource_type = Resource;
-
-	using sentinel_type = decltype(Sentinel);
-	static_assert(std::is_convertible_v<sentinel_type, Resource>);
-
-	static constexpr sentinel_type sentinel = Sentinel;
-
-
-	[[nodiscard]] constexpr Resource const& get() const noexcept
+	constexpr unique_resource_optional()
+		: m_value(Sentinel)
 	{
-		vsm_assert(m_resource != Sentinel);
-		return m_resource;
+	}
+
+	template<typename... Args>
+		requires std::constructible_from<Resource, Args...>
+	constexpr unique_resource_optional(Args&&... args)
+		: m_value(vsm_forward(args)...)
+	{
+	}
+
+	[[nodiscard]] constexpr Resource const& operator*() const noexcept
+	{
+		return m_value;
+	}
+
+	template<typename... Args>
+		requires std::constructible_from<Resource, Args...>
+	constexpr void emplace(Args&&... args)
+	{
+		m_value = Resource(vsm_forward(args)...);
+	}
+
+	constexpr void reset() noexcept
+	{
+		m_value = Sentinel;
+	}
+
+	constexpr void swap(unique_resource_optional& other) noexcept
+	{
+		using std::swap;
+		swap(this->m_value, other.m_value);
 	}
 
 	[[nodiscard]] explicit constexpr operator bool() const noexcept
 	{
-		return m_resource != Sentinel;
+		return m_value != Sentinel;
 	}
-
-private:
-	constexpr unique_resource_storage(Resource const resource = Sentinel) noexcept
-		: m_resource(resource)
-	{
-	}
-
-	constexpr unique_resource_storage(unique_resource_storage&& source) noexcept
-		: m_resource(source.m_resource)
-	{
-		source.m_resource = Sentinel;
-	}
-
-	constexpr unique_resource_storage& operator=(unique_resource_storage&& source) noexcept
-	{
-		m_resource = source.m_resource;
-		source.m_resource = Sentinel;
-		return *this;
-	}
-
-	constexpr void set(Resource const resource) noexcept
-	{
-		m_resource = resource;
-	}
-
-	constexpr void clear() noexcept
-	{
-		m_resource = Sentinel;
-	}
-
-	template<typename, typename, auto>
-	friend class unique_resource;
 };
 
-template<typename Resource>
-class unique_resource_storage<Resource, unique_resource_sentinel>
+template<auto Sentinel>
+struct select_unique_resource_optional
 {
-	std::optional<Resource> m_resource;
+	template<typename Resource>
+	using type = unique_resource_optional<Resource, Sentinel>;
+};
 
-public:
-	[[nodiscard]] constexpr Resource const& get() const noexcept
-	{
-		return *m_resource;
-	}
-
-	[[nodiscard]] explicit constexpr operator bool() const noexcept
-	{
-		return m_resource.has_value();
-	}
-
-private:
-	unique_resource_storage() = default;
-
-	constexpr unique_resource_storage(Resource const resource) noexcept
-		: m_resource(resource)
-	{
-	}
-
-	constexpr unique_resource_storage(unique_resource_storage&& source) noexcept
-		: m_resource(source.m_resource)
-	{
-		source.m_resource.reset();
-	}
-
-	constexpr unique_resource_storage& operator=(unique_resource_storage&& source) noexcept
-	{
-		m_resource = source.m_resource;
-		source.m_resource.reset();
-		return *this;
-	}
-
-	constexpr void set(Resource const resource) noexcept
-	{
-		m_resource = resource;
-	}
-
-	constexpr void clear() noexcept
-	{
-		m_resource.reset();
-	}
-
-	template<typename, typename, auto>
-	friend class unique_resource;
+template<>
+struct select_unique_resource_optional<unique_resource_no_sentinel>
+{
+	template<typename Resource>
+	using type = std::optional<Resource>;
 };
 
 template<typename Resource, typename Deleter, auto Sentinel>
-class unique_resource : public unique_resource_storage<Resource, Sentinel>
+class unique_resource
 {
-	using storage_type = unique_resource_storage<Resource, Sentinel>;
+	using optional_type = select_unique_resource_optional<Sentinel>::template type<Resource>;
 
 	static_assert(std::is_trivially_copyable_v<Resource>);
 	static_assert(std::is_nothrow_move_constructible_v<Deleter>);
 	static_assert(std::is_nothrow_move_assignable_v<Deleter>);
 
+	optional_type m_optional;
 	vsm_no_unique_address Deleter m_deleter;
 
 public:
@@ -161,57 +115,60 @@ public:
 	}
 
 	explicit constexpr unique_resource(Resource const resource) noexcept
-		: storage_type(resource)
+		: m_optional(resource)
 	{
 	}
 
 	explicit constexpr unique_resource(Resource const resource, Deleter&& deleter) noexcept
-		: storage_type(resource)
+		: m_optional(resource)
 		, m_deleter(vsm_move(deleter))
 	{
 	}
 
 	explicit constexpr unique_resource(Resource const resource, Deleter const& deleter) noexcept
-		: storage_type(resource)
+		: m_optional(resource)
 		, m_deleter(deleter)
 	{
 	}
 
-	constexpr unique_resource(unique_resource&& source) noexcept
-		: storage_type(static_cast<storage_type&&>(source))
-		, m_deleter(vsm_move(source.m_deleter))
+	constexpr unique_resource(unique_resource&& other) noexcept
+		: m_optional(other.m_optional)
+		, m_deleter(vsm_move(other.m_deleter))
 	{
+		other.m_optional.reset();
 	}
 
 	constexpr unique_resource& operator=(null_resource_t) & noexcept
 	{
-		if (*this)
+		if (m_optional)
 		{
-			m_deleter(this->get());
-			this->clear();
+			m_deleter(*m_optional);
+			m_optional.reset();
 		}
 		return *this;
 	}
 
-	constexpr unique_resource& operator=(unique_resource&& source) & noexcept
+	constexpr unique_resource& operator=(unique_resource&& other) & noexcept
 	{
-		if (*this)
-		{
-			m_deleter(this->get());
-		}
-		static_cast<storage_type&>(*this) = static_cast<storage_type&&>(source);
-		m_deleter = vsm_move(source.m_deleter);
+		auto local = vsm_move(other);
+		swap(local, *this);
 		return *this;
 	}
 
 	constexpr ~unique_resource() noexcept
 	{
-		if (*this)
+		if (m_optional)
 		{
-			m_deleter(this->get());
+			m_deleter(*m_optional);
 		}
 	}
 
+
+	[[nodiscard]] constexpr Resource const& get() const
+	{
+		vsm_assert(m_optional);
+		return *m_optional;
+	}
 
 	[[nodiscard]] constexpr Deleter const& get_deleter() const noexcept
 	{
@@ -219,31 +176,42 @@ public:
 	}
 
 
-	[[nodiscard]] constexpr Resource release() noexcept
+	[[nodiscard]] constexpr Resource release()
 	{
-		Resource resource = this->get();
-		this->clear();
-		return resource;
+		vsm_assert(m_optional);
+		auto const r = *m_optional;
+		m_optional.reset();
+		return r;
 	}
 
 	constexpr void reset() & noexcept
 	{
-		if (*this)
+		if (m_optional)
 		{
-			m_deleter(this->get());
+			m_deleter(*m_optional);
 		}
-		this->clear();
+		m_optional.reset();
 	}
 
 	constexpr void reset(Resource const resource) & noexcept
 	{
-		if (*this)
+		if (m_optional)
 		{
-			m_deleter(this->get());
+			m_deleter(*m_optional);
 		}
-		this->set(resource);
+		m_optional.emplace(resource);
 	}
 
+	friend constexpr void swap(unique_resource& lhs, unique_resource& rhs) noexcept
+	{
+		lhs.m_optional.swap(rhs.m_optional);
+	}
+
+
+	[[nodiscard]] explicit constexpr operator bool() const noexcept
+	{
+		return static_cast<bool>(m_optional);
+	}
 
 	[[nodiscard]] friend constexpr bool operator==(
 		unique_resource const& lhs,
@@ -274,36 +242,11 @@ public:
 	}
 };
 
-
-#if 0
-template<typename T>
-concept unique_resource_concept = requires (T&& t)
-{
-	t.get();
-	{ t.release() } -> std::same_as<std::remove_cvref_t<decltype(t.get())>>;
-};
-
-template<typename Consumer, unique_resource_concept... Resources>
-[[nodiscard]] decltype(auto) consume_resources(Consumer&& consumer, Resources&&... resources)
-{
-	decltype(auto) r = vsm_forward(consumer)(resources.get()...);
-	if (r)
-	{
-		((void)resources.release(), ...);
-	}
-	return r;
-}
-#endif
-
 } // namespace detail
 
 using detail::null_resource_t;
 using detail::null_resource;
 
 using detail::unique_resource;
-
-#if 0
-using detail::consume_resources;
-#endif
 
 } // namespace vsm

@@ -114,6 +114,14 @@ public:
 };
 
 
+using compact_unique_resource = unique_resource<
+	resource,
+	stateless_deleter,
+	static_cast<size_t>(-1)>;
+
+static_assert(sizeof(compact_unique_resource) == sizeof(resource));
+
+
 using unique_resource_types = std::tuple
 <
 	unique_resource<resource, stateless_deleter>,
