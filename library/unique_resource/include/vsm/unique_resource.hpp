@@ -20,7 +20,7 @@ inline constexpr null_resource_t null_resource = {};
 template<typename Resource, typename Deleter, auto Sentinel = unique_resource_no_sentinel>
 class unique_resource;
 
-template<typename Resource, Resource Sentinel>
+template<typename Resource, auto Sentinel>
 class unique_resource_optional
 {
 	Resource m_value;
@@ -67,24 +67,36 @@ public:
 	}
 };
 
-template<auto Sentinel>
-struct select_unique_resource_optional
+template<typename Resource, auto Sentinel>
+class unique_resource_base
 {
-	template<typename Resource>
-	using type = unique_resource_optional<Resource, Sentinel>;
+	static_assert(std::is_convertible_v<decltype(Sentinel), Resource>);
+
+	using optional_type = unique_resource_optional<Resource, Sentinel>;
+
+public:
+	using sentinel_type = decltype(Sentinel);
+	static constexpr sentinel_type sentinel = Sentinel;
+
+private:
+	template<typename, typename, auto>
+	friend class unique_resource;
 };
 
-template<>
-struct select_unique_resource_optional<unique_resource_no_sentinel>
+template<typename Resource>
+class unique_resource_base<Resource, unique_resource_no_sentinel>
 {
-	template<typename Resource>
-	using type = std::optional<Resource>;
+	using optional_type = std::optional<Resource>;
+
+	template<typename, typename, auto>
+	friend class unique_resource;
 };
 
 template<typename Resource, typename Deleter, auto Sentinel>
-class unique_resource
+class unique_resource : public unique_resource_base<Resource, Sentinel>
 {
-	using optional_type = select_unique_resource_optional<Sentinel>::template type<Resource>;
+	using base_type = unique_resource_base<Resource, Sentinel>;
+	using optional_type = typename base_type::optional_type;
 
 	static_assert(std::is_trivially_copyable_v<Resource>);
 	static_assert(std::is_nothrow_move_constructible_v<Deleter>);

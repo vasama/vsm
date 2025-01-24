@@ -1,4 +1,5 @@
 #include <vsm/unique_resource.hpp>
+#include <vsm/out_resource.hpp>
 
 #include <catch2/catch_all.hpp>
 
@@ -11,6 +12,8 @@ using namespace vsm;
 namespace {
 
 using resource = size_t;
+static constexpr resource null = static_cast<size_t>(-1);
+
 
 class dispenser
 {
@@ -35,7 +38,7 @@ public:
 			s_global = nullptr;
 		}
 
-		CHECK(std::ranges::all_of(m_resources, [](bool const x) { return x; }));
+		CHECK(std::ranges::all_of(m_resources, std::identity()));
 	}
 
 	resource acquire()
@@ -114,24 +117,16 @@ public:
 };
 
 
-using compact_unique_resource = unique_resource<
-	resource,
-	stateless_deleter,
-	static_cast<size_t>(-1)>;
-
-static_assert(sizeof(compact_unique_resource) == sizeof(resource));
-
-
 using unique_resource_types = std::tuple
 <
 	unique_resource<resource, stateless_deleter>,
-	unique_resource<resource, stateless_deleter, static_cast<size_t>(-1)>,
+	unique_resource<resource, stateless_deleter, null>,
 
 	unique_resource<resource, trivial_stateful_deleter>,
-	unique_resource<resource, trivial_stateful_deleter, static_cast<size_t>(-1)>,
+	unique_resource<resource, trivial_stateful_deleter, null>,
 
 	unique_resource<resource, non_trivial_stateful_deleter>,
-	unique_resource<resource, non_trivial_stateful_deleter, static_cast<size_t>(-1)>
+	unique_resource<resource, non_trivial_stateful_deleter, null>
 >;
 
 TEMPLATE_LIST_TEST_CASE("unique_resource construction", "[unique_resource]", unique_resource_types)
@@ -207,6 +202,85 @@ TEMPLATE_LIST_TEST_CASE("unique_resource release", "[unique_resource]", unique_r
 	dispenser.release(r.release());
 
 	CHECK(!static_cast<bool>(r));
+}
+
+
+using compact_unique_resource = unique_resource<
+	resource,
+	stateless_deleter,
+	null>;
+
+static_assert(sizeof(compact_unique_resource) == sizeof(resource));
+
+TEST_CASE("unique_resource can be passed via out_resource or inout_resource", "[unique_resource]")
+{
+	dispenser dispenser;
+
+	compact_unique_resource r(null_resource, dispenser);
+	//if (GENERATE(0, 1))
+	{
+		r.reset(dispenser.acquire());
+	}
+
+#if 0
+	SECTION("out_resource")
+	{
+		auto const produce_resource = [&](resource* const out) -> resource
+		{
+			if (GENERATE(0, 1))
+			{
+				return *out = dispenser.acquire();
+			}
+
+			return null;
+		};
+
+		resource const new_resource = produce_resource(out_resource(r));
+		REQUIRE(static_cast<bool>(r) == (new_resource != null));
+
+		if (r)
+		{
+			REQUIRE(r.get() == new_resource);
+		}
+	}
+#endif
+
+	SECTION("inout_resource")
+	{
+		resource const old_resource = r ? r.get() : null;
+
+		auto const produce_resource = [&](resource* const inout) -> resource
+		{
+			REQUIRE(*inout == old_resource);
+
+			if (GENERATE(0, 1))
+			{
+				return old_resource;
+			}
+
+			if (*inout != null)
+			{
+				dispenser.release(*inout);
+			}
+
+			if (GENERATE(0, 1))
+			{
+				return *inout = dispenser.acquire();
+			}
+			else
+			{
+				return *inout = null;
+			}
+		};
+
+		resource const new_resource = produce_resource(inout_resource(r));
+		REQUIRE(static_cast<bool>(r) == (new_resource != null));
+
+		if (r)
+		{
+			REQUIRE(r.get() == new_resource);
+		}
+	}
 }
 
 } // namespace

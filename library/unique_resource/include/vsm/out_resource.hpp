@@ -5,6 +5,30 @@
 namespace vsm {
 namespace detail {
 
+template<typename Owner>
+typename Owner::resource_type release_resource(Owner& owner)
+{
+	if (owner)
+	{
+		return owner.release();
+	}
+
+	return Owner::sentinel;
+}
+
+template<typename Owner, typename Resource, typename... Args>
+void reset_resource(Owner& owner, Resource&& resource, Args&... args)
+{
+	if constexpr (requires { owner.reset(vsm_move(resource), vsm_forward(args)...); })
+	{
+		owner.reset(vsm_move(resource), vsm_forward(args)...);
+	}
+	else
+	{
+		owner = Owner(vsm_move(resource), vsm_forward(args)...);
+	}
+}
+
 template<typename Owner, typename Resource, typename... Args>
 class out_resource_type
 {
@@ -29,19 +53,16 @@ public:
 		{
 			std::apply([&](auto&&... args)
 			{
-				if constexpr (requires { m_owner.reset(vsm_move(m_resource), vsm_forward(args)...); })
-				{
-					m_owner.reset(vsm_move(m_resource), vsm_forward(args)...);
-				}
-				else
-				{
-					m_owner = Owner(vsm_move(m_resource), vsm_forward(args)...);
-				}
+				reset_resource(m_owner, vsm_move(m_resource), vsm_forward(args)...);
 			}, vsm_move(m_args));
+		}
+		else
+		{
+			m_owner.reset();
 		}
 	}
 
-	operator Resource*() const noexcept
+	[[nodiscard]] operator Resource*() const noexcept
 	{
 		return &m_resource;
 	}
@@ -58,7 +79,7 @@ public:
 	explicit inout_resource_type(Owner& owner, Args&&... args)
 		: m_owner(owner)
 		, m_args(vsm_forward(args)...)
-		, m_resource(owner.release())
+		, m_resource(detail::release_resource(owner))
 	{
 	}
 
@@ -67,13 +88,20 @@ public:
 
 	~inout_resource_type()
 	{
-		std::apply([&](auto&&... args)
+		if (m_resource != Owner::sentinel)
 		{
-			m_owner.reset(vsm_move(m_resource), vsm_forward(args)...);
-		}, vsm_move(m_args));
+			std::apply([&](auto&&... args)
+			{
+				reset_resource(m_owner, vsm_move(m_resource), vsm_forward(args)...);
+			}, vsm_move(m_args));
+		}
+		else
+		{
+			m_owner.reset();
+		}
 	}
 
-	operator Resource*() const noexcept
+	[[nodiscard]] operator Resource*() const noexcept
 	{
 		return &m_resource;
 	}
@@ -103,6 +131,7 @@ template<typename Resource = void, typename Owner, typename... Args>
 {
 	using resource_type =
 		detail::resource_type<std::is_void_v<Resource>>::template type<Owner, Resource>;
+
 	return detail::out_resource_type<Owner, resource_type, Args&&...>(owner, vsm_forward(args)...);
 }
 
@@ -111,6 +140,7 @@ template<typename Resource = void, typename Owner, typename... Args>
 {
 	using resource_type =
 		detail::resource_type<std::is_void_v<Resource>>::template type<Owner, Resource>;
+
 	return detail::inout_resource_type<Owner, resource_type, Args&&...>(
 		owner,
 		vsm_forward(args)...);
