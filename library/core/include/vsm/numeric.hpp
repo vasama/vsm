@@ -12,19 +12,19 @@
 namespace vsm {
 
 template<std::integral From>
-constexpr std::make_signed_t<From> to_signed(From const value)
+[[nodiscard]] constexpr std::make_signed_t<From> to_signed(From const value)
 {
 	return static_cast<std::make_signed_t<From>>(value);
 }
 
 template<std::integral From>
-constexpr std::make_unsigned_t<From> to_unsigned(From const value)
+[[nodiscard]] constexpr std::make_unsigned_t<From> to_unsigned(From const value)
 {
 	return static_cast<std::make_unsigned_t<From>>(value);
 }
 
 template<vsm::enumeration Enum>
-constexpr Enum to_enum(std::underlying_type_t<Enum> const underlying)
+[[nodiscard]] constexpr Enum to_enum(std::underlying_type_t<Enum> const underlying)
 {
 	return static_cast<Enum>(underlying);
 }
@@ -124,7 +124,7 @@ struct loses_precision_t {};
 
 
 template<std::integral To, std::integral From>
-constexpr bool loses_precision(From const from)
+[[nodiscard]] constexpr bool loses_precision(From const from)
 {
 	if constexpr (detail::_may_lose_precision<To, From>())
 	{
@@ -138,7 +138,7 @@ constexpr bool loses_precision(From const from)
 
 
 template<std::integral To, std::unsigned_integral From>
-constexpr To saturate(From const from)
+[[nodiscard]] constexpr To saturate(From const from)
 {
 	if constexpr (to_unsigned(std::numeric_limits<To>::max()) >= std::numeric_limits<From>::max())
 	{
@@ -153,7 +153,7 @@ constexpr To saturate(From const from)
 }
 
 template<std::signed_integral To, std::signed_integral From>
-constexpr To saturate(From const from)
+[[nodiscard]] constexpr To saturate(From const from)
 {
 	if constexpr (
 		std::numeric_limits<To>::min() <= std::numeric_limits<From>::min() &&
@@ -172,7 +172,7 @@ constexpr To saturate(From const from)
 }
 
 template<std::unsigned_integral To, std::signed_integral From>
-constexpr To saturate(From const from)
+[[nodiscard]] constexpr To saturate(From const from)
 {
 	if constexpr (std::numeric_limits<To>::max() >= to_unsigned(std::numeric_limits<From>::max()))
 	{
@@ -202,7 +202,7 @@ public:
 	}
 
 	template<std::integral To>
-	constexpr operator To() const
+	[[nodiscard]] constexpr operator To() const
 	{
 		return saturate<To>(m_from);
 	}
@@ -210,7 +210,7 @@ public:
 
 
 template<std::integral To, std::integral From>
-constexpr To truncate(From const from)
+[[nodiscard]] constexpr To truncate(From const from)
 {
 	if constexpr (detail::_may_lose_precision<To, From>())
 	{
@@ -231,7 +231,7 @@ public:
 	}
 
 	template<std::integral To>
-	constexpr operator To() const
+	[[nodiscard]] constexpr operator To() const
 	{
 		return truncate<To>(m_from);
 	}
@@ -239,7 +239,7 @@ public:
 
 
 template<std::integral To, std::integral From, typename Error = loses_precision_t>
-constexpr std::expected<To, Error> try_truncate(
+[[nodiscard]] constexpr std::expected<To, Error> try_truncate(
 	From const from,
 	Error const& error = loses_precision_t())
 {
@@ -255,21 +255,21 @@ constexpr std::expected<To, Error> try_truncate(
 
 
 template<arithmetic L, arithmetic R>
-constexpr auto min(L const l, R const r) -> decltype(l + r)
+[[nodiscard]] constexpr auto min(L const l, R const r) -> decltype(l + r)
 	requires detail::is_same_arithmetic_category_v<L, R>
 {
 	return l <= r ? l : r;
 }
 
 template<arithmetic L, arithmetic R>
-constexpr auto max(L const l, R const r) -> decltype(l + r)
+[[nodiscard]] constexpr auto max(L const l, R const r) -> decltype(l + r)
 	requires detail::is_same_arithmetic_category_v<L, R>
 {
 	return l >= r ? l : r;
 }
 
 template<arithmetic T, arithmetic Min, arithmetic Max>
-constexpr auto clamp(T const x, Min const min, Max const max) -> decltype (x + (min + max))
+[[nodiscard]] constexpr auto clamp(T const x, Min const min, Max const max) -> decltype (x + (min + max))
 	requires
 		detail::is_same_arithmetic_category_v<T, Min> &&
 		detail::is_same_arithmetic_category_v<T, Max>
@@ -286,27 +286,27 @@ template<std::unsigned_integral T>
 inline constexpr T most_significant_bit = static_cast<T>(~(static_cast<T>(-1) >> 1));
 
 template<std::unsigned_integral T>
-constexpr bool is_power_of_two_or_zero(T const value)
+[[nodiscard]] constexpr bool is_power_of_two_or_zero(T const value)
 {
 	return (value & (value - 1)) == 0;
 }
 
 template<std::unsigned_integral T>
 [[deprecated("Use std::has_single_bit instead")]]
-constexpr bool is_power_of_two(T const value)
+[[nodiscard]] constexpr bool is_power_of_two(T const value)
 {
 	return std::has_single_bit(value);
 }
 
 template<std::unsigned_integral T>
 [[deprecated("Use std::bit_ceil instead")]]
-constexpr T round_up_to_power_of_two(T const value)
+[[nodiscard]] constexpr T round_up_to_power_of_two(T const value)
 {
 	return std::bit_ceil(value);
 }
 
 template<std::unsigned_integral T>
-constexpr T po2_ceil(T const value, T const power_of_two)
+[[nodiscard]] constexpr T po2_ceil(T const value, T const power_of_two)
 {
 	vsm_assert_slow(std::has_single_bit(power_of_two));
 	T const power_of_two_bits = power_of_two - 1;
@@ -315,13 +315,13 @@ constexpr T po2_ceil(T const value, T const power_of_two)
 
 template<std::unsigned_integral T>
 [[deprecated("Use vsm::po2_ceil instead")]]
-constexpr T round_up_to_power_of_two(T const value, T const power_of_two)
+[[nodiscard]] constexpr T round_up_to_power_of_two(T const value, T const power_of_two)
 {
 	return po2_ceil(value, power_of_two);
 }
 
 template<std::unsigned_integral T>
-constexpr T po2_floor(T const value, T const power_of_two)
+[[nodiscard]] constexpr T po2_floor(T const value, T const power_of_two)
 {
 	vsm_assert_slow(std::has_single_bit(power_of_two));
 	return value - (value & (power_of_two - 1));
@@ -329,7 +329,7 @@ constexpr T po2_floor(T const value, T const power_of_two)
 
 template<std::unsigned_integral T>
 [[deprecated("Use vsm::po2_floor instead")]]
-constexpr T round_down_to_power_of_two(T const value, T const power_of_two)
+[[nodiscard]] constexpr T round_down_to_power_of_two(T const value, T const power_of_two)
 {
 	return po2_floor(value, power_of_two);
 }
