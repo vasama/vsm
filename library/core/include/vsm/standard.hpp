@@ -15,10 +15,10 @@
 
 /* C++20 [[no_unique_address]] */
 
-#if __has_cpp_attribute(no_unique_address)
-#	define vsm_no_unique_address [[no_unique_address]]
-#elif __has_cpp_attribute(msvc::no_unique_address)
+#if __has_cpp_attribute(msvc::no_unique_address)
 #	define vsm_no_unique_address [[msvc::no_unique_address]]
+#elif __has_cpp_attribute(no_unique_address)
+#	define vsm_no_unique_address [[no_unique_address]]
 #else
 #	define vsm_no_unique_address
 #endif
