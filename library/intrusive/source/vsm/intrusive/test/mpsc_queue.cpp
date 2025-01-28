@@ -15,10 +15,31 @@ TEST_CASE("mpsc_queue", "[intrusive][mpsc_queue]")
 	elements e;
 
 	mpsc_queue<element> q;
-	q.push_back(e(1));
+	std::vector<int> v;
 
-	forward_list<element> l = q.pop_all();
-	REQUIRE(l.pop_front().value == 1);
+	for (int i = 0; i < 10; ++i)
+	{
+		q.push_back(e(i));
+		v.push_back(i);
+	}
+
+	forward_list<element> l;
+
+	SECTION("pop_all")
+	{
+		l = q.pop_all();
+	}
+
+	SECTION("pop_all_reversed")
+	{
+		l = q.pop_all_reversed();
+		std::ranges::reverse(v);
+	}
+
+	for (auto [i, element] : std::views::enumerate(l))
+	{
+		REQUIRE(element.value == v[i]);
+	}
 }
 
 } // namespace
