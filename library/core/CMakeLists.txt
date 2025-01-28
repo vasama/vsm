@@ -26,6 +26,7 @@ vsm_add_library(
 		include/vsm/literals.hpp
 		include/vsm/memory.hpp
 		include/vsm/numeric.hpp
+		include/vsm/partial.hpp
 		include/vsm/platform.h
 		include/vsm/preprocessor.h
 		include/vsm/relocate.hpp
@@ -80,6 +81,7 @@ vsm_add_library(
 		source/vsm/test/flags.cpp
 		source/vsm/test/float.cpp
 		source/vsm/test/numeric.cpp
+		source/vsm/test/partial.cpp
 		source/vsm/test/relocate.cpp
 		source/vsm/test/utility.cpp
 
