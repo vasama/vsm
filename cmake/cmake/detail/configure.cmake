@@ -16,6 +16,7 @@ set(vsm_detail_configure_lib_opt_n
 	HEADER_DEFINITIONS
 	TEST_SOURCES
 	TEST_DEPENDENCIES
+	INTERNAL_DEPENDENCIES
 )
 
 function(vsm_detail_get_target_type target variable)
@@ -113,7 +114,7 @@ function(vsm_detail_add_file_set)
 	endif()
 endfunction()
 
-function(vsm_detail_configure target public_type)
+function(vsm_detail_configure name target public_type)
 	vsm_detail_add_directory_test()
 
 	if(DEFINED VSM_OPT_HEADERS) # Add headers
@@ -188,7 +189,7 @@ function(vsm_detail_configure target public_type)
 			get_target_property(test_target ${target} vsm_detail_test_target)
 
 			if(${test_target} STREQUAL "test_target-NOTFOUND")
-				set(test_target ${target}_test)
+				set(test_target ${target}_test_suite)
 				set_property(TARGET ${target} PROPERTY vsm_detail_test_target ${test_target})
 
 				get_property(
@@ -200,15 +201,18 @@ function(vsm_detail_configure target public_type)
 				if("${test_suite_target}" STREQUAL "")
 					if("${VSM_OPT_TEST_COMPILE_ONLY}")
 						add_library(${test_target})
+						add_library(${name}-test-suite ALIAS ${test_target})
 					else()
 						add_executable(${test_target})
+						add_executable(${name}-test-suite ALIAS ${test_target})
 						add_test(${target} ${test_target})
 					endif()
-					set_target_properties(${test_target} PROPERTIES FOLDER "Tests")
+					set_target_properties(${test_target} PROPERTIES FOLDER "TestSuiteExecutables")
 				else()
 					add_library(${test_target} OBJECT)
+					add_library(${name}-test-suite ALIAS ${test_target})
 					target_link_libraries(${test_suite_target} PRIVATE ${test_target})
-					set_target_properties(${test_target} PROPERTIES FOLDER "TestComponents")
+					set_target_properties(${test_target} PROPERTIES FOLDER "TestSuiteComponents")
 				endif()
 
 				target_include_directories(${test_target} PRIVATE source)
@@ -220,16 +224,27 @@ function(vsm_detail_configure target public_type)
 			endif()
 
 			target_sources(${test_target} PRIVATE ${VSM_OPT_TEST_SOURCES})
-
-			if(DEFINED VSM_OPT_TEST_DEPENDENCIES)
-				target_link_libraries(${test_target} PRIVATE ${VSM_OPT_TEST_DEPENDENCIES})
-			endif()
 		endif()
 
 		vsm_detail_add_directory_files("sources" "${VSM_OPT_TEST_SOURCES}")
-	else()
-		if(DEFINED VSM_OPT_TEST_DEPENDENCIES)
+	endif()
+
+	if(do_configure AND DEFINED VSM_OPT_TEST_DEPENDENCIES)
+		get_target_property(test_target ${target} vsm_detail_test_target)
+
+		if(NOT ${test_target} STREQUAL "test_target-NOTFOUND")
+			target_link_libraries(${test_target} PRIVATE ${VSM_OPT_TEST_DEPENDENCIES})
+		else()
 			message(SEND_ERROR "Cannot specify test dependencies for target ${target} without test sources.")
+		endif()
+	endif()
+
+	if(do_configure AND DEFINED VSM_OPT_INTERNAL_DEPENDENCIES)
+		target_link_libraries(${target} PRIVATE ${VSM_OPT_INTERNAL_DEPENDENCIES})
+
+		get_target_property(test_target ${target} vsm_detail_test_target)
+		if(NOT ${test_target} STREQUAL "test_target-NOTFOUND")
+			target_link_libraries(${test_target} PRIVATE ${VSM_OPT_INTERNAL_DEPENDENCIES})
 		endif()
 	endif()
 
@@ -283,7 +298,7 @@ function(vsm_add_executable name)
 		file(APPEND "${VSM_EXPORT_COMPONENTS}" "${name}\n")
 	endif()
 
-	vsm_detail_configure(${target} PUBLIC)
+	vsm_detail_configure(${name} ${target} PUBLIC)
 endfunction()
 
 function(vsm_add_library name)
@@ -316,7 +331,7 @@ function(vsm_add_library name)
 		target_link_libraries(${target} PRIVATE vsm_detail_cxx_options)
 	endif()
 
-	vsm_detail_configure(${target} ${public_type})
+	vsm_detail_configure(${name} ${target} ${public_type})
 endfunction()
 
 function(vsm_configure name)
@@ -353,5 +368,5 @@ function(vsm_configure name)
 		endif()
 	endif()
 
-	vsm_detail_configure(${target} ${public_type})
+	vsm_detail_configure(${name} ${target} ${public_type})
 endfunction()
