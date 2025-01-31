@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vsm/assert.h>
 #include <vsm/concepts.hpp>
 #include <vsm/detail/categories.hpp>
 #include <vsm/preprocessor.h>
@@ -76,12 +77,22 @@ inline std::error_code as_error_code(result<void> const& result) noexcept
 		: result.error();
 }
 
-template<typename T, typename E>
-result<void, E> discard_value(result<T, E> const& result)
+template<instance_of<expected> Expected>
+[[nodiscard]] copy_cvref_t<Expected, typename Expected::value_type> assume_success(
+	Expected&& expected)
 {
-	return result
-		? vsm::result<void, E>{}
-		: vsm::result<void, E>(result_error, result.error());
+	vsm_assume(expected);
+	return *vsm_forward(expected);
+}
+
+template<instance_of<expected> Expected>
+[[nodiscard]] expected<void, typename Expected::error_type> discard_value(Expected&& expected)
+{
+	using expected_type = vsm::expected<void, typename Expected::error_type>;
+
+	return expected
+		? expected_type{}
+		: expected_type(result_error, vsm_forward(expected).error());
 }
 
 inline std::error_code make_error_code(std::errc const e)
