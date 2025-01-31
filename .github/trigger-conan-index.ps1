@@ -53,7 +53,7 @@ $WorkflowInputs = @{
 	github_reference=$GitHubSourceReference;
 }
 
-$RequestUrl = "https://api.github.com/repos/$GitHubIndexRepository/actions/workflows/$GitHubIndexWorkflow/dispatches"
+$RequestUrl = "https://$ENV:GITHUB_API_URL/repos/$GitHubIndexRepository/actions/workflows/$GitHubIndexWorkflow/dispatches"
 
 if ($WhatIf) {
 	# Hide the access token:
