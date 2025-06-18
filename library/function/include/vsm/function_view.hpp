@@ -7,7 +7,6 @@
 #include <memory>
 
 namespace vsm {
-
 namespace detail {
 
 struct nontype_base_t {};

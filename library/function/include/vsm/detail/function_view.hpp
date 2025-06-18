@@ -6,11 +6,9 @@
 
 namespace vsm::detail {
 
-struct function_unused {};
-
 union function_context
 {
-	function_unused unused;
+	struct {} unused;
 	void const* object;
 	function_ptr_t function;
 };
