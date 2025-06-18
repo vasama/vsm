@@ -72,6 +72,9 @@ namespace detail {
 template<typename T>
 concept _character = any_of<T, char, wchar_t, char8_t, char16_t, char32_t>;
 
+template<typename T>
+concept _utf_character = any_of<T, char8_t, char16_t, char32_t>;
+
 } // namespace detail
 
 template<typename T>
@@ -88,6 +91,9 @@ concept byte_type = vsm::any_of<T, std::byte, char, unsigned char>;
 
 template<typename T>
 concept character = std::integral<T> && detail::_character<T>;
+
+template<typename T>
+concept utf_character = character<T> && detail::_utf_character<T>;
 
 template<typename T>
 concept integer = std::integral<T> && !same_as<T, bool> && !detail::_character<T>;
