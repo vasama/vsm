@@ -140,6 +140,14 @@ template<std::integral To, std::integral From>
 }
 
 
+template<std::integral To, std::integral From>
+	requires (!detail::_may_lose_precision<To, From>())
+[[nodiscard]] constexpr To extend(From const from)
+{
+	return static_cast<To>(from);
+}
+
+
 template<std::integral To, std::unsigned_integral From>
 [[nodiscard]] constexpr To saturate(From const from)
 {
