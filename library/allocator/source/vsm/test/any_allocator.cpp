@@ -14,14 +14,14 @@ TEST_CASE("any_allocator", "[any][allocator]")
 	auto const allocator = any_allocator(test::allocator());
 
 	auto allocation = allocator.allocate(100);
-	REQUIRE(allocation.buffer != nullptr);
+	REQUIRE(allocation.storage != nullptr);
 	REQUIRE(allocation.size >= 100);
 	REQUIRE(scope.get_allocation_count() == 1);
 
-	memset(allocation.buffer, 1, allocation.size);
+	memset(allocation.storage, 1, allocation.size);
 	if (size_t const new_size = allocator.resize(allocation, 200))
 	{
-		memset(allocation.buffer, 2, new_size);
+		memset(allocation.storage, 2, new_size);
 		allocation.size = new_size;
 	}
 
