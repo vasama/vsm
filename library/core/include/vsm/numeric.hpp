@@ -120,7 +120,10 @@ constexpr bool _loses_precision(From const from)
 
 } // namespace detail
 
-struct loses_precision_t {};
+struct loses_precision_t
+{
+	explicit loses_precision_t() = default;
+};
 
 
 template<std::integral To, std::integral From>
