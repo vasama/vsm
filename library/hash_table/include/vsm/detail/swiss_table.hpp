@@ -351,7 +351,7 @@ std::byte* allocate_storage(A& allocator, size_t const element_size, size_t& cap
 		capacity = new_capacity;
 	}
 
-	return static_cast<std::byte*>(new_allocation.buffer);
+	return static_cast<std::byte*>(new_allocation.storage);
 }
 
 template<typename T, typename P, typename A, size_t C>
