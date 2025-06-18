@@ -61,8 +61,8 @@ class _vsm_requirement:
 		self.package = json["package"]
 		self.version = json["version"]
 
-		self.user = None
-		self.channel = None
+		self.user = json.get("user")
+		self.channel = json.get("channel")
 
 		self.arguments = {}
 		def set_argument(type, name, argument_name=None):
