@@ -12,12 +12,23 @@ namespace vsm {
 
 struct allocation
 {
-	void* buffer;
+	void* storage;
 	size_t size;
 
 	[[nodiscard]] constexpr operator void*() const noexcept
 	{
-		return buffer;
+		return storage;
+	}
+
+	[[nodiscard]] constexpr operator void const*() const noexcept
+	{
+		return storage;
+	}
+
+	template<typename T>
+	[[nodiscard]] explicit constexpr operator T*() const noexcept
+	{
+		return static_cast<T*>(storage);
 	}
 };
 
@@ -109,7 +120,7 @@ template<memory_resource Allocator>
 	size_t const min_size)
 {
 	auto const allocation = allocator.allocate(min_size);
-	if (allocation.buffer == nullptr)
+	if (allocation.storage == nullptr)
 	{
 		vsm_except_throw_or_terminate(std::bad_alloc());
 	}
@@ -140,7 +151,7 @@ public:
 
 	void deallocate(allocation const allocation) const noexcept
 	{
-		operator delete(allocation.buffer, allocation.size);
+		operator delete(allocation.storage, allocation.size);
 	}
 };
 
