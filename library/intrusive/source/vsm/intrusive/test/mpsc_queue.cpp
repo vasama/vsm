@@ -38,7 +38,7 @@ TEST_CASE("mpsc_queue", "[intrusive][mpsc_queue]")
 
 	for (auto [i, element] : std::views::enumerate(l))
 	{
-		REQUIRE(element.value == v[i]);
+		REQUIRE(element.value == v[static_cast<size_t>(i)]);
 	}
 }
 
