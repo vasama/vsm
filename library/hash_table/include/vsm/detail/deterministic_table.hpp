@@ -5,6 +5,7 @@
 #include <vsm/detail/hash_table.hpp>
 #include <vsm/insert_result.hpp>
 #include <vsm/key_selector.hpp>
+#include <vsm/relocate.hpp>
 #include <vsm/standard/stdexcept.hpp>
 #include <vsm/type_traits.hpp>
 
@@ -226,11 +227,9 @@ using resize_callback_t = void(_table<I>& table, size_t min_capacity);
 
 //TODO: Doesn't use P.
 template<typename T, typename I, typename P, typename A>
-void resize(_table<I>& untyped_table, size_t const min_capacity)
+void resize(_table_allocator<I, P, A>& table, size_t const min_capacity)
 {
 	static constexpr size_t element_size = sizeof(T);
-
-	auto& table = static_cast<_table_allocator<I, P, A>&>(untyped_table);
 
 	size_t const new_bucket_capacity = std::bit_ceil(min_capacity * 4 / 3);
 	size_t const new_hash_mask = new_bucket_capacity - 1;
@@ -242,7 +241,7 @@ void resize(_table<I>& untyped_table, size_t const min_capacity)
 	size_t const new_allocation_size = new_elements_size + new_buckets_size;
 
 	auto const allocation = vsm::allocate_or_throw(table.allocator, new_allocation_size);
-	auto const new_elements = reinterpret_cast<std::byte*>(allocation.buffer);
+	auto const new_elements = reinterpret_cast<std::byte*>(allocation.storage);
 	auto const new_buckets = reinterpret_cast<bucket<I>*>(new_elements + new_elements_size);
 	std::memset(new_buckets, 0xff, new_buckets_size);
 
@@ -260,13 +259,12 @@ void resize(_table<I>& untyped_table, size_t const min_capacity)
 		}
 	}
 
-	//TODO: Do a proper type-aware relocate instead.
 	if (table.size != 0)
 	{
-		std::memcpy(
-			new_elements + (new_element_capacity - table.size) * element_size,
-			get_element_end(old_buckets, element_size, table.size),
-			table.size * element_size);
+		vsm::uninitialized_relocate_n(
+			reinterpret_cast<T*>(new_elements) + (new_element_capacity - table.size),
+			table.size,
+			reinterpret_cast<T*>(get_element_end(old_buckets, element_size, table.size)));
 	}
 
 	size_t const old_elements_size = old_element_capacity * element_size;
@@ -284,6 +282,12 @@ void resize(_table<I>& untyped_table, size_t const min_capacity)
 
 	table.buckets = new_buckets;
 	table.hash_mask = static_cast<I>(new_hash_mask);
+}
+
+template<typename T, typename I, typename P, typename A>
+void resize_untyped(_table<I>& table, size_t const min_capacity)
+{
+	return deterministic_table::resize<T>(static_cast<_table_allocator<I, P, A>&>(table), min_capacity);
 }
 
 template<typename K, typename UserK, size_t ElementSize, typename I, typename P>
@@ -328,12 +332,12 @@ insert_result<void*> insert(
 	return { get_element(table.buckets, ElementSize, element_index), true };
 }
 
-template<size_t ElementSize, typename I, typename P, typename A>
+template<typename T, typename I, typename P, typename A>
 void reserve(_table_allocator<I, P, A>& table, size_t const min_capacity)
 {
 	if (min_capacity > get_max_elements(table.hash_mask))
 	{
-		resize(table, ElementSize, min_capacity);
+		resize<T>(table, min_capacity);
 	}
 }
 
@@ -553,7 +557,7 @@ public:
 
 	void reserve(size_t const min_capacity)
 	{
-		deterministic_table::reserve<sizeof(T)>(m, min_capacity);
+		deterministic_table::reserve<T>(m, min_capacity);
 	}
 
 	void shrink_to_fit();
@@ -604,7 +608,7 @@ public:
 			m,
 			static_cast<Policies const&>(m.policies).hasher(n_k),
 			n_k,
-			resize<T, I, Policies, Allocator>);
+			deterministic_table::resize_untyped<T, I, Policies, Allocator>);
 
 		vsm_assert(r.iterator != nullptr);
 
