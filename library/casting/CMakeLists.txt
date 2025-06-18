@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(vsm_container_core)
+project(vsm_casting)
 
 find_package(vsm.cmake REQUIRED)
 vsm_define_package(vsm.casting)
