@@ -79,6 +79,8 @@ class _vsm_requirement:
 		set_argument(bool, "test")
 		set_argument(bool, "visible")
 
+		self.arguments["transitive_headers"] = True
+
 	def __str__(self):
 		reference = f"{self.package}/{self.version}"
 		if self.user:
