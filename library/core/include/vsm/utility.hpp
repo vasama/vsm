@@ -9,7 +9,7 @@
 
 /// @brief Macro implementation of std::move.
 #define vsm_move(...) \
-	static_cast<::std::remove_reference_t<decltype(__VA_ARGS__)>&&>(__VA_ARGS__)
+	static_cast<::std::remove_reference_t<decltype((__VA_ARGS__))>&&>(__VA_ARGS__)
 
 /// @brief Macro implementation of std::as_const.
 #define vsm_as_const(...) \

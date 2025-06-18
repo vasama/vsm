@@ -40,6 +40,21 @@ static_assert(std::is_same_v<decltype(vsm_move(const_lvalue)), int const&&>);
 static_assert(std::is_same_v<decltype(vsm_move(const_lvalue_ref)), int const&&>);
 static_assert(std::is_same_v<decltype(vsm_move(const_rvalue_ref)), int const&&>);
 
+struct S
+{
+	int lvalue;
+
+	void f()
+	{
+		static_assert(std::is_same_v<decltype(vsm_move(lvalue)), int&&>);
+	}
+
+	void f() const
+	{
+		static_assert(std::is_same_v<decltype(vsm_move(lvalue)), int const&&>);
+	}
+};
+
 
 /* vsm_as_const */
 
