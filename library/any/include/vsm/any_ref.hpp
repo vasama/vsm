@@ -208,7 +208,7 @@ public:
 	[[nodiscard]] constexpr auto invoke(Args&&... args) const&
 		requires detail::_any_invocable<F, any_ref&, Args...>
 	{
-		auto const function = m_functions[pack_index<F, Functions...>];
+		auto const function = m_functions[index_in_pack_v<F, Functions...>];
 		using function_type = typename detail::_any_traits_for<F>::function_type;
 		return static_cast<function_type*>(function)(m_context, vsm_forward(args)...);
 	}
@@ -217,7 +217,7 @@ public:
 	[[nodiscard]] constexpr auto invoke(Args&&... args) const&&
 		requires detail::_any_invocable<F, any_ref&&, Args...>
 	{
-		auto const function = m_functions[pack_index<F, Functions...>];
+		auto const function = m_functions[index_in_pack_v<F, Functions...>];
 		using function_type = typename detail::_any_traits_for<F>::function_type;
 		return static_cast<function_type*>(function)(m_context, vsm_forward(args)...);
 	}
