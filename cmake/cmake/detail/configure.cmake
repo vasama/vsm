@@ -219,7 +219,13 @@ function(vsm_detail_configure name target public_type)
 				target_link_libraries(${test_target} PRIVATE ${target} vsm_detail_cxx_options)
 
 				if(NOT "${VSM_OPT_TEST_COMPILE_ONLY}")
-					target_link_libraries(${test_target} PRIVATE ${target} Catch2::Catch2WithMain)
+					set(catch2_target "Catch2::Catch2WithMain")
+
+					if("${VSM_OPT_TEST_CUSTOM_MAIN}")
+						set(catch2_target "Catch2::Catch2")
+					endif()
+
+					target_link_libraries(${test_target} PRIVATE ${target} "${catch2_target}")
 				endif()
 			endif()
 
@@ -304,7 +310,7 @@ endfunction()
 function(vsm_add_library name)
 	vsm_detail_configure_parse(
 		lib
-		"ADDITIONAL_SOURCES;TEST_COMPILE_ONLY"
+		"ADDITIONAL_SOURCES;TEST_COMPILE_ONLY;TEST_CUSTOM_MAIN"
 		""
 		""
 		${ARGN}
@@ -322,7 +328,7 @@ function(vsm_add_library name)
 	endif()
 
 	vsm_detail_add_target(add_library ${name} ${add_library_args})
-
+	
 	set_target_properties(${target} PROPERTIES vsm_detail_type lib)
 	target_include_directories(${target} ${public_type} include)
 
