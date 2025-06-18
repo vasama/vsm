@@ -11,13 +11,15 @@
 namespace vsm {
 namespace detail {
 
-struct unique_resource_sentinel_t {};
-inline constexpr unique_resource_sentinel_t unique_resource_no_sentinel = {};
+struct null_resource_t
+{
+	explicit null_resource_t() = default;
+};
+inline constexpr null_resource_t null_resource{};
 
-struct null_resource_t {};
-inline constexpr null_resource_t null_resource = {};
+struct no_unique_resource_sentinel_t {};
 
-template<typename Resource, typename Deleter, auto Sentinel = unique_resource_no_sentinel>
+template<typename Resource, typename Deleter, auto Sentinel = no_unique_resource_sentinel_t{}>
 class unique_resource;
 
 template<typename Resource, auto Sentinel>
@@ -84,7 +86,7 @@ private:
 };
 
 template<typename Resource>
-class unique_resource_base<Resource, unique_resource_no_sentinel>
+class unique_resource_base<Resource, no_unique_resource_sentinel_t{}>
 {
 	using optional_type = std::optional<Resource>;
 
