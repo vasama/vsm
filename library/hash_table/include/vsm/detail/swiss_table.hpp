@@ -675,7 +675,10 @@ void* erase(_table_policies<P>& table, size_t const hash, input_t<UserK> key)
 #pragma pop_macro("get_key")
 
 
-struct sentinel {};
+struct sentinel
+{
+	explicit sentinel() = default;
+};
 
 template<typename T>
 class iterator_1;
@@ -1023,7 +1026,7 @@ public:
 
 	[[nodiscard]] sentinel end() const
 	{
-		return {};
+		return sentinel();
 	}
 
 #	pragma pop_macro("destroy_type")
