@@ -196,7 +196,7 @@ std::byte* _vector_allocate(_vector_allocator<A>& self, size_t& new_capacity)
 {
 	auto const allocation = vsm::allocate_or_throw(self.allocator, new_capacity);
 	new_capacity = allocation.size - allocation.size % Size;
-	return reinterpret_cast<std::byte*>(allocation.buffer);
+	return reinterpret_cast<std::byte*>(allocation.storage);
 }
 
 template<size_t Size, typename A, bool Local>
@@ -344,7 +344,7 @@ void _vector_move_assign(
 		{
 			self.allocator.deallocate(old_allocation);
 			auto const new_allocation = vsm::allocate_or_throw(self.allocator, capacity);
-			self.beg = reinterpret_cast<std::byte*>(new_allocation.buffer);
+			self.beg = reinterpret_cast<std::byte*>(new_allocation.storage);
 			new_allocation_size = new_allocation.size;
 		}
 
@@ -877,7 +877,7 @@ public:
 
 		vsm_except_try
 		{
-			_append_range(range);
+			append_range(range);
 		}
 		vsm_except_catch (...)
 		{
