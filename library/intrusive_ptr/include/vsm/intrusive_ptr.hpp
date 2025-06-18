@@ -13,7 +13,10 @@
 namespace vsm {
 namespace detail {
 
-struct intrusive_ptr_adopt_t {};
+struct intrusive_ptr_adopt_t
+{
+	explicit intrusive_ptr_adopt_t() = default;
+};
 
 
 struct intrusive_ptr_deleter_cpo
@@ -118,7 +121,7 @@ protected:
 	friend void tag_invoke(
 		intrusive_ptr_acquire_cpo,
 		Manager const& manager,
-		typename Base::template type<T>* const ptr,
+		T* const ptr,
 		size_t const count) noexcept
 	{
 		(void)ptr->m_refcount.fetch_add(count, std::memory_order_relaxed);
@@ -128,7 +131,7 @@ protected:
 	friend void tag_invoke(
 		intrusive_ptr_release_cpo,
 		Manager const& manager,
-		typename Base::template type<T>* const ptr,
+		T* const ptr,
 		size_t const count) noexcept
 	{
 		size_t const old_count = ptr->m_refcount.fetch_sub(count, std::memory_order_acq_rel);
@@ -152,15 +155,16 @@ concept _intrusive_ptr_convertible =
 
 
 template<typename Manager, typename T>
-concept _intrusive_ptr_manager = requires (Manager const& manager, T* const ptr, size_t const count)
-{
-	{ manager.acquire(ptr, count) };
-	{ manager.release(ptr, count) } noexcept;
-};
+concept _intrusive_ptr_manager_for =
+	requires (Manager const& manager, T* const ptr, size_t const count)
+	{
+		{ manager.acquire(ptr, count) };
+		{ manager.release(ptr, count) } noexcept;
+	};
 
 template<typename Manager, typename T>
-concept _intrusive_ptr_nothrow_manager =
-	_intrusive_ptr_manager<Manager, T> &&
+concept _intrusive_ptr_nothrow_manager_for =
+	_intrusive_ptr_manager_for<Manager, T> &&
 	requires (Manager const& manager, T* const ptr, size_t const count)
 	{
 		{ manager.acquire(ptr, count) } noexcept;
@@ -243,21 +247,27 @@ public:
 	}
 };
 
-template<non_ref T, detail::_intrusive_ptr_manager<T> Manager = default_refcount_manager>
+template<non_ref T, typename Manager = default_refcount_manager>
 class intrusive_ptr
 {
 	static_assert(std::is_nothrow_move_constructible_v<Manager>);
 	static_assert(std::is_nothrow_move_assignable_v<Manager>);
 	static_assert(std::is_nothrow_swappable_v<Manager>);
 
-	static constexpr bool has_nothrow_acquire =
-		noexcept(std::declval<Manager const&>().acquire(static_cast<T*>(0), size_t(1)));
+	static consteval bool has_nothrow_acquire()
+	{
+		return requires (Manager const& manager, T* const ptr, size_t const count)
+		{
+			{ manager.acquire(ptr, count) } noexcept;
+		};
+	}
 
 	T* m_ptr;
 	vsm_no_unique_address Manager m_manager;
 
 public:
 	constexpr intrusive_ptr() noexcept
+		requires detail::_intrusive_ptr_manager_for<Manager, T>
 		: m_ptr(nullptr)
 	{
 	}
@@ -270,18 +280,22 @@ public:
 	}
 
 	template<any_cvref_of<Manager> NewManager>
-		requires std::is_constructible_v<Manager, NewManager>
+		requires
+			detail::_intrusive_ptr_manager_for<Manager, T> &&
+			std::is_constructible_v<Manager, NewManager>
 	constexpr intrusive_ptr(decltype(nullptr), NewManager&& manager)
-		noexcept(has_nothrow_acquire && std::is_nothrow_constructible_v<Manager, NewManager>)
+		noexcept(has_nothrow_acquire() && std::is_nothrow_constructible_v<Manager, NewManager>)
 		: m_ptr(nullptr)
 		, m_manager(vsm_forward(manager))
 	{
 	}
 
 	template<detail::_intrusive_ptr_convertible<T> U = T>
-		requires std::is_default_constructible_v<Manager>
+		requires
+			detail::_intrusive_ptr_manager_for<Manager, T> &&
+			std::is_default_constructible_v<Manager>
 	explicit constexpr intrusive_ptr(U* const ptr)
-		noexcept(has_nothrow_acquire && std::is_nothrow_default_constructible_v<Manager>)
+		noexcept(has_nothrow_acquire() && std::is_nothrow_default_constructible_v<Manager>)
 		: m_ptr(ptr)
 	{
 		if (ptr != nullptr)
@@ -291,9 +305,11 @@ public:
 	}
 
 	template<any_cvref_of<Manager> NewManager, detail::_intrusive_ptr_convertible<T> U = T>
-		requires std::is_constructible_v<Manager, NewManager>
+		requires
+			detail::_intrusive_ptr_manager_for<Manager, T> &&
+			std::is_constructible_v<Manager, NewManager>
 	explicit constexpr intrusive_ptr(U* const ptr, NewManager&& manager)
-		noexcept(has_nothrow_acquire && std::is_nothrow_constructible_v<Manager, NewManager>)
+		noexcept(has_nothrow_acquire() && std::is_nothrow_constructible_v<Manager, NewManager>)
 		: m_ptr(ptr)
 		, m_manager(vsm_forward(manager))
 	{
@@ -317,7 +333,7 @@ public:
 	}
 
 	constexpr intrusive_ptr(intrusive_ptr const& other)
-		noexcept(has_nothrow_acquire)
+		noexcept(has_nothrow_acquire())
 		: m_ptr(other.m_ptr)
 	{
 		if (m_ptr != nullptr)
@@ -329,7 +345,7 @@ public:
 	template<detail::_intrusive_ptr_convertible<T> U = T>
 		requires std::is_copy_constructible_v<Manager>
 	constexpr intrusive_ptr(intrusive_ptr<U, Manager> const& other)
-		noexcept(has_nothrow_acquire && std::is_nothrow_copy_constructible_v<Manager>)
+		noexcept(has_nothrow_acquire() && std::is_nothrow_copy_constructible_v<Manager>)
 		: m_ptr(other.m_ptr)
 		, m_manager(other.m_manager)
 	{
@@ -364,7 +380,7 @@ public:
 	}
 
 	constexpr intrusive_ptr& operator=(intrusive_ptr const& other) &
-		noexcept(has_nothrow_acquire && std::is_nothrow_copy_assignable_v<Manager>)
+		noexcept(has_nothrow_acquire() && std::is_nothrow_copy_assignable_v<Manager>)
 		requires std::is_copy_assignable_v<Manager>
 	{
 		intrusive_ptr(vsm_move(other)).swap(*this);
@@ -374,7 +390,7 @@ public:
 	template<detail::_intrusive_ptr_convertible<T> U = T>
 		requires std::is_copy_assignable_v<Manager>
 	constexpr intrusive_ptr& operator=(intrusive_ptr<U, Manager> const& other) &
-		noexcept(has_nothrow_acquire && std::is_nothrow_copy_assignable_v<Manager>)
+		noexcept(has_nothrow_acquire() && std::is_nothrow_copy_assignable_v<Manager>)
 	{
 		intrusive_ptr(vsm_move(other)).swap(*this);
 		return *this;
@@ -423,7 +439,7 @@ public:
 	}
 
 	constexpr void reset(T* const new_ptr) &
-		noexcept(has_nothrow_acquire)
+		noexcept(has_nothrow_acquire())
 	{
 		if (new_ptr != nullptr)
 		{
@@ -442,7 +458,7 @@ public:
 	template<any_cvref_of<Manager> NewManager>
 		requires std::is_constructible_v<Manager, NewManager>
 	constexpr void reset(T* const new_ptr, NewManager&& new_manager) &
-		noexcept(has_nothrow_acquire && std::is_nothrow_constructible_v<Manager, NewManager>)
+		noexcept(has_nothrow_acquire() && std::is_nothrow_constructible_v<Manager, NewManager>)
 	{
 		intrusive_ptr(new_ptr, vsm_forward(new_manager)).swap(*this);
 	}
@@ -547,7 +563,7 @@ private:
 	{
 	}
 
-	template<non_ref U, detail::_intrusive_ptr_manager<U>>
+	template<non_ref U, typename>
 	friend class intrusive_ptr;
 };
 

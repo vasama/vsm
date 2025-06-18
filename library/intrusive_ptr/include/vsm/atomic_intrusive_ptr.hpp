@@ -9,7 +9,7 @@
 
 namespace vsm {
 
-template<non_ref T, detail::_intrusive_ptr_nothrow_manager<T> Manager = default_refcount_manager>
+template<non_ref T, typename Manager = default_refcount_manager>
 class atomic_intrusive_ptr
 {
 	static_assert(std::is_nothrow_copy_constructible_v<Manager>);
@@ -31,11 +31,15 @@ class atomic_intrusive_ptr
 	vsm_no_unique_address Manager m_manager = {};
 
 public:
-	atomic_intrusive_ptr() = default;
+	atomic_intrusive_ptr()
+		requires detail::_intrusive_ptr_nothrow_manager_for<Manager, T>
+		= default;
 
 	explicit atomic_intrusive_ptr(T* const ptr)
 		noexcept(std::is_nothrow_default_constructible_v<Manager>)
-		requires std::is_default_constructible_v<Manager>
+		requires
+			detail::_intrusive_ptr_nothrow_manager_for<Manager, T> &&
+			std::is_default_constructible_v<Manager>
 		: m_atom({ ptr, 0 })
 	{
 		if (ptr != nullptr)
@@ -45,7 +49,9 @@ public:
 	}
 
 	template<any_cvref_of<Manager> NewManager>
-		requires std::is_constructible_v<Manager, NewManager>
+		requires
+			detail::_intrusive_ptr_nothrow_manager_for<Manager, T> &&
+			std::is_constructible_v<Manager, NewManager>
 	explicit atomic_intrusive_ptr(T* const ptr, NewManager&& manager) noexcept
 		: m_atom({ ptr, 0 })
 		, m_manager(vsm_forward(manager))
@@ -59,6 +65,7 @@ public:
 	}
 
 	atomic_intrusive_ptr(intrusive_ptr<T, Manager> ptr) noexcept
+		requires detail::_intrusive_ptr_nothrow_manager_for<Manager, T>
 		: atomic_intrusive_ptr(ptr.release_with_manager())
 	{
 	}
