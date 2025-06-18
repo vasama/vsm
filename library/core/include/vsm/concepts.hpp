@@ -2,6 +2,8 @@
 
 #include <vsm/type_traits.hpp>
 
+#include <cstddef>
+
 namespace vsm {
 
 /* type comparison */
@@ -80,6 +82,9 @@ concept object_pointer = pointer<T> && std::is_object_v<remove_ptr_t<T>>;
 
 template<typename T>
 concept function_pointer = pointer<T> && std::is_function_v<remove_ptr_t<T>>;
+
+template<typename T>
+concept byte_type = vsm::any_of<T, std::byte, char, unsigned char>;
 
 template<typename T>
 concept character = std::integral<T> && detail::_character<T>;
