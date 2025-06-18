@@ -15,7 +15,7 @@ using std::byteswap;
 namespace vsm {
 
 template<std::integral T>
-constexpr T byteswap(T const value) noexcept
+[[nodiscard]] constexpr T byteswap(T const value) noexcept
 {
 	/**/ if constexpr (sizeof(T) == 1)
 	{
