@@ -4,10 +4,6 @@
 	"package_type": "static-library",
 	"requirements": [
 		{
-			"package": "vsm.allocator",
-			"version": "0.1"
-		},
-		{
 			"package": "vsm.container_core",
 			"version": "0.1"
 		},

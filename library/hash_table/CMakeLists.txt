@@ -30,7 +30,6 @@ vsm_add_library(
 		visualizers/vsm/hash_table.natvis
 
 	HEADER_DEPENDENCIES
-		vsm::allocator
 		vsm::container_core
 		vsm::core
 		vsm::hash
