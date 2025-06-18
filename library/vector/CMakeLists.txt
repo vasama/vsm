@@ -14,7 +14,6 @@ vsm_add_library(
 		visualizers/vsm/vector.natvis
 
 	HEADER_DEPENDENCIES
-		vsm::allocator
 		vsm::algorithm
 		vsm::core
 
