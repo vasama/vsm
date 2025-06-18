@@ -47,11 +47,7 @@ template<typename T, typename... Ts>
 auto type_list_index_1(type_list<Ts...>) -> decltype(type_list_index_2<T>(indexed_type_list<std::make_index_sequence<sizeof...(Ts)>, Ts...>()));
 
 template<typename T, typename U>
-auto type_list_index_1(U)
-{
-	static_assert(sizeof(U) == 0, "T is not present in the type_list U.");
-	return std::integral_constant<size_t, 0>();
-}
+auto type_list_index_1(U) -> void;
 
 template<typename List, typename T>
 inline constexpr size_t type_list_index = decltype(type_list_index_1<T>(List{}))::value;
@@ -70,7 +66,20 @@ using detail::type_list_index;
 using detail::type_list_cat;
 using detail::type_list_append;
 
+
 template<typename T, typename... Pack>
-inline constexpr size_t pack_index = type_list_index<type_list<Pack...>, T>;
+inline constexpr bool instances_in_pack_v = (std::is_same_v<T, Pack> + ...);
+
+template<typename T, typename... Pack>
+inline constexpr bool is_contained_in_pack_v = instances_in_pack_v<T, Pack...> != 0;
+
+template<typename T, typename... Pack>
+inline constexpr bool is_unique_in_pack_v = instances_in_pack_v<T, Pack...> == 1;
+
+template<typename T, typename... Pack>
+inline constexpr size_t index_in_pack_v = type_list_index<type_list<Pack...>, T>;
+
+template<size_t Index, typename... Pack>
+using in_pack_at_t = type_list_at<type_list<Pack...>, Index>;
 
 } // namespace vsm
