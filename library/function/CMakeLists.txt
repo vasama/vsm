@@ -16,7 +16,6 @@ vsm_add_library(
 		include/vsm/inplace_function.hpp
 
 	HEADER_DEPENDENCIES
-		vsm::allocator
 		vsm::core
 
 	TEST_SOURCES
