@@ -139,4 +139,18 @@ concept constructible_to = std::constructible_from<U, T>;
 template<typename T, typename U>
 concept assignable_to = std::assignable_from<U, T>;
 
+template<typename T, typename... Args>
+concept implicitly_constructible_from =
+	std::constructible_from<T, Args...> &&
+	requires (void(* f)(T), Args&&... args)
+	{
+		f({ vsm_forward(args)... });
+	};
+
+
+/* miscellaneous */
+
+template<typename T, typename... Args>
+concept constructor_args_for = sizeof...(Args) > 0 && (no_cvref_of<Args, T> && ...);
+
 } // namespace vsm

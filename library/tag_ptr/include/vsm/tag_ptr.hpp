@@ -1,5 +1,7 @@
 #pragma once
 
+//TODO: Rename to tagged_ptr
+
 #include <vsm/assert.h>
 #include <vsm/hash.hpp>
 

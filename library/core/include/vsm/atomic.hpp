@@ -37,6 +37,8 @@ class atomic_ref : vsm_detail_atomic_ref_base(T)
 	static_assert(base::is_always_lock_free);
 
 public:
+	using value_type = typename base::value_type;
+
 	using base::is_always_lock_free;
 	using base::required_alignment;
 
@@ -56,7 +58,7 @@ public:
 
 	vsm_always_inline void store(T const& new_value, std::memory_order const order) const noexcept
 	{
-		return base::store(new_value, order);
+		base::store(new_value, order);
 	}
 
 	[[nodiscard]] vsm_always_inline T exchange(
@@ -121,6 +123,8 @@ class atomic
 	alignas(ref_type::required_alignment) mutable T m_storage = {};
 
 public:
+	using value_type = typename ref_type::value_type;
+
 	static constexpr bool is_always_lock_free = true;
 
 
