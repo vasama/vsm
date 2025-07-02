@@ -56,6 +56,8 @@ class atomic_ref_base
 	T* m_object;
 
 public:
+	using value_type = T;
+
 	static constexpr bool is_always_lock_free = true;
 	static constexpr size_t required_alignment = 16;
 
