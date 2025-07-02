@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vsm/assert.h>
+#include <vsm/atomic.hpp>
 #include <vsm/concepts.hpp>
 #include <vsm/standard/memory.hpp>
 
@@ -9,8 +11,11 @@
 namespace vsm {
 namespace detail {
 
-template<typename Pointer>
-concept taggable_pointer = std::is_pointer_v<Pointer> && !std::is_function_v<vsm::remove_ptr_t<Pointer>>;
+template<typename T>
+concept taggable_pointee = !std::is_function_v<T>;
+
+template<typename Pointer, typename T>
+concept taggable_pointer = std::is_pointer_v<Pointer> && std::convertible_to<Pointer, T*>;
 
 template<typename Tag>
 concept taggable_pointer_tag =
@@ -20,47 +25,45 @@ concept taggable_pointer_tag =
 template<typename Tag>
 concept taggable_pointer_tag_arithmetic = std::unsigned_integral<Tag> && vsm::not_same_as<Tag, bool>;
 
+template<typename T, unsigned Alignment = 0>
+consteval unsigned taggable_bits_available()
+{
+	if constexpr (Alignment != 0)
+	{
+		return std::countr_zero(Alignment);
+	}
+	else
+	{
+		if constexpr (std::is_void_v<T>)
+		{
+			return 0;
+		}
+		else
+		{
+			return std::countr_zero(alignof(T));
+		}
+	}
+}
+
 } // namespace detail
 
-template<typename Pointer>
-struct pointer_tag_traits;
-
-template<typename Pointee>
-	requires std::is_object_v<Pointee>
-struct pointer_tag_traits<Pointee*>
-{
-	template<unsigned Alignment = alignof(Pointee)>
-		requires (std::has_single_bit(Alignment))
-	static constexpr unsigned bits_available = std::countr_zero(Alignment);
-};
-
-template<>
-struct pointer_tag_traits<void*>
-{
-	template<unsigned Alignment = 1>
-		requires (std::has_single_bit(Alignment))
-	static constexpr unsigned bits_available = std::countr_zero(Alignment);
-};
-
-template<typename Pointee>
-struct pointer_tag_traits<Pointee const*> : pointer_tag_traits<Pointee*> {};
-
 template<
-	detail::taggable_pointer Pointer,
+	detail::taggable_pointee T,
 	detail::taggable_pointer_tag Tag,
-	unsigned BitsRequested = (pointer_tag_traits<Pointer>::template bits_available<>)>
+	unsigned BitsRequested = detail::taggable_bits_available<T>()>
 class pointer_tag_pair
 {
 	static constexpr uintptr_t ptr_mask = static_cast<uintptr_t>(-1) << BitsRequested;
 
-	static constexpr uintptr_t max_value = BitsRequested ? static_cast<uintptr_t>(1) << (BitsRequested - 1) : 0;
-	static constexpr uintptr_t tag_mask = BitsRequested ? max_value - 1 : 0;
+	static constexpr uintptr_t tag_mask = BitsRequested == 0
+		? 0
+		: (static_cast<uintptr_t>(1) << BitsRequested) - 1;
 
 	uintptr_t m_value;
 
 public:
-	using pointer_type = Pointer;
-	using tagged_pointer_type = vsm::copy_cv_t<vsm::remove_ptr_t<Pointer>, void>*;
+	using pointer_type = T*;
+	using tagged_pointer_type = vsm::copy_cv_t<T, void>*;
 	using tag_type = Tag;
 
 	static constexpr unsigned bits_requested = BitsRequested;
@@ -71,21 +74,27 @@ public:
 	{
 	}
 
-	template<std::convertible_to<Pointer> P>
-		requires (pointer_tag_traits<P>::template bits_available<> >= BitsRequested)
+	/*constexpr*/ pointer_tag_pair(decltype(nullptr), Tag const tag)
+		: pointer_tag_pair(static_cast<uintptr_t>(tag))
+	{
+		vsm_assert(static_cast<uintptr_t>(tag) <= tag_mask);
+	}
+
+	template<detail::taggable_pointer<T> P>
+		requires (BitsRequested <= detail::taggable_bits_available<remove_ptr_t<P>>())
 	/*constexpr*/ pointer_tag_pair(P const pointer, Tag const tag)
 		: pointer_tag_pair(reinterpret_cast<uintptr_t>(pointer) | static_cast<uintptr_t>(tag))
 	{
 		vsm_assert(vsm::is_sufficiently_aligned<BitsRequested>(pointer)); //PRECONDITION
-		vsm_assert(static_cast<uintptr_t>(tag) <= max_value);
+		vsm_assert(static_cast<uintptr_t>(tag) <= tag_mask);
 	}
 
-	template<unsigned PromisedAlignment, std::convertible_to<Pointer> P>
-		requires (pointer_tag_traits<P>::template bits_available<PromisedAlignment> >= BitsRequested)
+	template<unsigned PromisedAlignment, detail::taggable_pointer<T> P>
+		requires (BitsRequested <= detail::taggable_bits_available<remove_ptr_t<P>, PromisedAlignment>())
 	static /*constexpr*/ pointer_tag_pair from_overaligned(P const pointer, Tag const tag)
 	{
 		vsm_assert(vsm::is_sufficiently_aligned<PromisedAlignment>(pointer)); //PRECONDITION
-		vsm_assert(static_cast<uintptr_t>(tag) <= max_value); //PRECONDITION
+		vsm_assert(static_cast<uintptr_t>(tag) <= tag_mask); //PRECONDITION
 
 		return pointer_tag_pair(reinterpret_cast<uintptr_t>(pointer) | static_cast<uintptr_t>(tag));
 	}
@@ -100,9 +109,9 @@ public:
 		return reinterpret_cast<tagged_pointer_type>(m_value);
 	}
 
-	[[nodiscard]] /*constexpr*/ Pointer pointer() const noexcept
+	[[nodiscard]] /*constexpr*/ T* pointer() const noexcept
 	{
-		return reinterpret_cast<Pointer>(m_value & ptr_mask);
+		return reinterpret_cast<T*>(m_value & ptr_mask);
 	}
 
 	[[nodiscard]] constexpr Tag tag() const noexcept
@@ -125,12 +134,12 @@ private:
 	{
 	}
 
-	friend atomic<pointer_tag_pair<Pointer, Tag, BitsRequested>>;
-	friend atomic_ref<pointer_tag_pair<Pointer, Tag, BitsRequested>>;
+	friend atomic<pointer_tag_pair<T, Tag, BitsRequested>>;
+	friend atomic_ref<pointer_tag_pair<T, Tag, BitsRequested>>;
 };
 
-template<typename Pointer, typename Tag, unsigned BitsRequested>
-class atomic_ref<pointer_tag_pair<Pointer, Tag, BitsRequested>> : atomic_ref<uintptr_t>
+template<typename T, typename Tag, unsigned BitsRequested>
+class atomic_ref<pointer_tag_pair<T, Tag, BitsRequested>> : atomic_ref<uintptr_t>
 {
 	using base = atomic_ref<uintptr_t>;
 
@@ -152,13 +161,13 @@ public:
 #include <vsm/detail/atomic_pointer_tag_pair.hpp>
 };
 
-template<typename Pointer, typename Tag, unsigned BitsRequested>
-class atomic<pointer_tag_pair<Pointer, Tag, BitsRequested>> : atomic<uintptr_t>
+template<typename T, typename Tag, unsigned BitsRequested>
+class atomic<pointer_tag_pair<T, Tag, BitsRequested>> : atomic<uintptr_t>
 {
 	using base = atomic<uintptr_t>;
 
 public:
-	using value_type = typename base::value_type;
+	using value_type = pointer_tag_pair<T, Tag, BitsRequested>;
 
 	using base::is_always_lock_free;
 
@@ -172,13 +181,13 @@ public:
 	using base::is_lock_free;
 
 #define vsm_detail_fetch_mutate_category &
-#define vsm_detail_fetch_mutate_ref (ref_type(static_cast<base&>(*this)))
+#define vsm_detail_fetch_mutate_ref (atomic_ref<uintptr_t>(static_cast<base&>(*this)))
 #include <vsm/detail/atomic_pointer_tag_pair.hpp>
 };
 
-template<size_t I, typename Pointer, typename Tag, unsigned BitsRequested>
-constexpr std::tuple_element_t<I, pointer_tag_pair<Pointer, Tag, BitsRequested>> get(
-	pointer_tag_pair<Pointer, Tag, BitsRequested> const pointer)
+template<size_t I, typename T, typename Tag, unsigned BitsRequested>
+constexpr std::tuple_element_t<I, pointer_tag_pair<T, Tag, BitsRequested>> get(
+	pointer_tag_pair<T, Tag, BitsRequested> const pointer)
 {
 	if constexpr (I == 0)
 	{
@@ -190,47 +199,46 @@ constexpr std::tuple_element_t<I, pointer_tag_pair<Pointer, Tag, BitsRequested>>
 	}
 }
 
-
-template<detail::taggable_pointer Pointer, detail::taggable_pointer_tag Tag, Tag Max>
+template<detail::taggable_pointee T, detail::taggable_pointer_tag Tag, Tag Max>
 using pointer_tag_pair_with_max = pointer_tag_pair<
-	Pointer,
+	T,
 	Tag,
 	std::bit_width(static_cast<uintptr_t>(Max))>;
 
 } // namespace vsm
 
-template<typename Pointer, typename Tag, unsigned BitsRequested>
-struct std::tuple_size<vsm::pointer_tag_pair<Pointer, Tag, BitsRequested>>
+template<typename T, typename Tag, unsigned BitsRequested>
+struct std::tuple_size<vsm::pointer_tag_pair<T, Tag, BitsRequested>>
 {
 	static constexpr size_t value = 2;
 };
 
-template<typename Pointer, typename Tag, unsigned BitsRequested>
-struct std::tuple_size<vsm::pointer_tag_pair<Pointer, Tag, BitsRequested> const>
+template<typename T, typename Tag, unsigned BitsRequested>
+struct std::tuple_size<vsm::pointer_tag_pair<T, Tag, BitsRequested> const>
 {
 	static constexpr size_t value = 2;
 };
 
-template<typename Pointer, typename Tag, unsigned BitsRequested>
-struct std::tuple_element<0, vsm::pointer_tag_pair<Pointer, Tag, BitsRequested>>
+template<typename T, typename Tag, unsigned BitsRequested>
+struct std::tuple_element<0, vsm::pointer_tag_pair<T, Tag, BitsRequested>>
 {
-	using type = Pointer;
+	using type = T*;
 };
 
-template<typename Pointer, typename Tag, unsigned BitsRequested>
-struct std::tuple_element<1, vsm::pointer_tag_pair<Pointer, Tag, BitsRequested>>
+template<typename T, typename Tag, unsigned BitsRequested>
+struct std::tuple_element<1, vsm::pointer_tag_pair<T, Tag, BitsRequested>>
 {
 	using type = Tag;
 };
 
-template<typename Pointer, typename Tag, unsigned BitsRequested>
-struct std::tuple_element<0, vsm::pointer_tag_pair<Pointer, Tag, BitsRequested> const>
+template<typename T, typename Tag, unsigned BitsRequested>
+struct std::tuple_element<0, vsm::pointer_tag_pair<T, Tag, BitsRequested> const>
 {
-	using type = Pointer;
+	using type = T*;
 };
 
-template<typename Pointer, typename Tag, unsigned BitsRequested>
-struct std::tuple_element<1, vsm::pointer_tag_pair<Pointer, Tag, BitsRequested> const>
+template<typename T, typename Tag, unsigned BitsRequested>
+struct std::tuple_element<1, vsm::pointer_tag_pair<T, Tag, BitsRequested> const>
 {
 	using type = Tag;
 };

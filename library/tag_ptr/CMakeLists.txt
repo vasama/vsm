@@ -17,6 +17,7 @@ vsm_add_library(
 		vsm::core
 
 	TEST_SOURCES
+		source/vsm/test/pointer_tag_pair.cpp
 		source/vsm/test/tag_ptr.cpp
 
 	TEST_DEPENDENCIES

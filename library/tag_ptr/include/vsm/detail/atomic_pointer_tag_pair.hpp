@@ -53,19 +53,18 @@ vsm_always_inline void store(T const new_value, std::memory_order const order) v
 	[[nodiscard]] value_type operation ## _pointer( \
 		ptrdiff_t const offset, \
 		std::memory_order const order) vsm_detail_fetch_mutate_category \
-		noexcept(alignof(vsm::remove_ptr_t<Pointer>) >= BitsRequested) \
-		requires vsm::non_void<vsm::remove_ptr_t<Pointer>> \
+		noexcept(BitsRequested <= detail::taggable_bits_available<T>()) \
+		requires no_cv_of<T, void> \
 	{ \
-		using pointee_type = vsm::remove_ptr_t<Pointer>; \
-		uintptr_t const byte_offset = static_cast<uintptr_t>(offset) * sizeof(pointee_type); \
+		uintptr_t const byte_offset = static_cast<uintptr_t>(offset) * sizeof(T); \
 		\
-		if constexpr (BitsRequested > alignof(pointee_type)) \
+		if constexpr (BitsRequested > detail::taggable_bits_available<T>()) \
 		{ \
 			vsm_assert((byte_offset & value_type::tag_mask) == 0); /*PRECONDITION*/ \
 		} \
 		\
 		return value_type(vsm_detail_fetch_mutate_ref.operation(byte_offset, order)); \
-	}
+	} \
 
 	vsm_detail_fetch_mutate_pointer(fetch_add)
 	vsm_detail_fetch_mutate_pointer(fetch_sub)
@@ -83,7 +82,7 @@ vsm_always_inline void store(T const new_value, std::memory_order const order) v
 		\
 		auto const& ref = vsm_detail_fetch_mutate_ref; \
 		\
-		uintptr_t old_value = ref.fetch(load_order); \
+		uintptr_t old_value = ref.load(load_order); \
 		\
 		while (!ref.compare_exchange_weak( \
 			old_value, \
@@ -104,7 +103,7 @@ vsm_always_inline void store(T const new_value, std::memory_order const order) v
 		std::memory_order const order) vsm_detail_fetch_mutate_category \
 		requires std::unsigned_integral<Tag> \
 	{ \
-		vsm_assert(static_cast<uintptr_t>(tag) <= value_type::max_value); /*PRECONDITION*/ \
+		vsm_assert(static_cast<uintptr_t>(tag) <= value_type::tag_mask); /*PRECONDITION*/ \
 		return value_type(vsm_detail_fetch_mutate_ref.operation(static_cast<uintptr_t>(tag), order)); \
 	} \
 
@@ -114,3 +113,4 @@ vsm_always_inline void store(T const new_value, std::memory_order const order) v
 #undef vsm_detail_fetch_mutate_tag
 
 #undef vsm_detail_fetch_mutate_category
+#undef vsm_detail_fetch_mutate_ref
