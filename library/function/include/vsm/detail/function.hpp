@@ -145,7 +145,7 @@ struct _function_base
 
 	[[nodiscard]] explicit operator bool() const
 	{
-		return m_storage != nullptr;
+		return m_table != nullptr;
 	}
 
 	template<std::convertible_to<Ps>... Args>

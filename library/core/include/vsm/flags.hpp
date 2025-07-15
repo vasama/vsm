@@ -25,7 +25,7 @@ template<typename T>
 template<typename T>
 [[nodiscard]] constexpr T set_flags(T const superset, T const subset, bool const value)
 {
-	return (superset & ~subset) | (subset & static_cast<T>(-value));
+	return (superset & ~subset) | (subset & static_cast<T>(-static_cast<int>(value)));
 }
 
 } // namespace vsm

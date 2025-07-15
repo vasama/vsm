@@ -78,6 +78,8 @@ public:
 	vsm_detail_partial_1: \
 		~T() = default; \
 	private: \
+		friend private_class; \
+		friend internal_class; \
 		friend ::vsm::partial \
 
 #define vsm_partial_delete(T) \

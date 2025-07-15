@@ -77,18 +77,21 @@ inline std::error_code as_error_code(result<void> const& result) noexcept
 		: result.error();
 }
 
-template<instance_of<expected> Expected>
-[[nodiscard]] copy_cvref_t<Expected, typename Expected::value_type> assume_success(
+template<typename Expected>
+	requires instance_of<remove_cvref_t<Expected>, expected>
+[[nodiscard]] copy_cvref_t<Expected, typename remove_cvref_t<Expected>::value_type> assume_success(
 	Expected&& expected)
 {
 	vsm_assume(expected);
 	return *vsm_forward(expected);
 }
 
-template<instance_of<expected> Expected>
-[[nodiscard]] expected<void, typename Expected::error_type> discard_value(Expected&& expected)
+template<typename Expected>
+	requires instance_of<remove_cvref_t<Expected>, expected>
+[[nodiscard]] expected<void, typename remove_cvref_t<Expected>::error_type> discard_value(
+	Expected&& expected)
 {
-	using expected_type = vsm::expected<void, typename Expected::error_type>;
+	using expected_type = vsm::expected<void, typename remove_cvref_t<Expected>::error_type>;
 
 	return expected
 		? expected_type{}

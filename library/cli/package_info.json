@@ -1,0 +1,35 @@
+{
+	"package": "vsm.cli",
+	"version": "0.1",
+	"package_type": "static-library",
+	"requirements": [
+		{
+			"package": "vsm.core",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm.function",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm.hash_table",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm.result",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm.streams",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm.tag_ptr",
+			"version": "0.1"
+		},
+		{
+			"package": "vsm.vector",
+			"version": "0.1"
+		}
+	]
+}
