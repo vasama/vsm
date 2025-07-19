@@ -24,7 +24,15 @@ public:
 	{
 	}
 
-	vsm::result<size_t> write_some(std::span<std::byte const> const data) noexcept
+	basic_buffered_sink(basic_buffered_sink&&);
+	basic_buffered_sink& operator=(basic_buffered_sink&&) &;
+
+	~basic_buffered_sink()
+	{
+		(void)flush();
+	}
+
+	[[nodiscard]] vsm::result<size_t> write_some(std::span<std::byte const> const data) noexcept
 	{
 		if (m_buffer_offset == m_buffer.size())
 		{
@@ -44,13 +52,13 @@ public:
 		size_t const max_transfer_size = m_buffer.size() - m_buffer_offset;
 		size_t const transfer_size = std::min(max_transfer_size, data.size());
 
-		std::memcpy(m_buffer + m_buffer_offset, data.data(), transfer_size);
+		std::memcpy(m_buffer.data() + m_buffer_offset, data.data(), transfer_size);
 		m_buffer_offset += transfer_size;
 
 		return transfer_size;
 	}
 
-	vsm::result<void> flush()
+	[[nodiscard]] vsm::result<void> flush() noexcept
 	{
 		if (m_buffer_offset != 0)
 		{
@@ -62,7 +70,8 @@ public:
 		}
 	}
 
-	vsm::result<std::span<std::byte>> direct_write_acquire(size_t const min_size) noexcept
+	[[nodiscard]] vsm::result<std::span<std::byte>> direct_write_acquire(
+		size_t const min_size) noexcept
 	{
 		if (min_size > m_buffer.size() - m_buffer_offset)
 		{

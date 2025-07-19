@@ -8,10 +8,10 @@ namespace detail {
 
 struct any_allocator_allocate
 {
-	using signature_type = allocation(size_t);
+	using signature_type = vsm::allocation(size_t) noexcept;
 
 	template<memory_resource Allocator>
-	static allocation invoke(Allocator&& allocator, size_t const min_size)
+	static vsm::allocation invoke(Allocator& allocator, size_t const min_size) noexcept
 	{
 		return allocator.allocate(min_size);
 	}
@@ -19,10 +19,10 @@ struct any_allocator_allocate
 
 struct any_allocator_deallocate
 {
-	using signature_type = void(allocation);
+	using signature_type = void(vsm::allocation) noexcept;
 
 	template<memory_resource Allocator>
-	static void invoke(Allocator&& allocator, vsm::allocation const allocation)
+	static void invoke(Allocator& allocator, vsm::allocation const allocation) noexcept
 	{
 		allocator.deallocate(allocation);
 	}
@@ -30,13 +30,13 @@ struct any_allocator_deallocate
 
 struct any_allocator_resize
 {
-	using signature_type = size_t(allocation, size_t);
+	using signature_type = size_t(allocation, size_t) noexcept;
 
 	template<memory_resource Allocator>
 	static size_t invoke(
 		Allocator&& allocator,
 		vsm::allocation const allocation,
-		size_t const min_size)
+		size_t const min_size) noexcept
 	{
 		return allocators::resize(allocator, allocation, min_size);
 	}
@@ -58,25 +58,25 @@ public:
 	}
 
 	template<allocator Allocator>
-	constexpr any_allocator(Allocator const allocator)
+	constexpr any_allocator(Allocator const allocator) noexcept
 		requires requires { any_ref(std::in_place, allocator); }
 		: any_ref(std::in_place, allocator)
 	{
 	}
 
-	[[nodiscard]] constexpr vsm::allocation allocate(size_t const min_size) const
+	[[nodiscard]] constexpr vsm::allocation allocate(size_t const min_size) const noexcept
 	{
 		return any_ref::invoke<detail::any_allocator_allocate>(min_size);
 	}
 
-	constexpr void deallocate(vsm::allocation const allocation) const
+	constexpr void deallocate(vsm::allocation const allocation) const noexcept
 	{
 		return any_ref::invoke<detail::any_allocator_deallocate>(allocation);
 	}
 
 	[[nodiscard]] constexpr size_t resize(
 		vsm::allocation const allocation,
-		size_t const min_size) const
+		size_t const min_size) const noexcept
 	{
 		return any_ref::invoke<detail::any_allocator_resize>(allocation, min_size);
 	}

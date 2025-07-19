@@ -310,7 +310,7 @@ endfunction()
 function(vsm_add_library name)
 	vsm_detail_configure_parse(
 		lib
-		"ADDITIONAL_SOURCES;TEST_COMPILE_ONLY;TEST_CUSTOM_MAIN"
+		"OBJECT_LIBRARY;ADDITIONAL_SOURCES;TEST_COMPILE_ONLY;TEST_CUSTOM_MAIN"
 		""
 		""
 		${ARGN}
@@ -325,6 +325,10 @@ function(vsm_add_library name)
 		set(private_type PRIVATE)
 	else()
 		list(APPEND add_library_args "INTERFACE")
+	endif()
+
+	if(VSM_OPT_OBJECT_LIBRARY)
+		list(APPEND add_library_args "OBJECT")
 	endif()
 
 	vsm_detail_add_target(add_library ${name} ${add_library_args})

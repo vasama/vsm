@@ -7,12 +7,18 @@
 #include <vsm/tag_invoke.hpp>
 
 #include <charconv>
+#include <optional>
 #include <string_view>
 
 namespace vsm::cli {
 
 struct parse_cpo
 {
+	friend std::string tag_invoke(parse_cpo, tag<std::string>, std::string_view const value)
+	{
+		return std::string(value);
+	}
+
 	friend std::string_view tag_invoke(parse_cpo, tag<std::string_view>, std::string_view const value)
 	{
 		return value;
@@ -59,9 +65,18 @@ struct parse_cpo
 	template<enumeration T>
 	friend result<T> tag_invoke(parse_cpo, tag<T>, std::string_view const string);
 
+	template<typename T>
+	friend result<T> tag_invoke(
+		parse_cpo,
+		tag<std::optional<T>>,
+		std::string_view const string)
+	{
+		return parse_cpo()(tag<T>(), string);
+	}
+
 	template<non_cvref T>
-	decltype(auto) operator()(tag<T> const tag, std::string_view const string) const
 		requires tag_invocable<parse_cpo, vsm::tag<T>, std::string_view>
+	decltype(auto) operator()(tag<T> const tag, std::string_view const string) const
 	{
 		return tag_invoke(*this, tag, string);
 	}

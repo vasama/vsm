@@ -29,7 +29,7 @@ struct _any_traits<R(Ps...){left(cv + ref)}{left(noex)}>
 		}}
 		else
 		{{
-			return F::invoke(*static_cast<T const*>(context), vsm_move(args)...);
+			return F::invoke(*static_cast<T{left(cv)}*>(context), vsm_move(args)...);
 		}}
 	}}
 }};

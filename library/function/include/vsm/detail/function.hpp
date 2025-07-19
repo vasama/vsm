@@ -20,7 +20,7 @@ R _function_invoke(void* const object, Ps... args) noexcept(N)
 	return static_cast<T>(*std::launder(static_cast<remove_cvref_t<T>*>(object)))(vsm_move(args)...);
 }
 
-template<typename T>
+template<non_cvref T>
 void _function_relocate(void* const src, void* const dst)
 {
 	if (src != dst)
@@ -31,7 +31,7 @@ void _function_relocate(void* const src, void* const dst)
 	}
 }
 
-template<typename T>
+template<non_cvref T>
 void _function_destroy(void* const object)
 {
 	std::launder(reinterpret_cast<T*>(object))->~T();
@@ -63,13 +63,13 @@ inline constexpr _function_table<N, R, Ps...> _function_table_v =
 {
 	_function_invoke<T, N, R, Ps...>,
 
-	std::is_trivially_copyable_v<remove_ref_t<T>>
-		? _function_relocate_trivial<sizeof(remove_ref_t<T>)>
-		: _function_relocate<remove_ref_t<T>>,
+	std::is_trivially_copyable_v<remove_cvref_t<T>>
+		? _function_relocate_trivial<sizeof(remove_cvref_t<T>)>
+		: _function_relocate<remove_cvref_t<T>>,
 
-	std::is_trivially_destructible_v<remove_ref_t<T>>
+	std::is_trivially_destructible_v<remove_cvref_t<T>>
 		? _function_destroy_trivial
-		: _function_destroy<remove_ref_t<T>>,
+		: _function_destroy<remove_cvref_t<T>>,
 };
 
 template<size_t Capacity>

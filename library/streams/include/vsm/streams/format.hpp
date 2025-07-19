@@ -100,6 +100,8 @@ public:
 
 		*m_buffer_pos = static_cast<std::byte>(character);
 		m_buffer_pos += m_buffer_increment;
+
+		++m_total_size;
 	}
 
 	[[nodiscard]] vsm::result<size_t> finalize() const
@@ -109,7 +111,9 @@ public:
 			return vsm::unexpected(m_error);
 		}
 
-		return {};
+		m_sink.direct_write_release(static_cast<size_t>(m_buffer_pos - m_buffer_beg));
+
+		return m_total_size;
 	}
 
 private:
@@ -142,7 +146,7 @@ template<sink Sink, typename... Args>
 [[nodiscard]] vsm::result<size_t> format(
 	Sink&& sink,
 	std::format_string<Args...> const format,
-	Args&&... args)
+	Args&&... args) noexcept
 {
 	static_assert(streams::sink<Sink&>);
 
@@ -177,6 +181,49 @@ template<sink Sink, typename... Args>
 				buffered_sink,
 				format,
 				vsm_forward(args)...);
+		}
+	}
+}
+
+template<sink Sink>
+[[nodiscard]] vsm::result<size_t> vformat(
+	Sink&& sink,
+	std::string_view const format,
+	std::convertible_to<std::format_args> auto&& args) noexcept
+{
+	static_assert(streams::sink<Sink&>);
+
+#if 0 //TODO: Figure out why this causes infinite recursion...
+	if constexpr (non_cv<remove_ref_t<Sink>> && streams::sink<Sink const&>)
+	{
+		return streams::vformat(
+			static_cast<Sink const&>(sink),
+			format,
+			vsm_forward(args));
+	}
+	else
+#endif
+	{
+		if constexpr (direct_sink<Sink&>)
+		{
+			detail::format_output<Sink&> output(sink);
+
+			std::vformat_to(
+				output.begin(),
+				format,
+				vsm_forward(args));
+
+			return output.finalize();
+		}
+		else
+		{
+			using buffer_type = std::array<std::byte, 1024>;
+			basic_buffered_sink<Sink&, buffer_type> buffered_sink(sink);
+
+			return streams::vformat(
+				buffered_sink,
+				format,
+				vsm_forward(args));
 		}
 	}
 }

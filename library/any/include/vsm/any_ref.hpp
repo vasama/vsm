@@ -84,7 +84,7 @@ struct _any_traits<R(Ps...)>
 		}
 		else
 		{
-			return F::invoke(*static_cast<T const*>(context), vsm_move(args)...);
+			return F::invoke(*static_cast<T*>(context), vsm_move(args)...);
 		}
 	}
 };
@@ -114,7 +114,7 @@ struct _any_traits<R(Ps...) &>
 		}
 		else
 		{
-			return F::invoke(*static_cast<T const*>(context), vsm_move(args)...);
+			return F::invoke(*static_cast<T*>(context), vsm_move(args)...);
 		}
 	}
 };
@@ -144,7 +144,7 @@ struct _any_traits<R(Ps...) &&>
 		}
 		else
 		{
-			return F::invoke(*static_cast<T const*>(context), vsm_move(args)...);
+			return F::invoke(*static_cast<T*>(context), vsm_move(args)...);
 		}
 	}
 };
@@ -264,7 +264,7 @@ struct _any_traits<R(Ps...) noexcept>
 		}
 		else
 		{
-			return F::invoke(*static_cast<T const*>(context), vsm_move(args)...);
+			return F::invoke(*static_cast<T*>(context), vsm_move(args)...);
 		}
 	}
 };
@@ -294,7 +294,7 @@ struct _any_traits<R(Ps...) & noexcept>
 		}
 		else
 		{
-			return F::invoke(*static_cast<T const*>(context), vsm_move(args)...);
+			return F::invoke(*static_cast<T*>(context), vsm_move(args)...);
 		}
 	}
 };
@@ -324,7 +324,7 @@ struct _any_traits<R(Ps...) && noexcept>
 		}
 		else
 		{
-			return F::invoke(*static_cast<T const*>(context), vsm_move(args)...);
+			return F::invoke(*static_cast<T*>(context), vsm_move(args)...);
 		}
 	}
 };
@@ -420,62 +420,6 @@ struct _any_traits<R(Ps...) const&& noexcept>
 };
 
 #endif // auto-generated
-
-#if 0
-//TODO: Value categories
-
-template<typename R, typename... Ps>
-struct _any_traits<R(Ps...)>
-{
-	void test_invoke(Ps...);
-
-	template<typename F, typename T>
-	static constexpr bool requirement = _any_requirement<T, F, R, Ps...>;
-
-	using context_type = void;
-	using function_type = R(context_type*, Ps...);
-
-	template<typename F, typename T, bool Packed>
-	static R invoke(context_type* const context, Ps... args)
-	{
-		if constexpr (Packed)
-		{
-			auto const object = bit_unpack<T>(context);
-			return F::invoke(object, vsm_move(args)...);
-		}
-		else
-		{
-			return F::invoke(*static_cast<T*>(context), vsm_move(args)...);
-		}
-	}
-};
-
-template<typename R, typename... Ps>
-struct _any_traits<R(Ps...) const>
-{
-	void test_invoke(Ps...) const;
-
-	template<typename F, typename T>
-	static constexpr bool requirement = _any_requirement<T, F, R, Ps...>;
-
-	using context_type = void;
-	using function_type = R(context_type*, Ps...);
-
-	template<typename F, typename T, bool Packed>
-	static R invoke(context_type* const context, Ps... args)
-	{
-		if constexpr (Packed)
-		{
-			auto const object = bit_unpack<T>(context);
-			return F::invoke(object, vsm_move(args)...);
-		}
-		else
-		{
-			return F::invoke(*static_cast<T const*>(context), vsm_move(args)...);
-		}
-	}
-};
-#endif
 
 template<typename F>
 using _any_traits_for = _any_traits<typename F::signature_type>;

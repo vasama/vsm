@@ -9,7 +9,7 @@ vsm::result<size_t> streams::detail::c_write_some(
 	FILE* const file,
 	std::span<std::byte const> const data)
 {
-	if (data.size() != 0)
+	if (data.size() == 0)
 	{
 		return 0;
 	}
@@ -38,7 +38,7 @@ vsm::result<size_t> streams::detail::c_read_some(
 	FILE* const file,
 	std::span<std::byte> const data)
 {
-	if (data.size() != 0)
+	if (data.size() == 0)
 	{
 		return 0;
 	}
@@ -54,6 +54,6 @@ vsm::result<size_t> streams::detail::c_read_some(
 }
 
 
-basic_c_source<FILE*> streams::cin(stdin);
-basic_c_sink<FILE*> streams::cout(stdout);
-basic_c_sink<FILE*> streams::cerr(stderr);
+c_source streams::cin(stdin);
+c_sink streams::cout(stdout);
+c_sink streams::cerr(stderr);

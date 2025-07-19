@@ -20,6 +20,7 @@ vsm_add_library(
 	SOURCES
 		source/vsm/cli/impl/app.cpp
 		source/vsm/cli/impl/app.hpp
+		source/vsm/cli/impl/error.cpp
 		source/vsm/cli/impl/group.cpp
 		source/vsm/cli/impl/group.hpp
 		source/vsm/cli/impl/option.cpp
@@ -35,4 +36,7 @@ vsm_add_library(
 		vsm::streams
 		vsm::tag_ptr
 		vsm::vector
+
+	TEST_SOURCES
+		source/vsm/cli/test/cli.cpp
 )

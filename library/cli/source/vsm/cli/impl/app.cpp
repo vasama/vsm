@@ -26,6 +26,11 @@ struct option_view
 	std::string_view value;
 };
 
+struct configuration_error : std::logic_error
+{
+	using logic_error::logic_error;
+};
+
 } // namespace
 
 using app_impl = partial::private_class<app>;
@@ -123,13 +128,6 @@ public:
 	}
 
 
-	template<typename... Args>
-	void report_configuration_error(std::format_string<Args...> const format, Args&&... args);
-
-	template<typename... Args>
-	void report_error(std::format_string<Args...> const format, Args&&... args);
-
-
 	class argument_view
 	{
 		void const* m_args;
@@ -169,160 +167,7 @@ public:
 		}
 	};
 
-	static result<void> parse(private_class* app, argument_view const args)
-	{
-		bool has_syntax_error = false;
-		auto const syntax_error = [&]<typename... Args>(
-			std::format_string<Args...> const format,
-			Args&&... args)
-		{
-			app->report_error(format, vsm_forward(args)...);
-			has_syntax_error = true;
-		};
-
-		size_t positional_index = 0;
-		bool accept_option = true;
-		bool accept_command = true;
-
-		// The root command is given implicitly.
-		vsm_try_void(app->process_argument());
-
-		for (size_t i = 0, argument_count = args.size(); i < argument_count; ++i)
-		{
-			std::string_view const argument = args[i];
-
-			if (accept_option && !argument.empty() && argument[0] == '-')
-			{
-				char const* const beg = argument.data();
-				char const* const end = beg + argument.size();
-				char const* pos = beg;
-
-				if (++pos == end)
-				{
-					syntax_error("Expected option name.\n");
-					continue;
-				}
-
-				if (*pos == '-') // Long option.
-				{
-					// -- Signifies the end of named options.
-					if (++pos == end)
-					{
-						accept_option = false;
-						continue;
-					}
-
-					char const* const equals = std::find(pos, end, '=');
-					std::string_view const name = std::string_view(pos, equals);
-					option_view view = app->find_long_option(name);
-
-					if (view.option == nullptr)
-					{
-						syntax_error("No such option: '--{}'.\n", name);
-						continue;
-					}
-
-					if (equals != end)
-					{
-						if (any_flags(view.option->m_flags, flags::flag))
-						{
-							syntax_error("Value specified for flag: '--{}'.\n", name);
-							continue;
-						}
-						view.value = std::string_view(equals + 1, end);
-					}
-					else if (no_flags(view.option->m_flags, flags::flag))
-					{
-						if (++i == argument_count)
-						{
-							syntax_error("Expected value for option '--{}'.\n", name);
-							continue;
-						}
-						view.value = args[i];
-					}
-
-					std::string_view const form = std::string_view(beg, equals);
-					vsm_try_void(view.option->process_argument(form, view.value));
-				}
-				else // Short option.
-				{
-					while (pos != end)
-					{
-						char const name = *pos++;
-						option_view view = app->find_short_option(name);
-
-						if (view.option == nullptr)
-						{
-							syntax_error("No such option: '-{}'.\n", name);
-							continue;
-						}
-
-						if (no_flags(view.option->m_flags, flags::flag))
-						{
-							if (pos == end)
-							{
-								if (++i == argument_count)
-								{
-									syntax_error("Expected value for option '-{}'.\n", name);
-								}
-								view.value = args[i];
-							}
-							else
-							{
-								view.value = std::string_view(pos, end);
-								pos = end;
-							}
-						}
-
-						char const form[] = { '-', name, '\0' };
-						vsm_try_void(view.option->process_argument(form, view.value));
-					}
-				}
-
-				continue;
-			}
-
-			if (accept_command)
-			{
-				if (auto const value = app->m_commands.at_ptr(argument))
-				{
-					app->m_command = app = value->get();
-					vsm_try_void(app->process_argument());
-					continue;
-				}
-			}
-			accept_command = false;
-
-		positional_reset:
-			if (positional_index < app->m_positional_options.size())
-			{
-				option_internal* const option = app->m_positional_options[positional_index];
-
-				if (++option->m_count == option->m_max)
-				{
-					++positional_index;
-					goto positional_reset;
-				}
-
-				vsm_try_void(option->process_argument(std::string_view(), argument));
-				continue;
-			}
-
-			syntax_error("Unexpected argument: '{}'.\n", argument);
-		}
-
-		for (private_class* command = app; command != nullptr; command = command->m_parent)
-		{
-			vsm_try_void(command->process_completed());
-		}
-
-		if (has_syntax_error)
-		{
-			return vsm::unexpected(error::invalid_syntax);
-		}
-
-		return {};
-	}
+	static result<void> _parse(private_class* app, argument_view const args);
 
 
 	result<size_t> _print_help(streams::any_sink_ref sink) const;
@@ -394,13 +239,13 @@ option& app::flag(std::string_view const name)
 result<void> app::parse(std::span<std::string_view const> const args)
 {
 	vsm_self(private_class);
-	return private_class::parse(self, args);
+	return private_class::_parse(self, args);
 }
 
 result<void> app::parse(std::span<char const* const> const args)
 {
 	vsm_self(private_class);
-	return private_class::parse(self, args);
+	return private_class::_parse(self, args);
 }
 
 result<void> app::print_help_to_stdout() const
@@ -481,7 +326,8 @@ option_internal& app_internal::create_option(
 			if (!flag)
 			{
 				self->report_configuration_error(
-					"Constant values may only be applied to flags.");
+					"Constant value may not be specified for non-flag option: '{}'",
+					spec_part);
 			}
 
 			view.value = std::string_view(equals + 1, end);
@@ -546,7 +392,10 @@ option_internal& app_internal::create_option(
 			if (!has_option_form)
 			{
 				has_option_form = true;
-				option.m_help_option = std::string_view(spec_part.begin(), spec.end());
+				option.m_help_option = std::string_view(
+					std::to_address(spec_part.begin()),
+					std::to_address(spec.end()));
+
 				++m_visible_option_count;
 			}
 			break;
@@ -556,8 +405,15 @@ option_internal& app_internal::create_option(
 	return option;
 }
 
-template<typename... Args>
-void app_impl::report_error(std::format_string<Args...> const format, Args&&... args)
+void app_internal::_report_configuration_error(
+	std::string_view const format,
+	std::format_args args) const
+{
+	std::string const message = std::vformat(format, vsm_move(args));
+	vsm_except_throw_or_print_and_terminate(configuration_error, message.c_str());
+}
+
+void app_internal::_report_error(std::string_view const format, std::format_args args) const
 {
 	vsm_self(private_class);
 
@@ -565,11 +421,183 @@ void app_impl::report_error(std::format_string<Args...> const format, Args&&... 
 	{
 		if (app->m_error_reporter)
 		{
-			return app->m_error_reporter(std::format(format, args...));
+			return app->m_error_reporter(std::vformat(format, vsm_move(args)));
 		}
 	}
 
-	vsm_verify(streams::format(streams::cerr, format, vsm_forward(args)...));
+	vsm_verify(streams::vformat(streams::cerr, format, vsm_move(args)));
+}
+
+result<void> app_impl::_parse(private_class* app, argument_view const args)
+{
+	error first_error = error::success;
+
+	auto const set_error = [&]<typename... Args>(
+		cli::error const error,
+		std::format_string<Args...> const format,
+		Args&&... args)
+	{
+		if (first_error == cli::error::success)
+		{
+			first_error = error;
+		}
+
+		app->report_error(format, vsm_forward(args)...);
+	};
+
+	size_t positional_index = 0;
+	bool accept_option = true;
+	bool accept_command = true;
+
+	// The root command is given implicitly.
+	vsm_try_void(app->process_argument());
+
+	for (size_t i = 0, argument_count = args.size(); i < argument_count; ++i)
+	{
+		std::string_view const argument = args[i];
+
+		if (accept_option && !argument.empty() && argument[0] == '-')
+		{
+			char const* const beg = argument.data();
+			char const* const end = beg + argument.size();
+			char const* pos = beg;
+
+			if (++pos == end)
+			{
+				set_error(error::invalid_syntax, "Expected option name.\n");
+				continue;
+			}
+
+			if (*pos == '-') // Long option.
+			{
+				// -- Signifies the end of named options.
+				if (++pos == end)
+				{
+					accept_option = false;
+					continue;
+				}
+
+				char const* const equals = std::find(pos, end, '=');
+				std::string_view const name = std::string_view(pos, equals);
+				option_view view = app->find_long_option(name);
+
+				if (view.option == nullptr)
+				{
+					set_error(error::unrecognized_option, "No such option: '--{}'.\n", name);
+					continue;
+				}
+
+				if (equals != end)
+				{
+					if (any_flags(view.option->m_flags, flags::flag))
+					{
+						set_error(
+							error::invalid_syntax,
+							"Value specified for flag: '--{}'.\n",
+							name);
+
+						continue;
+					}
+					view.value = std::string_view(equals + 1, end);
+				}
+				else if (no_flags(view.option->m_flags, flags::flag))
+				{
+					if (++i == argument_count)
+					{
+						set_error(
+							error::invalid_syntax,
+							"Expected value for option '--{}'.\n",
+							name);
+
+						continue;
+					}
+					view.value = args[i];
+				}
+
+				std::string_view const form = std::string_view(beg, equals);
+				vsm_try_void(view.option->process_argument(form, view.value));
+			}
+			else // Short option.
+			{
+				while (pos != end)
+				{
+					char const name = *pos++;
+					option_view view = app->find_short_option(name);
+
+					if (view.option == nullptr)
+					{
+						set_error(error::unrecognized_option, "No such option: '-{}'.\n", name);
+						continue;
+					}
+
+					if (vsm::no_flags(view.option->m_flags, flags::flag))
+					{
+						if (pos == end)
+						{
+							if (++i == argument_count)
+							{
+								set_error(
+									error::invalid_syntax,
+									"Expected value for option '-{}'.\n",
+									name);
+							}
+							view.value = args[i];
+						}
+						else
+						{
+							view.value = std::string_view(pos, end);
+							pos = end;
+						}
+					}
+
+					char const form[] = { '-', name, '\0' };
+					vsm_try_void(view.option->process_argument(form, view.value));
+				}
+			}
+
+			continue;
+		}
+
+		if (accept_command)
+		{
+			if (auto const value = app->m_commands.at_ptr(argument))
+			{
+				app->m_command = app = value->get();
+				vsm_try_void(app->process_argument());
+				continue;
+			}
+		}
+		accept_command = false;
+
+	positional_reset:
+		if (positional_index < app->m_positional_options.size())
+		{
+			option_internal* const option = app->m_positional_options[positional_index];
+
+			if (++option->m_count == option->m_max)
+			{
+				++positional_index;
+				goto positional_reset;
+			}
+
+			vsm_try_void(option->process_argument(std::string_view(), argument));
+			continue;
+		}
+
+		set_error(error::invalid_syntax, "Unexpected argument: '{}'.\n", argument);
+	}
+
+	for (private_class* command = app; command != nullptr; command = command->m_parent)
+	{
+		vsm_try_void(command->process_completed());
+	}
+
+	if (first_error != error::success)
+	{
+		return vsm::unexpected(first_error);
+	}
+
+	return {};
 }
 
 result<size_t> app_impl::_print_help(streams::any_sink_ref const sink) const
@@ -628,11 +656,12 @@ result<size_t> app_impl::_print_help(streams::any_sink_ref const sink) const
 		size += width;
 		if (!help.empty())
 		{
-			static constexpr std::string_view help_indent = "\n                            ";
-			static constexpr size_t help_width = help_indent.size() - 1;
+			static constexpr std::string_view full_indent = "\n                            ";
+			static constexpr size_t full_indent_width = full_indent.size() - 1;
 
-			std::string_view indent = help_indent;
-			if (width <= help_width)
+			std::string_view indent = full_indent;
+
+			if (width <= full_indent_width)
 			{
 				indent = indent.substr(width + 1);
 			}
@@ -650,7 +679,8 @@ result<size_t> app_impl::_print_help(streams::any_sink_ref const sink) const
 					vsm_try_void(use_size(streams::print(sink, indent)));
 					vsm_try_void(use_size(streams::print(sink, line)));
 				}
-				indent = help_indent;
+
+				indent = full_indent;
 			}
 		}
 		return use_size(streams::print(sink, '\n'));
@@ -744,7 +774,7 @@ result<size_t> app_impl::_print_help(streams::any_sink_ref const sink) const
 	// Commands.
 	if (m_visible_command_count > 0)
 	{
-		vsm_try_void(print_section_header("Commands"));
+		vsm_try_void(print_section_header("Commands:"));
 		for (auto const& [name, command] : m_commands)
 		{
 			if (is_visible(*command))
@@ -753,12 +783,13 @@ result<size_t> app_impl::_print_help(streams::any_sink_ref const sink) const
 				vsm_try_void(print_help(width, command->m_help));
 			}
 		}
+		vsm_try_void(use_size(streams::print(sink, '\n')));
 	}
 
 	// Positionals.
 	if (m_visible_positional_count > 0)
 	{
-		vsm_try_void(print_section_header("Positionals"));
+		vsm_try_void(print_section_header("Positional arguments:"));
 		for (auto const option : m_positional_options)
 		{
 			if (is_visible(*option))
@@ -766,12 +797,13 @@ result<size_t> app_impl::_print_help(streams::any_sink_ref const sink) const
 				vsm_try_void(print_option_help(*option, option->m_help_positional));
 			}
 		}
+		vsm_try_void(use_size(streams::print(sink, '\n')));
 	}
 
 	// Options.
 	if (m_visible_option_count > 0)
 	{
-		vsm_try_void(print_section_header("Options"));
+		vsm_try_void(print_section_header("Options:"));
 		for (auto const& option : m_options)
 		{
 			if (is_visible(*option))
@@ -779,6 +811,7 @@ result<size_t> app_impl::_print_help(streams::any_sink_ref const sink) const
 				vsm_try_void(print_option_help(*option, option->m_help_option));
 			}
 		}
+		vsm_try_void(use_size(streams::print(sink, '\n')));
 	}
 
 	// Footer.

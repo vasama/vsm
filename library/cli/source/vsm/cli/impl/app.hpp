@@ -28,7 +28,20 @@ public:
 		bool flag);
 
 	template<typename... Args>
-	void report_error(std::format_string<Args...> format, Args&&... args) const;
+	void report_configuration_error(std::format_string<Args...> const format, Args&&... args) const
+	{
+		_report_configuration_error(format.get(), std::make_format_args(args...));
+	}
+
+	template<typename... Args>
+	void report_error(std::format_string<Args...> const format, Args&&... args) const
+	{
+		_report_error(format.get(), std::make_format_args(args...));
+	}
+
+private:
+	void _report_configuration_error(std::string_view format, std::format_args args) const;
+	void _report_error(std::string_view format, std::format_args args) const;
 };
 
 } // namespace vsm::cli

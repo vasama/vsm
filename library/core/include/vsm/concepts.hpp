@@ -32,6 +32,9 @@ concept none_of = is_none_of_v<T, Ts...>;
 /* value category */
 
 template<typename T>
+concept non_decaying = same_as<T, std::decay_t<T>>;
+
+template<typename T>
 concept non_cv = same_as<T, remove_cv_t<T>>;
 
 template<typename T>
@@ -130,14 +133,26 @@ concept losslessly_convertible_to =
 	std::convertible_to<From, To> &&
 	requires { To{ std::declval<From>() }; };
 
+using std::convertible_to;
+
 template<typename T, typename U>
 concept convertible_from = std::convertible_to<U, T>;
+
+using std::constructible_from;
 
 template<typename T, typename U>
 concept constructible_to = std::constructible_from<U, T>;
 
+using std::assignable_from;
+
 template<typename T, typename U>
 concept assignable_to = std::assignable_from<U, T>;
+
+template<typename T, typename U>
+concept lvalue_assignable_from = std::assignable_from<T&, U>;
+
+template<typename T, typename U>
+concept lvalue_assignable_to = std::assignable_from<U&, T>;
 
 template<typename T, typename... Args>
 concept implicitly_constructible_from =

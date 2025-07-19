@@ -54,8 +54,11 @@ public:
 	}
 };
 
-extern basic_c_source<FILE*> cin;
-extern basic_c_sink<FILE*> cout;
-extern basic_c_sink<FILE*> cerr;
+using c_source = basic_c_source<FILE*>;
+using c_sink = basic_c_sink<FILE*>;
+
+extern c_source cin;
+extern c_sink cout;
+extern c_sink cerr;
 
 } // namespace vsm::streams

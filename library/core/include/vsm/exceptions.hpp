@@ -32,6 +32,9 @@
 #	define vsm_except_throw_or_terminate(...) \
 	(throw __VA_ARGS__)
 
+#	define vsm_except_throw_or_print_and_terminate(exception, what) \
+	(throw exception(what))
+
 #	define vsm_except_rethrow \
 	throw
 
@@ -48,6 +51,9 @@
 
 #	define vsm_except_throw_or_terminate(...) \
 	(::std::terminate())
+
+#	define vsm_except_throw_or_print_and_terminate(exception, what) \
+	(::std::fprintf(stderr, "%s", what), ::std::terminate())
 
 #	define vsm_except_rethrow \
 	((void)0)

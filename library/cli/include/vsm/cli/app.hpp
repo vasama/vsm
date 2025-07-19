@@ -82,7 +82,8 @@ public:
 private:
 	vsm_partial(app);
 };
+using app_ptr = std::unique_ptr<app>;
 
-std::unique_ptr<app> make_app(std::string_view name);
+app_ptr make_app(std::string_view name);
 
 } // namespace vsm::cli

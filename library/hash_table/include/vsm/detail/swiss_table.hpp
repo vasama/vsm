@@ -370,11 +370,8 @@ void construct(_table_storage<T, P, A, C>& table)
 	}
 }
 
-template<typename T, typename P, typename A>
-void destroy(
-	_table_allocator<P, A>& table,
-	size_t const element_size,
-	void const* const null_storage)
+template<typename T>
+void destroy_elements(_table& table, size_t const element_size)
 {
 	if constexpr (!std::is_trivially_destructible_v<T>)
 	{
@@ -395,6 +392,32 @@ void destroy(
 			}
 		}
 	}
+}
+
+template<typename T>
+void clear(_table& table, size_t const element_size)
+{
+	destroy_elements<T>(table, element_size);
+
+	size_t const capacity = table.capacity;
+	size_t const max_size = get_max_size(capacity);
+
+	if (table.free != max_size)
+	{
+		init_ctrl(get_ctrls(table.slots, element_size, capacity), capacity);
+		table.free = max_size;
+	}
+
+	table.size = 0;
+}
+
+template<typename T, typename P, typename A>
+void destroy(
+	_table_allocator<P, A>& table,
+	size_t const element_size,
+	void const* const null_storage)
+{
+	destroy_elements<T>(table, element_size);
 
 	if (table.slots != null_storage)
 	{
@@ -1011,7 +1034,10 @@ public:
 			std::to_address(iterator) - reinterpret_cast<T*>(m.slots));
 	}
 
-	void clear();
+	void clear()
+	{
+
+	}
 
 
 	[[nodiscard]] iterator begin()

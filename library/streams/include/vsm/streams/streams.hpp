@@ -34,6 +34,10 @@ template<sink Sink>
 
 		return sink.flush();
 	}
+	else
+	{
+		return {};
+	}
 }
 
 template<sink Sink>

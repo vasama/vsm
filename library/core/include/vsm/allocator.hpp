@@ -73,10 +73,10 @@ template<typename T>
 concept memory_resource = requires (T& t, size_t const& s, allocation const& a)
 {
 	// allocation allocate(size_t min_size) /* const */;
-	{ t.allocate(s) } -> std::same_as<allocation>;
+	{ t.allocate(s) } noexcept -> std::same_as<allocation>;
 
 	// void deallocate(allocation allocation) /* const */;
-	{ t.deallocate(a) } -> std::same_as<void>;
+	{ t.deallocate(a) } noexcept -> std::same_as<void>;
 };
 
 template<typename T>

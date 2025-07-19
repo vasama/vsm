@@ -20,6 +20,7 @@ enum class error
 	success = 0,
 
 	invalid_syntax,
+	unrecognized_option,
 	invalid_value,
 	command_not_given,
 	option_given_too_few_times,

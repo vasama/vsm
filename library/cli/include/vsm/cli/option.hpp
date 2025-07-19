@@ -27,9 +27,9 @@ class option : detail::base
 	uint32_t m_count = 0;
 
 public:
-	using handler_type = function<result<void>(std::string_view) const>;
 	using validator_type = function<result<std::string>(std::string_view) const>;
-	using else_handler_type = function<void() const>;
+	using handler_type = function<result<void>(std::string_view)>;
+	using else_handler_type = function<void()>;
 
 
 	option& hide();
@@ -97,18 +97,6 @@ public:
 		});
 	}
 
-	template<non_cvref T>
-	option& set(T& object, auto&& value)
-	{
-		vsm_assert(any_flags(m_flags, flags::flag));
-		return handle([&object, value = vsm_forward(value)](std::string_view const value) -> result<void>
-		{
-			vsm_assert(value.empty());
-			object = vsm_move(value);
-			return {};
-		});
-	}
-
 	template<non_cvref Container>
 	option& push_back(Container& container)
 	{
@@ -123,7 +111,7 @@ public:
 
 	option& handle(handler_type handler);
 
-	option& else_handle(else_handler_type handler);
+	option& handle_else(else_handler_type handler);
 
 private:
 	void require_internal();

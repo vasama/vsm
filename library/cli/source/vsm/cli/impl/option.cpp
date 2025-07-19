@@ -31,7 +31,7 @@ option& option::handle(handler_type handler)
 	return *this;
 }
 
-option& option::else_handle(else_handler_type handler)
+option& option::handle_else(else_handler_type handler)
 {
 	vsm_self(private_class);
 	self->m_else_handlers.push_back(vsm_move(handler));
@@ -74,8 +74,10 @@ option& option::exclusive_lock(resource& resource)
 }
 
 std::unique_ptr<option_internal> option_internal::create(
-	app_internal* const app, resource& parent,
-	group_internal* const group, bool const flag)
+	app_internal* const app,
+	resource& parent,
+	group_internal* const group,
+	bool const flag)
 {
 	auto self = std::make_unique<private_class>();
 
@@ -134,7 +136,7 @@ result<void> option_internal::process_argument(
 		value = vsm_move(*r);
 	}
 
-	for (auto const& handler : self->m_handlers)
+	for (auto& handler : self->m_handlers)
 	{
 		if (result<void> r = handler(value); !r)
 		{
@@ -157,7 +159,7 @@ result<void> option_internal::process_completed()
 
 	if (self->m_count == 0)
 	{
-		for (auto const& handler : self->m_else_handlers)
+		for (auto& handler : self->m_else_handlers)
 		{
 			handler();
 		}

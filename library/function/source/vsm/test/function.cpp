@@ -30,6 +30,22 @@ struct alignas(256) big_adder : adder
 	using adder::adder;
 };
 
+struct move_only_adder : adder
+{
+	using adder::adder;
+
+	move_only_adder(move_only_adder&& other)
+		: adder(other)
+	{
+	}
+
+	move_only_adder& operator=(move_only_adder&& other)
+	{
+		static_cast<adder&>(*this) = other;
+		return *this;
+	}
+};
+
 TEST_CASE("function", "[function]")
 {
 	test::allocation_scope const scope;
