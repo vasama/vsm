@@ -1,3 +1,5 @@
+namespace vsm {
+
 template<typename T>
 T* start_lifetime_as(void* const storage) noexcept
 {
@@ -45,3 +47,5 @@ T const volatile* start_lifetime_as_array(void const volatile* const storage, si
 {
 	return reinterpret_cast<T const*>(storage);
 }
+
+} // namespace vsm

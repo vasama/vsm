@@ -5,8 +5,8 @@
 namespace vsm::test {
 namespace detail {
 
-allocation allocate(size_t size);
-void deallocate(allocation allocation);
+allocation allocate(size_t size) noexcept;
+void deallocate(allocation allocation) noexcept;
 
 struct allocation_scope_options
 {
@@ -27,12 +27,12 @@ public:
 	static constexpr bool is_always_equal = true;
 	static constexpr bool is_propagatable = true;
 
-	[[nodiscard]] allocation allocate(size_t const size) const
+	[[nodiscard]] allocation allocate(size_t const size) const noexcept
 	{
 		return detail::allocate(size);
 	}
 
-	void deallocate(allocation const allocation) const
+	void deallocate(allocation const allocation) const noexcept
 	{
 		detail::deallocate(allocation);
 	}

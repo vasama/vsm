@@ -6,7 +6,7 @@
 namespace vsm {
 namespace detail {
 
-struct any_allocator_allocate
+struct any_memory_resource_allocate
 {
 	using signature_type = vsm::allocation(size_t) noexcept;
 
@@ -17,7 +17,7 @@ struct any_allocator_allocate
 	}
 };
 
-struct any_allocator_deallocate
+struct any_memory_resource_deallocate
 {
 	using signature_type = void(vsm::allocation) noexcept;
 
@@ -28,7 +28,7 @@ struct any_allocator_deallocate
 	}
 };
 
-struct any_allocator_resize
+struct any_memory_resource_resize
 {
 	using signature_type = size_t(allocation, size_t) noexcept;
 
@@ -44,42 +44,44 @@ struct any_allocator_resize
 
 } // namespace detail
 
-class any_allocator
+class any_memory_resource_ref
 	: any_ref<
-		detail::any_allocator_allocate,
-		detail::any_allocator_deallocate,
-		detail::any_allocator_resize>
+		detail::any_memory_resource_allocate,
+		detail::any_memory_resource_deallocate,
+		detail::any_memory_resource_resize>
 {
 public:
 	template<memory_resource MemoryResource>
-	constexpr any_allocator(MemoryResource& memory_resource)
+	constexpr any_memory_resource_ref(MemoryResource& memory_resource)
 		: any_ref(memory_resource)
 	{
 	}
 
 	template<allocator Allocator>
-	constexpr any_allocator(Allocator const allocator) noexcept
-		requires requires { any_ref(std::in_place, allocator); }
+		requires constructible_from<any_ref, std::in_place_t, Allocator const&>
+	any_memory_resource_ref(Allocator const allocator) noexcept
 		: any_ref(std::in_place, allocator)
 	{
 	}
 
-	[[nodiscard]] constexpr vsm::allocation allocate(size_t const min_size) const noexcept
+	[[nodiscard]] vsm::allocation allocate(size_t const min_size) const noexcept
 	{
-		return any_ref::invoke<detail::any_allocator_allocate>(min_size);
+		return any_ref::invoke<detail::any_memory_resource_allocate>(min_size);
 	}
 
-	constexpr void deallocate(vsm::allocation const allocation) const noexcept
+	void deallocate(vsm::allocation const allocation) const noexcept
 	{
-		return any_ref::invoke<detail::any_allocator_deallocate>(allocation);
+		return any_ref::invoke<detail::any_memory_resource_deallocate>(allocation);
 	}
 
-	[[nodiscard]] constexpr size_t resize(
+	[[nodiscard]] size_t resize(
 		vsm::allocation const allocation,
 		size_t const min_size) const noexcept
 	{
-		return any_ref::invoke<detail::any_allocator_resize>(allocation, min_size);
+		return any_ref::invoke<detail::any_memory_resource_resize>(allocation, min_size);
 	}
 };
+
+using any_allocator = any_memory_resource_ref;
 
 } // namespace vsm

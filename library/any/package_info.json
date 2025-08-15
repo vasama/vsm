@@ -6,6 +6,10 @@
 		{
 			"package": "vsm.core",
 			"version": "0.1"
+		},
+		{
+			"package": "vsm.tag_ptr",
+			"version": "0.1"
 		}
 	]
 }

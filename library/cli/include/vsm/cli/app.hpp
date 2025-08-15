@@ -6,7 +6,7 @@
 #include <vsm/function.hpp>
 #include <vsm/partial.hpp>
 #include <vsm/result.hpp>
-#include <vsm/streams/any.hpp>
+#include <vsm/streams/any_ref.hpp>
 
 #include <span>
 #include <string_view>

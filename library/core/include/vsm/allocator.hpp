@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vsm/concepts.hpp>
 #include <vsm/exceptions.hpp>
 #include <vsm/type_traits.hpp>
 
@@ -119,12 +120,45 @@ template<memory_resource Allocator>
 	Allocator&& allocator,
 	size_t const min_size)
 {
-	auto const allocation = allocator.allocate(min_size);
+	void* const storage = allocator.allocate(min_size);
+
+	if (storage == nullptr)
+	{
+		vsm_except_throw_or_terminate(std::bad_alloc());
+	}
+
+	return storage;
+}
+
+template<non_decaying T, memory_resource Allocator, typename... Args>
+	requires std::constructible_from<T, Args...>
+[[nodiscard]] constexpr T* new_via(Allocator&& allocator, Args&&... args)
+{
+	auto const allocation = static_cast<Allocator const&>(allocator).allocate(sizeof(T));
+
 	if (allocation.storage == nullptr)
 	{
 		vsm_except_throw_or_terminate(std::bad_alloc());
 	}
-	return allocation;
+
+	if constexpr (std::is_nothrow_constructible_v<T, Args...>)
+	{
+		return ::new (allocation.storage) T(static_cast<Args&&>(args)...);
+	}
+	else
+	{
+		std::decay_t<Allocator> const local_allocator(static_cast<Allocator const&>(allocator));
+
+		vsm_except_try
+		{
+			return ::new (allocation.storage) T(static_cast<Args&&>(args)...);
+		}
+		vsm_except_catch (...)
+		{
+			local_allocator.deallocate(allocation);
+			vsm_except_rethrow;
+		}
+	}
 }
 
 template<typename T, memory_resource Allocator>

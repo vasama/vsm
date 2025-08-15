@@ -3,60 +3,44 @@ def left(str):
 		str = " " + str
 	return str
 
-def specialization(cv, ref, ref_view, noex, noex_bool, trait):
+def specialization(cv, ref, ref_view, noexcept, nothrow):
 	print(f"""
 template<typename R, typename... Ps>
-struct _any_traits<R(Ps...){left(cv + ref)}{left(noex)}>
+struct _any_traits<R(Ps...){left(cv + ref)}{left(noexcept)}>
 {{
-	template<typename T>
-	using member_type = R(T::*)(Ps...){left(cv + ref)}{left(noex)};
+	template<typename T, typename F>
+	static void type_constraint() requires _any_type{nothrow}_constraint_2<T{left(cv)}{ref_view}, F, R, Ps...>;
 
-	void test_invoke(Ps...){left(cv + ref)};
+	void call_constraint(Ps...){left(cv + ref)}{left(noexcept)};
 
-	template<typename F, typename T>
-	static constexpr bool requirement = _any_requirement<T, F, R, Ps...>;
+	using return_type = R;
+	using function_type = R(void const*, Ps...){left(noexcept)};
 
-	using context_type = void{left(cv)};
-
-	using function_type = R(context_type*, Ps...);
-
-	template<typename F, typename T, bool Packed>
-	static R invoke(context_type* const context, Ps... args)
+	template<typename Transform, typename T, typename F>
+	static R invoke(void const* const context, Ps... args)
 	{{
-		if constexpr (Packed)
-		{{
-			return F::invoke(static_cast<T const&>(bit_unpack<T>(context)), vsm_move(args)...);
-		}}
-		else
-		{{
-			return F::invoke(*static_cast<T{left(cv)}*>(context), vsm_move(args)...);
-		}}
+		return F::invoke(
+			const_cast<T{left(cv)}{ref_view}>(
+				*static_cast<T const*>(
+					static_cast<void const*>(Transform::apply(context)))),
+			vsm_move(args)...);
 	}}
 }};
 """)
 
-def ref(cv, noex, noex_bool, trait):
-	eol = "\n\t\t"
+def ref(cv, noexcept):
+	nothrow = "_nothrow" if noexcept == "noexcept" else ""
 
-	def args(ref):
-		return f"<R, U{left(cv) + ref}, Ps...>"
+	specialization(cv, ""  , "&" , noexcept, nothrow)
+	specialization(cv, "&" , "&" , noexcept, nothrow)
+	specialization(cv, "&&", "&&", noexcept, nothrow)
 
-	args_v = args("")
-	args_r = args("&")
-
-	trait_v = f"{eol}std::{trait}{args_v}"
-	trait_r = f"{eol}std::{trait}{args_r}"
-
-	specialization(cv, ""  , "&" , noex, noex_bool, f"{trait_v} &&{trait_r}")
-	specialization(cv, "&" , "&" , noex, noex_bool, trait_r)
-	specialization(cv, "&&", "&&", noex, noex_bool, trait_v)
-
-def cv(noex, noex_bool, trait):
-	ref(""     , noex, noex_bool, trait)
-	ref("const", noex, noex_bool, trait)
+def cv(noexcept):
+	ref(""     , noexcept)
+	ref("const", noexcept)
 
 if __name__ == "__main__":
 	print("#if 1 // auto-generated")
-	cv(""        , "false", "is_invocable_r_v")
-	cv("noexcept", "true" , "is_nothrow_invocable_r_v")
+	cv("")
+	cv("noexcept")
 	print("#endif // auto-generated")

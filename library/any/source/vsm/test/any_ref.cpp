@@ -1,4 +1,5 @@
 #include <vsm/any_ref.hpp>
+#include <vsm/any.hpp>
 
 #include <catch2/catch_all.hpp>
 
@@ -76,6 +77,15 @@ TEST_CASE("any_ref", "[any][any_ref]")
 		std::same_as<int> auto r2 = ref2.invoke<my_add>(5);
 		REQUIRE(r2 == 5 + 17);
 	}
+}
+
+TEST_CASE("any_ref can view an any", "[any][any_ref]")
+{
+	any<my_add> a = my_adder(42);
+	any_ref<my_add> rr = { std::monostate(), a };
+
+	//any_ref<my_add> r = a;
+	//REQUIRE(r.invoke<my_add>(1) == 43);
 }
 
 } // namespace

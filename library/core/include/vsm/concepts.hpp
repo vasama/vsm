@@ -136,6 +136,9 @@ concept losslessly_convertible_to =
 using std::convertible_to;
 
 template<typename T, typename U>
+concept nothrow_convertible_to = convertible_to<T, U> && std::is_nothrow_convertible_v<T, U>;
+
+template<typename T, typename U>
 concept convertible_from = std::convertible_to<U, T>;
 
 using std::constructible_from;
@@ -152,7 +155,7 @@ template<typename T, typename U>
 concept lvalue_assignable_from = std::assignable_from<T&, U>;
 
 template<typename T, typename U>
-concept lvalue_assignable_to = std::assignable_from<U&, T>;
+concept assignable_to_lvalue = std::assignable_from<U&, T>;
 
 template<typename T, typename... Args>
 concept implicitly_constructible_from =

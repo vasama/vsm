@@ -1,526 +1,111 @@
 #pragma once
 
-#include <vsm/concepts.hpp>
-#include <vsm/detail/function_ptr.hpp>
-#include <vsm/platform.h>
-#include <vsm/type_list.hpp>
-#include <vsm/utility.hpp>
-
-#include <bit>
+#include <vsm/bit_packing.hpp>
+#include <vsm/detail/any_ref.hpp>
+#include <vsm/standard.hpp>
 
 namespace vsm {
 namespace detail {
 
-template<
-	typename Container,
-	typename Value,
-	bool = (sizeof(Container) > sizeof(Value))>
-	requires (sizeof(Container) >= sizeof(Value))
-struct bit_pack_t
+template<typename T>
+struct _any_packed
 {
-	Value value;
-};
-
-template<typename Container, typename Value>
-struct bit_pack_t<Container, Value, true>
-{
-	Value value;
-	unsigned char padding[sizeof(Container) - sizeof(Value)];
-};
-
-template<typename Container, typename Value>
-	requires
-		(sizeof(Container) >= sizeof(Value)) &&
-		std::is_trivially_copyable_v<Container> &&
-		std::is_trivially_copyable_v<Value>
-constexpr Container bit_pack(Value const& value)
-{
-	return std::bit_cast<Container>(bit_pack_t<Container, Value>(value));
-}
-
-template<typename Value, typename Container>
-	requires
-		(sizeof(Container) >= sizeof(Value)) &&
-		std::is_trivially_copyable_v<Container> &&
-		std::is_trivially_copyable_v<Value>
-constexpr Value bit_unpack(Container const& container)
-{
-	return std::bit_cast<bit_pack_t<Container, Value>>(container).value;
-}
-
-
-template<typename T, typename F, typename R, typename... Ps>
-concept _any_requirement = requires
-{
-	{ F::invoke(std::declval<T>(), std::declval<Ps>()...) } -> std::convertible_to<R>;
-};
-
-template<typename Signature>
-struct _any_traits;
-
-#if 1 // auto-generated
-
-template<typename R, typename... Ps>
-struct _any_traits<R(Ps...)>
-{
-	template<typename T>
-	using member_type = R(T::*)(Ps...);
-
-	void test_invoke(Ps...);
-
-	template<typename F, typename T>
-	static constexpr bool requirement = _any_requirement<T, F, R, Ps...>;
-
-	using context_type = void;
-
-	using function_type = R(context_type*, Ps...);
-
-	template<typename F, typename T, bool Packed>
-	static R invoke(context_type* const context, Ps... args)
+	struct wrapper
 	{
-		if constexpr (Packed)
+		T value;
+
+		operator void const*() const noexcept
 		{
-			return F::invoke(static_cast<T const&>(bit_unpack<T>(context)), vsm_move(args)...);
+			return std::addressof(value);
 		}
-		else
-		{
-			return F::invoke(*static_cast<T*>(context), vsm_move(args)...);
-		}
+	};
+
+	static wrapper apply(void const* const context) noexcept
+	{
+		return wrapper(bit_unpack<T>(context));
 	}
 };
 
+template<typename... Functions, bool D, size_t C, typename... Fs>
+void _any_new_base_constraint_1(_any_new_base<D, C, Functions..., Fs...> const&);
 
-template<typename R, typename... Ps>
-struct _any_traits<R(Ps...) &>
+template<typename T, typename... Functions>
+concept _any_new_base_constraint = requires
 {
-	template<typename T>
-	using member_type = R(T::*)(Ps...) &;
-
-	void test_invoke(Ps...) &;
-
-	template<typename F, typename T>
-	static constexpr bool requirement = _any_requirement<T, F, R, Ps...>;
-
-	using context_type = void;
-
-	using function_type = R(context_type*, Ps...);
-
-	template<typename F, typename T, bool Packed>
-	static R invoke(context_type* const context, Ps... args)
-	{
-		if constexpr (Packed)
-		{
-			return F::invoke(static_cast<T const&>(bit_unpack<T>(context)), vsm_move(args)...);
-		}
-		else
-		{
-			return F::invoke(*static_cast<T*>(context), vsm_move(args)...);
-		}
-	}
-};
-
-
-template<typename R, typename... Ps>
-struct _any_traits<R(Ps...) &&>
-{
-	template<typename T>
-	using member_type = R(T::*)(Ps...) &&;
-
-	void test_invoke(Ps...) &&;
-
-	template<typename F, typename T>
-	static constexpr bool requirement = _any_requirement<T, F, R, Ps...>;
-
-	using context_type = void;
-
-	using function_type = R(context_type*, Ps...);
-
-	template<typename F, typename T, bool Packed>
-	static R invoke(context_type* const context, Ps... args)
-	{
-		if constexpr (Packed)
-		{
-			return F::invoke(static_cast<T const&>(bit_unpack<T>(context)), vsm_move(args)...);
-		}
-		else
-		{
-			return F::invoke(*static_cast<T*>(context), vsm_move(args)...);
-		}
-	}
-};
-
-
-template<typename R, typename... Ps>
-struct _any_traits<R(Ps...) const>
-{
-	template<typename T>
-	using member_type = R(T::*)(Ps...) const;
-
-	void test_invoke(Ps...) const;
-
-	template<typename F, typename T>
-	static constexpr bool requirement = _any_requirement<T, F, R, Ps...>;
-
-	using context_type = void const;
-
-	using function_type = R(context_type*, Ps...);
-
-	template<typename F, typename T, bool Packed>
-	static R invoke(context_type* const context, Ps... args)
-	{
-		if constexpr (Packed)
-		{
-			return F::invoke(static_cast<T const&>(bit_unpack<T>(context)), vsm_move(args)...);
-		}
-		else
-		{
-			return F::invoke(*static_cast<T const*>(context), vsm_move(args)...);
-		}
-	}
-};
-
-
-template<typename R, typename... Ps>
-struct _any_traits<R(Ps...) const&>
-{
-	template<typename T>
-	using member_type = R(T::*)(Ps...) const&;
-
-	void test_invoke(Ps...) const&;
-
-	template<typename F, typename T>
-	static constexpr bool requirement = _any_requirement<T, F, R, Ps...>;
-
-	using context_type = void const;
-
-	using function_type = R(context_type*, Ps...);
-
-	template<typename F, typename T, bool Packed>
-	static R invoke(context_type* const context, Ps... args)
-	{
-		if constexpr (Packed)
-		{
-			return F::invoke(static_cast<T const&>(bit_unpack<T>(context)), vsm_move(args)...);
-		}
-		else
-		{
-			return F::invoke(*static_cast<T const*>(context), vsm_move(args)...);
-		}
-	}
-};
-
-
-template<typename R, typename... Ps>
-struct _any_traits<R(Ps...) const&&>
-{
-	template<typename T>
-	using member_type = R(T::*)(Ps...) const&&;
-
-	void test_invoke(Ps...) const&&;
-
-	template<typename F, typename T>
-	static constexpr bool requirement = _any_requirement<T, F, R, Ps...>;
-
-	using context_type = void const;
-
-	using function_type = R(context_type*, Ps...);
-
-	template<typename F, typename T, bool Packed>
-	static R invoke(context_type* const context, Ps... args)
-	{
-		if constexpr (Packed)
-		{
-			return F::invoke(static_cast<T const&>(bit_unpack<T>(context)), vsm_move(args)...);
-		}
-		else
-		{
-			return F::invoke(*static_cast<T const*>(context), vsm_move(args)...);
-		}
-	}
-};
-
-
-template<typename R, typename... Ps>
-struct _any_traits<R(Ps...) noexcept>
-{
-	template<typename T>
-	using member_type = R(T::*)(Ps...) noexcept;
-
-	void test_invoke(Ps...);
-
-	template<typename F, typename T>
-	static constexpr bool requirement = _any_requirement<T, F, R, Ps...>;
-
-	using context_type = void;
-
-	using function_type = R(context_type*, Ps...);
-
-	template<typename F, typename T, bool Packed>
-	static R invoke(context_type* const context, Ps... args)
-	{
-		if constexpr (Packed)
-		{
-			return F::invoke(static_cast<T const&>(bit_unpack<T>(context)), vsm_move(args)...);
-		}
-		else
-		{
-			return F::invoke(*static_cast<T*>(context), vsm_move(args)...);
-		}
-	}
-};
-
-
-template<typename R, typename... Ps>
-struct _any_traits<R(Ps...) & noexcept>
-{
-	template<typename T>
-	using member_type = R(T::*)(Ps...) & noexcept;
-
-	void test_invoke(Ps...) &;
-
-	template<typename F, typename T>
-	static constexpr bool requirement = _any_requirement<T, F, R, Ps...>;
-
-	using context_type = void;
-
-	using function_type = R(context_type*, Ps...);
-
-	template<typename F, typename T, bool Packed>
-	static R invoke(context_type* const context, Ps... args)
-	{
-		if constexpr (Packed)
-		{
-			return F::invoke(static_cast<T const&>(bit_unpack<T>(context)), vsm_move(args)...);
-		}
-		else
-		{
-			return F::invoke(*static_cast<T*>(context), vsm_move(args)...);
-		}
-	}
-};
-
-
-template<typename R, typename... Ps>
-struct _any_traits<R(Ps...) && noexcept>
-{
-	template<typename T>
-	using member_type = R(T::*)(Ps...) && noexcept;
-
-	void test_invoke(Ps...) &&;
-
-	template<typename F, typename T>
-	static constexpr bool requirement = _any_requirement<T, F, R, Ps...>;
-
-	using context_type = void;
-
-	using function_type = R(context_type*, Ps...);
-
-	template<typename F, typename T, bool Packed>
-	static R invoke(context_type* const context, Ps... args)
-	{
-		if constexpr (Packed)
-		{
-			return F::invoke(static_cast<T const&>(bit_unpack<T>(context)), vsm_move(args)...);
-		}
-		else
-		{
-			return F::invoke(*static_cast<T*>(context), vsm_move(args)...);
-		}
-	}
-};
-
-
-template<typename R, typename... Ps>
-struct _any_traits<R(Ps...) const noexcept>
-{
-	template<typename T>
-	using member_type = R(T::*)(Ps...) const noexcept;
-
-	void test_invoke(Ps...) const;
-
-	template<typename F, typename T>
-	static constexpr bool requirement = _any_requirement<T, F, R, Ps...>;
-
-	using context_type = void const;
-
-	using function_type = R(context_type*, Ps...);
-
-	template<typename F, typename T, bool Packed>
-	static R invoke(context_type* const context, Ps... args)
-	{
-		if constexpr (Packed)
-		{
-			return F::invoke(static_cast<T const&>(bit_unpack<T>(context)), vsm_move(args)...);
-		}
-		else
-		{
-			return F::invoke(*static_cast<T const*>(context), vsm_move(args)...);
-		}
-	}
-};
-
-
-template<typename R, typename... Ps>
-struct _any_traits<R(Ps...) const& noexcept>
-{
-	template<typename T>
-	using member_type = R(T::*)(Ps...) const& noexcept;
-
-	void test_invoke(Ps...) const&;
-
-	template<typename F, typename T>
-	static constexpr bool requirement = _any_requirement<T, F, R, Ps...>;
-
-	using context_type = void const;
-
-	using function_type = R(context_type*, Ps...);
-
-	template<typename F, typename T, bool Packed>
-	static R invoke(context_type* const context, Ps... args)
-	{
-		if constexpr (Packed)
-		{
-			return F::invoke(static_cast<T const&>(bit_unpack<T>(context)), vsm_move(args)...);
-		}
-		else
-		{
-			return F::invoke(*static_cast<T const*>(context), vsm_move(args)...);
-		}
-	}
-};
-
-
-template<typename R, typename... Ps>
-struct _any_traits<R(Ps...) const&& noexcept>
-{
-	template<typename T>
-	using member_type = R(T::*)(Ps...) const&& noexcept;
-
-	void test_invoke(Ps...) const&&;
-
-	template<typename F, typename T>
-	static constexpr bool requirement = _any_requirement<T, F, R, Ps...>;
-
-	using context_type = void const;
-
-	using function_type = R(context_type*, Ps...);
-
-	template<typename F, typename T, bool Packed>
-	static R invoke(context_type* const context, Ps... args)
-	{
-		if constexpr (Packed)
-		{
-			return F::invoke(static_cast<T const&>(bit_unpack<T>(context)), vsm_move(args)...);
-		}
-		else
-		{
-			return F::invoke(*static_cast<T const*>(context), vsm_move(args)...);
-		}
-	}
-};
-
-#endif // auto-generated
-
-template<typename F>
-using _any_traits_for = _any_traits<typename F::signature_type>;
-
-template<typename... Fs>
-struct _any_functions
-{
-	template<typename T>
-	static constexpr bool requirement = (_any_traits_for<Fs>::template requirement<Fs, T> && ...);
-
-	static constexpr bool fully_const =
-		(std::is_const_v<typename _any_traits_for<Fs>::context_type> && ...);
-
-	template<typename T, bool Packed = false>
-	static function_ptr_t const table[sizeof...(Fs)];
-};
-
-template<typename... Fs>
-template<typename T, bool Packed>
-inline function_ptr_t const _any_functions<Fs...>::table[sizeof...(Fs)] =
-{
-	_any_traits_for<Fs>::template invoke<Fs, T, Packed>...
-};
-
-template<typename F, typename Cvref, typename... Args>
-concept _any_invocable = requires
-{
-	std::declval<copy_cvref_t<Cvref, _any_traits_for<F>>>().test_invoke(std::declval<Args>()...);
+	detail::_any_new_base_constraint_1<Functions...>(std::declval<T>());
 };
 
 } // namespace detail
 
 template<typename... Functions>
-class any_ref
+class any_ref : public detail::_any_tag
 {
-	using functions_type = detail::_any_functions<Functions...>;
-	using context_type = select_t<functions_type::fully_const, void const, void>;
-
 	detail::function_ptr_t const* m_functions;
-	context_type* m_context;
+	void const* m_context;
 
 public:
-	template<typename T>
-	constexpr any_ref(T&& object)
-		requires
-			no_instance_of<remove_cvref_t<T>, any_ref> &&
-			functions_type::template requirement<T&&>
-		: m_functions(functions_type::template table<remove_cvref_t<T>>)
-		, m_context(std::addressof(object))
+	template<detail::_non_any T>
+		requires detail::_any_type_constraint<T, Functions...>
+	constexpr any_ref(T&& object) noexcept
+		: m_functions(detail::_any_functions<remove_ref_t<T>, detail::_any_identity, Functions...>)
 	{
 	}
 
-	template<typename T>
-	constexpr any_ref(std::in_place_t, T const& object)
+	template<detail::_non_any T>
 		requires
-			no_instance_of<T, any_ref> &&
-			functions_type::template requirement<T const&> &&
-			(sizeof(m_context) >= sizeof(T)) && std::is_trivially_copyable_v<T>
-		: m_functions(functions_type::template table<T, /* Packed: */ true>)
-		, m_context(detail::bit_pack<context_type*>(object))
+			(sizeof(std::decay_t<T>) <= sizeof(m_context)) &&
+			std::is_trivially_copyable_v<std::decay_t<T>> &&
+			detail::_any_type_constraint<std::decay_t<T> const&, Functions...>
+	explicit any_ref(std::in_place_t, T&& object) noexcept
+		: m_functions(detail::_any_functions<std::decay_t<T> const, detail::_any_packed<std::decay_t<T>>, Functions...>)
+		, m_context(detail::bit_pack<void const*>(std::decay_t<T>(vsm_forward(object))))
 	{
 	}
 
-	template<non_cvref T>
-	constexpr any_ref(std::in_place_type_t<T>)
+	template<detail::_non_any T, typename... Args>
 		requires
-			no_instance_of<T, any_ref> &&
-			std::is_empty_v<T> &&
-			functions_type::template requirement<T>
-		: m_functions(functions_type::template table<T, /* Packed: */ true>)
+			std::constructible_from<T, Args...> &&
+			std::is_trivially_copyable_v<T> &&
+			(sizeof(T) <= sizeof(m_context)) &&
+			detail::_any_type_constraint<T, Functions...>
+	explicit any_ref(std::in_place_type_t<T>, Args&&... args)
+		: m_functions(detail::_any_functions<T, detail::_any_packed<T>, Functions...>)
+		, m_context(detail::bit_pack<void const*>(T(vsm_forward(args)...)))
 	{
 	}
 
-	template<typename... ExtraFunctions>
-	constexpr any_ref(any_ref<Functions..., ExtraFunctions...> const& other)
-		requires (sizeof...(ExtraFunctions) > 0)
+	template<typename... OtherFunctions>
+		requires (sizeof...(OtherFunctions) > 0)
+	constexpr any_ref(any_ref<Functions..., OtherFunctions...> const& other)
 		: m_functions(other.m_functions)
 		, m_context(other.m_context)
 	{
 	}
 
-	template<typename F, typename... Args>
-	[[nodiscard]] constexpr auto invoke(Args&&... args) const&
-		requires detail::_any_invocable<F, any_ref&, Args...>
+	template<detail::_any_new_base_constraint<Functions...> Any>
+		//TODO: Add a constraint checking for the correct category
+	constexpr any_ref(std::monostate, Any&& any) noexcept
+		: m_functions(any.m_functions_and_flags.pointer())
+		, m_context(any.m_union.get_storage(any.m_functions_and_flags))
 	{
-		auto const function = m_functions[index_in_pack_v<F, Functions...>];
-		using function_type = typename detail::_any_traits_for<F>::function_type;
-		return static_cast<function_type*>(function)(m_context, vsm_forward(args)...);
 	}
 
+
 	template<typename F, typename... Args>
-	[[nodiscard]] constexpr auto invoke(Args&&... args) const&&
-		requires detail::_any_invocable<F, any_ref&&, Args...>
+		requires detail::_any_call_constraint<F, int&, Args...>
+	[[nodiscard]] detail::_any_traits_for<F>::return_type invoke(Args&&... args) const
 	{
-		auto const function = m_functions[index_in_pack_v<F, Functions...>];
-		using function_type = typename detail::_any_traits_for<F>::function_type;
-		return static_cast<function_type*>(function)(m_context, vsm_forward(args)...);
+		return static_cast<typename detail::_any_traits_for<F>::function_type*>(
+			m_functions[index_in_pack_v<F, Functions...>])(
+			m_context,
+			vsm_forward(args)...);
 	}
 
 private:
-	template<typename...>
+	template<bool OtherDynamic, size_t OtherCapacity, typename... OtherFunctions>
+	friend class detail::_any_new_base;
+
+	template<typename... OtherFunctions>
 	friend class any_ref;
 };
 

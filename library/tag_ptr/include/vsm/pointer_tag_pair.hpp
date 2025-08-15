@@ -59,6 +59,10 @@ class pointer_tag_pair
 		? 0
 		: (static_cast<uintptr_t>(1) << BitsRequested) - 1;
 
+	static constexpr size_t alignment_required = BitsRequested == 0
+		? 1
+		: static_cast<size_t>(1) << BitsRequested;
+
 	uintptr_t m_value;
 
 public:
@@ -85,7 +89,7 @@ public:
 	/*constexpr*/ pointer_tag_pair(P const pointer, Tag const tag)
 		: pointer_tag_pair(reinterpret_cast<uintptr_t>(pointer) | static_cast<uintptr_t>(tag))
 	{
-		vsm_assert(vsm::is_sufficiently_aligned<BitsRequested>(pointer)); //PRECONDITION
+		vsm_assert(vsm::is_sufficiently_aligned<alignment_required>(pointer)); //PRECONDITION
 		vsm_assert(static_cast<uintptr_t>(tag) <= tag_mask);
 	}
 

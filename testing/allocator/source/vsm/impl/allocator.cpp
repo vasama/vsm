@@ -90,7 +90,7 @@ static void check_canary(void const* const data, size_t const size)
 
 } // namespace
 
-vsm::allocation detail::allocate(size_t const user_size)
+vsm::allocation detail::allocate(size_t const user_size) noexcept
 {
 	auto const scope = g_current_scope;
 
@@ -126,7 +126,7 @@ vsm::allocation detail::allocate(size_t const user_size)
 	return { user_address, user_size };
 }
 
-void detail::deallocate(vsm::allocation const allocation)
+void detail::deallocate(vsm::allocation const allocation) noexcept
 {
 	auto const scope = g_current_scope;
 

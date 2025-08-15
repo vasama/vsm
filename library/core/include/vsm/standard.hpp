@@ -6,7 +6,8 @@
 
 /* C++20 std::destroying_delete_t */
 
-#if vsm_compiler_msvc
+#if vsm_compiler_msvc && _MSC_VER < 1941
+// https://developercommunity.visualstudio.com/t/Qualified-::delete-of-class-with-destroy/10654253
 #	include <vsm/detail/msvc_delete.hpp>
 #else
 #	define vsm_qualified_delete(p) (::delete(p))
@@ -47,7 +48,9 @@
 
 /* C++23 static operator() and operator[] */
 
-#if __cpp_static_call_operator
+#if __cpp_static_call_operator \
+	/* https://developercommunity.visualstudio.com/t/result-of-static-function-call-operator/10951372 */ \
+	&& !(vsm_compiler_msvc && _MSC_VER < 1945)
 #	define vsm_static_operator static
 #	define vsm_static_operator_const
 #else
@@ -68,13 +71,12 @@
 
 /* C++23 explicit lifetime management */
 
-namespace vsm {
 
 #if __cpp_lib_start_lifetime_as
+namespace vsm {
 	using std::start_lifetime_as;
 	using std::start_lifetime_as_array;
-#else
-#	include <vsm/detail/start_lifetime_as.ipp>
-#endif
-
 } // namespace vsm
+#else
+#	include <vsm/detail/start_lifetime_as.hpp>
+#endif
