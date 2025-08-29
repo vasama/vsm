@@ -3,7 +3,9 @@
 #include <vsm/sanitizer/address.h>
 #include <vsm/algorithm/remove_unstable.hpp>
 #include <vsm/allocator.hpp>
+#include <vsm/exceptions.hpp>
 #include <vsm/relocate.hpp>
+#include <vsm/standard/stdexcept.hpp>
 
 #include <cstddef>
 

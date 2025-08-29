@@ -262,9 +262,9 @@ void resize(_table_allocator<I, P, A>& table, size_t const min_capacity)
 	if (table.size != 0)
 	{
 		vsm::uninitialized_relocate_n(
-			reinterpret_cast<T*>(new_elements) + (new_element_capacity - table.size),
+			reinterpret_cast<T*>(get_element_end(old_buckets, element_size, table.size)),
 			table.size,
-			reinterpret_cast<T*>(get_element_end(old_buckets, element_size, table.size)));
+			reinterpret_cast<T*>(new_elements) + (new_element_capacity - table.size));
 	}
 
 	size_t const old_elements_size = old_element_capacity * element_size;
