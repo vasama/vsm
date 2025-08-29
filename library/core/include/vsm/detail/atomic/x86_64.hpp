@@ -21,7 +21,7 @@ namespace vsm::detail {
 		)
 #else
 template<typename T>
-inline vsm_always_inline bool cmpxchg16(T& object, T& expected, T const& desired)
+vsm_always_inline bool cmpxchg16(T& object, T& expected, T const& desired)
 {
 	// Read the bits of the expected value.
 	__uint128_t const old_expected = __builtin_bit_cast(__uint128_t, expected);
@@ -43,12 +43,16 @@ inline vsm_always_inline bool cmpxchg16(T& object, T& expected, T const& desired
 template<typename T>
 class atomic_ref_base
 {
-#if vsm_compiler_clang
 // LLVM produces bad code for cmpxchg16b in some cases:
 // https://github.com/llvm/llvm-project/issues/119959
-#define vsm_detail_atomic_inline vsm_never_inline
+#if vsm_compiler_clang
+#	if vsm_clang_version < vsm_make_clang_version(20, 1, 3)
+#		define vsm_detail_atomic_inline vsm_never_inline
+#	else
+#		define vsm_detail_atomic_inline
+#	endif
 #else
-#define vsm_detail_atomic_inline
+#	define vsm_detail_atomic_inline
 #endif
 
 	static_assert(std::is_trivially_copyable_v<T>);

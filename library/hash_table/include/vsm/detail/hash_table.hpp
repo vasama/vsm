@@ -24,7 +24,7 @@ struct hash_table_policies
 namespace detail {
 
 template<typename Key, typename KeySelector, typename K>
-inline vsm_always_inline decltype(auto) get_lookup_key(
+vsm_always_inline decltype(auto) get_lookup_key(
 	KeySelector const& key_selector,
 	K const& key)
 {

@@ -67,7 +67,7 @@ struct any_direct_sink
 		return basic_any::invoke<detail::any_sink_direct_write_refresh>(written_size, min_new_size);
 	}
 
-	[[nodiscard]] void direct_write_release(size_t const size) noexcept
+	void direct_write_release(size_t const size) noexcept
 	{
 		basic_any::invoke<detail::any_sink_direct_write_release>(size);
 	}

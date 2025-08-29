@@ -16,18 +16,21 @@ struct allocation
 	void* storage;
 	size_t size;
 
-	[[nodiscard]] constexpr operator void*() const noexcept
+	explicit allocation(void* const storage, size_t const size) noexcept
+		: storage(storage)
+		, size(size)
+	{
+	}
+
+	template<any_cv_of<void> T>
+	[[nodiscard]] operator T*() const noexcept
 	{
 		return storage;
 	}
 
-	[[nodiscard]] constexpr operator void const*() const noexcept
-	{
-		return storage;
-	}
-
-	template<typename T>
-	[[nodiscard]] explicit constexpr operator T*() const noexcept
+	template<no_cv_of<void> T>
+		requires std::is_object_v<T>
+	[[nodiscard]] explicit operator T*() const noexcept
 	{
 		return static_cast<T*>(storage);
 	}
@@ -120,14 +123,14 @@ template<memory_resource Allocator>
 	Allocator&& allocator,
 	size_t const min_size)
 {
-	void* const storage = allocator.allocate(min_size);
+	auto const allocation = allocator.allocate(min_size);
 
-	if (storage == nullptr)
+	if (allocation.storage == nullptr)
 	{
 		vsm_except_throw_or_terminate(std::bad_alloc());
 	}
 
-	return storage;
+	return allocation;
 }
 
 template<non_decaying T, memory_resource Allocator, typename... Args>
@@ -180,12 +183,12 @@ public:
 
 	[[nodiscard]] allocation allocate(size_t const size) const noexcept
 	{
-		return { operator new(size, std::nothrow), size };
+		return allocation(::operator new(size, std::nothrow), size);
 	}
 
 	void deallocate(allocation const allocation) const noexcept
 	{
-		operator delete(allocation.storage, allocation.size);
+		::operator delete(allocation.storage, allocation.size);
 	}
 };
 
@@ -196,7 +199,7 @@ using default_allocator = new_allocator;
 template<vsm::memory_resource Allocator>
 [[nodiscard]] constexpr void* operator new(size_t const size, Allocator&& allocator)
 {
-	return vsm::allocate_or_throw(allocator, size);
+	return vsm::allocate_or_throw(allocator, size).storage;
 }
 
 template<vsm::memory_resource Allocator>

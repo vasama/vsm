@@ -39,8 +39,8 @@ size_t style::format_to_buffer(style const style, char* const buffer_ptr)
 
 		buffer[size++] = '\x1b';
 		buffer[size++] = '[';
-		buffer[size++] = static_cast<uint8_t>('0' + color_index / 10);
-		buffer[size++] = static_cast<uint8_t>('0' + color_index % 10);
+		buffer[size++] = static_cast<char>(static_cast<uint8_t>('0') + color_index / 10);
+		buffer[size++] = static_cast<char>(static_cast<uint8_t>('0') + color_index % 10);
 		buffer[size++] = 'm';
 	};
 

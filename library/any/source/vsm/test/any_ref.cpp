@@ -82,10 +82,8 @@ TEST_CASE("any_ref", "[any][any_ref]")
 TEST_CASE("any_ref can view an any", "[any][any_ref]")
 {
 	any<my_add> a = my_adder(42);
-	any_ref<my_add> rr = { std::monostate(), a };
-
-	//any_ref<my_add> r = a;
-	//REQUIRE(r.invoke<my_add>(1) == 43);
+	any_ref<my_add> r = a;
+	REQUIRE(r.invoke<my_add>(1) == 43);
 }
 
 } // namespace

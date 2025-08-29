@@ -3,7 +3,7 @@
 #define vsm_detail_gnu_diagnostic(compiler, ...) \
 	_Pragma(vsm_pp_str(compiler diagnostic __VA_ARGS__))
 
-#define vsm_always_inline __attribute__((always_inline))
+#define vsm_always_inline __attribute__((always_inline)) inline
 #define vsm_never_inline __attribute__((noinline))
 
 #define vsm_likely(...) __builtin_expect((__VA_ARGS__) ? 1 : 0, 1)

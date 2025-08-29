@@ -26,7 +26,7 @@ struct _any_traits<R(Ps...){left(cv + ref)}{left(noexcept)}>
 			vsm_move(args)...);
 	}}
 }};
-""")
+""", end="")
 
 def ref(cv, noexcept):
 	nothrow = "_nothrow" if noexcept == "noexcept" else ""

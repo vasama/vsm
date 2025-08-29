@@ -79,8 +79,11 @@ public:
 	result<void> print_help_to_stderr() const;
 	result<void> print_help(streams::any_sink_ref sink) const;
 
+	void set_error_reporter(error_reporter_type error_reporter);
+
 private:
 	vsm_partial(app);
+	vsm_partial_delete(app);
 };
 using app_ptr = std::unique_ptr<app>;
 

@@ -151,7 +151,7 @@ public:
 
 } // namespace detail
 
-
+//TODO: Given the adoption of P2786, this trait should be renamed to is_bitwise_relocatable_v.
 template<typename T>
 inline constexpr bool is_trivially_relocatable_v = std::is_trivially_copyable_v<T>;
 

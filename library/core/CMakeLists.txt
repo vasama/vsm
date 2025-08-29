@@ -70,7 +70,7 @@ vsm_add_library(
 		include/vsm/detail/platform/x86_32.h
 		include/vsm/detail/platform/x86_64.h
 
-		include/vsm/detail/start_lifetime_as.ipp
+		include/vsm/detail/start_lifetime_as.hpp
 
 	SOURCES
 		source/vsm/impl/hash.cpp

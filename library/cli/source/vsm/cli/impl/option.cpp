@@ -73,6 +73,11 @@ option& option::exclusive_lock(resource& resource)
 	return *this;
 }
 
+void option::operator delete(option* const ptr, ::std::destroying_delete_t)
+{
+	vsm_qualified_delete(static_cast<private_class*>(ptr));
+}
+
 std::unique_ptr<option_internal> option_internal::create(
 	app_internal* const app,
 	resource& parent,

@@ -27,7 +27,7 @@ enum class error
 	option_given_too_many_times,
 };
 
-inline std::error_code make_error_code(error const e)
+[[nodiscard]] inline std::error_code make_error_code(error const e)
 {
 	return std::error_code(static_cast<int>(e), detail::error_category::instance);
 }
@@ -35,4 +35,7 @@ inline std::error_code make_error_code(error const e)
 } // namespace vsm::cli
 
 template<>
-inline constexpr bool std::is_error_code_enum_v<vsm::cli::error> = true;
+struct std::is_error_code_enum<vsm::cli::error>
+{
+	static constexpr bool value = true;
+};

@@ -48,6 +48,7 @@ public:
 		requires detail::_any_type_constraint<T, Functions...>
 	constexpr any_ref(T&& object) noexcept
 		: m_functions(detail::_any_functions<remove_ref_t<T>, detail::_any_identity, Functions...>)
+		, m_context(std::addressof(object))
 	{
 	}
 
@@ -58,7 +59,7 @@ public:
 			detail::_any_type_constraint<std::decay_t<T> const&, Functions...>
 	explicit any_ref(std::in_place_t, T&& object) noexcept
 		: m_functions(detail::_any_functions<std::decay_t<T> const, detail::_any_packed<std::decay_t<T>>, Functions...>)
-		, m_context(detail::bit_pack<void const*>(std::decay_t<T>(vsm_forward(object))))
+		, m_context(vsm::bit_pack<void const*>(std::decay_t<T>(vsm_forward(object))))
 	{
 	}
 
@@ -70,7 +71,7 @@ public:
 			detail::_any_type_constraint<T, Functions...>
 	explicit any_ref(std::in_place_type_t<T>, Args&&... args)
 		: m_functions(detail::_any_functions<T, detail::_any_packed<T>, Functions...>)
-		, m_context(detail::bit_pack<void const*>(T(vsm_forward(args)...)))
+		, m_context(vsm::bit_pack<void const*>(T(vsm_forward(args)...)))
 	{
 	}
 
@@ -84,7 +85,7 @@ public:
 
 	template<detail::_any_new_base_constraint<Functions...> Any>
 		//TODO: Add a constraint checking for the correct category
-	constexpr any_ref(std::monostate, Any&& any) noexcept
+	constexpr any_ref(Any&& any) noexcept
 		: m_functions(any.m_functions_and_flags.pointer())
 		, m_context(any.m_union.get_storage(any.m_functions_and_flags))
 	{

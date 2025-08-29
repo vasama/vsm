@@ -11,21 +11,21 @@
 	return value_type(vsm_detail_fetch_mutate_ref.load(order));
 }
 
-vsm_always_inline void store(T const new_value, std::memory_order const order) vsm_detail_fetch_mutate_category noexcept
+vsm_always_inline void store(value_type const new_value, std::memory_order const order) vsm_detail_fetch_mutate_category noexcept
 {
 	vsm_detail_fetch_mutate_ref.store(new_value.m_value, order);
 }
 
-[[nodiscard]] vsm_always_inline T exchange(
-	T const new_value,
+[[nodiscard]] vsm_always_inline value_type exchange(
+	value_type const new_value,
 	std::memory_order const order) vsm_detail_fetch_mutate_category noexcept
 {
 	return value_type(vsm_detail_fetch_mutate_ref.exchange(new_value.m_value));
 }
 
 [[nodiscard]] vsm_always_inline bool compare_exchange_weak(
-	T& expected,
-	T const desired,
+	value_type& expected,
+	value_type const desired,
 	std::memory_order const success,
 	std::memory_order const failure) vsm_detail_fetch_mutate_category noexcept
 {
@@ -37,8 +37,8 @@ vsm_always_inline void store(T const new_value, std::memory_order const order) v
 }
 
 [[nodiscard]] vsm_always_inline bool compare_exchange_strong(
-	T& expected,
-	T const desired,
+	value_type& expected,
+	value_type const desired,
 	std::memory_order const success,
 	std::memory_order const failure) vsm_detail_fetch_mutate_category noexcept
 {
@@ -101,7 +101,7 @@ vsm_always_inline void store(T const new_value, std::memory_order const order) v
 	[[nodiscard]] value_type operation ## _tag( \
 		Tag const tag, \
 		std::memory_order const order) vsm_detail_fetch_mutate_category \
-		requires std::unsigned_integral<Tag> \
+		requires detail::taggable_pointer_tag_bitwise<Tag> \
 	{ \
 		vsm_assert(static_cast<uintptr_t>(tag) <= value_type::tag_mask); /*PRECONDITION*/ \
 		return value_type(vsm_detail_fetch_mutate_ref.operation(static_cast<uintptr_t>(tag), order)); \

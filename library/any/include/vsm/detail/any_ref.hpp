@@ -7,9 +7,6 @@
 
 namespace vsm::detail {
 
-template<typename... Functions>
-class any_ref;
-
 struct _any_tag {};
 
 template<typename T>

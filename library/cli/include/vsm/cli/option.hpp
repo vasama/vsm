@@ -117,6 +117,7 @@ private:
 	void require_internal();
 
 	vsm_partial(option);
+	vsm_partial_delete(option);
 
 	friend app;
 };

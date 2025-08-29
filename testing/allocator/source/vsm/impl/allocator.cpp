@@ -123,7 +123,7 @@ vsm::allocation detail::allocate(size_t const user_size) noexcept
 
 	++scope->allocation_count;
 
-	return { user_address, user_size };
+	return allocation(user_address, user_size);
 }
 
 void detail::deallocate(vsm::allocation const allocation) noexcept

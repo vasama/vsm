@@ -6,9 +6,16 @@ using namespace vsm;
 
 namespace {
 
+static cli::app_ptr make_test_app()
+{
+	auto app = cli::make_app("test");
+	app->set_error_reporter([](auto) {});
+	return app;
+}
+
 TEST_CASE("Subcommands are accepted", "[cli]")
 {
-	auto const app = cli::make_app("test");
+	auto const app = make_test_app();
 	cli::app& sub = app->command("sub");
 
 	std::string value;
@@ -28,7 +35,7 @@ TEST_CASE("Subcommands are accepted", "[cli]")
 
 TEST_CASE("Usage without required subcommand is rejected", "[cli]")
 {
-	auto const app = cli::make_app("test");
+	auto const app = make_test_app();
 
 	app->command("sub");
 	app->require_command();
@@ -40,7 +47,7 @@ TEST_CASE("Usage without required subcommand is rejected", "[cli]")
 
 TEST_CASE("Positional options are accepted", "[cli]")
 {
-	auto const app = cli::make_app("test");
+	auto const app = make_test_app();
 
 	std::vector<std::string> values;
 	app->option("test").push_back(values);
@@ -60,7 +67,7 @@ TEST_CASE("Positional options are accepted", "[cli]")
 
 TEST_CASE("Short options are accepted", "[cli]")
 {
-	auto const app = cli::make_app("test");
+	auto const app = make_test_app();
 
 	std::string flag_value;
 	app->flag("-f").set(flag_value);
@@ -101,7 +108,7 @@ TEST_CASE("Short options are accepted", "[cli]")
 
 TEST_CASE("Unrecognized short options are rejected", "[cli]")
 {
-	auto const app = cli::make_app("test");
+	auto const app = make_test_app();
 
 	std::string_view const arguments[] =
 	{
@@ -115,7 +122,7 @@ TEST_CASE("Unrecognized short options are rejected", "[cli]")
 
 TEST_CASE("Long options are accepted", "[cli]")
 {
-	auto const app = cli::make_app("test");
+	auto const app = make_test_app();
 
 	std::vector<std::string> values;
 	app->option("--test").push_back(values);
@@ -141,7 +148,7 @@ TEST_CASE("Long options are accepted", "[cli]")
 
 TEST_CASE("Unrecognized long options are rejected", "[cli]")
 {
-	auto const app = cli::make_app("test");
+	auto const app = make_test_app();
 
 	std::string_view const arguments[] =
 	{
@@ -155,7 +162,7 @@ TEST_CASE("Unrecognized long options are rejected", "[cli]")
 
 TEST_CASE("Options without a value are rejected", "[cli]")
 {
-	auto const app = cli::make_app("test");
+	auto const app = make_test_app();
 
 	app->option("--test");
 
@@ -171,7 +178,7 @@ TEST_CASE("Options without a value are rejected", "[cli]")
 
 TEST_CASE("Flags are accepted without a value", "[cli]")
 {
-	auto const app = cli::make_app("test");
+	auto const app = make_test_app();
 
 	std::string_view const name = GENERATE("-t", "--test");
 
@@ -199,7 +206,7 @@ TEST_CASE("Flags are accepted without a value", "[cli]")
 
 TEST_CASE("Option syntax is treated as positional after --", "[cli]")
 {
-	auto const app = cli::make_app("test");
+	auto const app = make_test_app();
 
 	std::string const option_name = GENERATE("-t", "--test");
 

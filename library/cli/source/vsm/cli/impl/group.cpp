@@ -45,6 +45,11 @@ group& group::exclusive_lock(resource& resource)
 	return *this;
 }
 
+void group::operator delete(group* const ptr, ::std::destroying_delete_t)
+{
+	vsm_qualified_delete(static_cast<private_class*>(ptr));
+}
+
 result<void> group_internal::process_argument()
 {
 	vsm_self(private_class);

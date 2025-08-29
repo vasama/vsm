@@ -4,6 +4,10 @@
 #include <vsm/detail/any.hpp>
 
 namespace vsm {
+
+template<typename... Functions>
+class any_ref;
+
 namespace detail {
 
 template<typename T, size_t Capacity, typename... Args>
@@ -13,10 +17,10 @@ concept _any_nothrow_constraint =
 
 template<size_t Capacity, typename... Functions>
 class _any_new_base<1, Capacity, Functions...>
-	: detail::_any_tag
-	, _any_new_base_1<1, Capacity, Functions...>
+	: public detail::_any_tag
+	, _any_base_1<1, Capacity, Functions...>
 {
-	using base_type = _any_new_base_1<1, Capacity, Functions...>;
+	using base_type = _any_base_1<1, Capacity, Functions...>;
 
 public:
 	_any_new_base() = default;
@@ -28,7 +32,7 @@ public:
 	vsm_always_inline _any_new_base(T&& object)
 		noexcept(_any_nothrow_constraint<std::decay_t<T>, Capacity, T>)
 	{
-		_construct<std::decay_t<T>, Functions...>(default_allocator(), vsm_forward(object));
+		_construct<std::decay_t<T>>(default_allocator(), vsm_forward(object));
 	}
 
 	template<allocator Allocator, _non_any T>
@@ -38,7 +42,7 @@ public:
 	vsm_always_inline _any_new_base(Allocator&& allocator, T&& object)
 		noexcept(_any_nothrow_constraint<std::decay_t<T>, Capacity, T>)
 	{
-		_construct<std::decay_t<T>, Functions...>(vsm_forward(allocator), vsm_forward(object));
+		_construct<std::decay_t<T>>(vsm_forward(allocator), vsm_forward(object));
 	}
 
 	template<non_ref T, typename... Args>
@@ -48,7 +52,7 @@ public:
 	vsm_always_inline _any_new_base(std::in_place_type_t<T>, Args&&... args)
 		noexcept(_any_nothrow_constraint<T, Capacity, Args...>)
 	{
-		_construct<T, Functions...>(default_allocator(), vsm_forward(args)...);
+		_construct<T>(default_allocator(), vsm_forward(args)...);
 	}
 
 	template<allocator Allocator, non_ref T, typename... Args>
@@ -58,7 +62,7 @@ public:
 	vsm_always_inline _any_new_base(Allocator&& allocator, std::in_place_type_t<T>, Args&&... args)
 		noexcept(_any_nothrow_constraint<T, Capacity, Args...>)
 	{
-		_construct<T, Functions...>(vsm_forward(allocator), vsm_forward(args)...);
+		_construct<T>(vsm_forward(allocator), vsm_forward(args)...);
 	}
 
 	template<bool D, size_t C, typename... Fs>
@@ -83,7 +87,7 @@ public:
 			base_type::m_functions_and_flags = _any_functions_and_flags();
 		}
 
-		_construct<std::decay_t<T>, Functions...>(default_allocator(), vsm_forward(object));
+		_construct<std::decay_t<T>>(default_allocator(), vsm_forward(object));
 
 		return *this;
 	}
@@ -101,7 +105,7 @@ public:
 	using base_type::invoke;
 
 private:
-	template<typename T, typename... Functions, typename Allocator, typename... Args>
+	template<typename T, typename Allocator, typename... Args>
 	void _construct(Allocator&& allocator, Args&&... args)
 	{
 		if constexpr (_any_inplace_constraint<T, Capacity>)
@@ -110,14 +114,14 @@ private:
 		}
 		else
 		{
-			using dynamic_type = _any_new_dynamic<std::decay_t<Allocator>, T>;
+			using dynamic_type = _any_dynamic<std::decay_t<Allocator>, T>;
 
-			auto const dynamic = vsm::new_via<dynamic_type>(
+			auto const storage_ptr = vsm::new_via<dynamic_type>(
 				vsm_as_const(allocator),
 				vsm_forward(allocator),
 				vsm_forward(args)...);
 
-			base_type::m_union.dynamic = std::addressof(dynamic->m_context);
+			base_type::m_union.storage_ptr = std::addressof(storage_ptr->m_context);
 
 			base_type::m_functions_and_flags = _any_functions_and_flags(
 				_any_functions<T, _any_identity, Functions...>,
@@ -127,6 +131,9 @@ private:
 
 	template<bool OtherDynamic, size_t OtherCapacity, typename... OtherFunctions>
 	friend class _any_new_base;
+
+	template<typename... OtherFunctions>
+	friend class vsm::any_ref;
 };
 
 } // namespace detail

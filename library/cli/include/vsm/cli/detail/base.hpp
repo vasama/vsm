@@ -31,9 +31,6 @@ private:
 
 class base
 {
-public:
-	virtual ~base() = default;
-
 protected:
 	enum class flags : uint32_t
 	{

@@ -14,6 +14,7 @@
 #include <format>
 #include <memory>
 #include <optional>
+#include <ranges>
 
 using namespace vsm;
 using namespace vsm::cli;
@@ -37,10 +38,10 @@ using app_impl = partial::private_class<app>;
 class app::private_class : public internal_class
 {
 public:
-	private_class* m_parent;
+	app_impl* m_parent;
 
 	vector<std::unique_ptr<option_internal>> m_options;
-	swiss_map<std::string_view, std::unique_ptr<private_class>> m_commands;
+	swiss_map<std::string_view, std::unique_ptr<app_impl>> m_commands;
 
 	vector<option_internal*> m_positional_options;
 	swiss_map<char, option_view> m_short_options;
@@ -53,19 +54,21 @@ public:
 
 
 	detail::resource_locks m_resource_locks;
-	private_class* m_command = nullptr;
+	app_impl* m_command = nullptr;
 
 
-	explicit private_class(private_class* const parent, std::string_view const name)
+	explicit private_class(app_impl* const parent, std::string_view const name)
 	{
 		m_parent = parent;
 		m_name = name;
 	}
 
+	private_class() = default;
+
 
 	option_view find_short_option(char const name) const
 	{
-		for (private_class const* app = this; app != nullptr; app = app->m_parent)
+		for (app_impl const* app = this; app != nullptr; app = app->m_parent)
 		{
 			if (auto const value = app->m_short_options.at_ptr(name))
 			{
@@ -77,7 +80,7 @@ public:
 
 	option_view find_long_option(std::string_view const name) const
 	{
-		for (private_class const* app = this; app != nullptr; app = app->m_parent)
+		for (app_impl const* app = this; app != nullptr; app = app->m_parent)
 		{
 			if (auto const value = app->m_long_options.at_ptr(name))
 			{
@@ -167,7 +170,7 @@ public:
 		}
 	};
 
-	static result<void> _parse(private_class* app, argument_view const args);
+	static result<void> _parse(app_impl* app, argument_view const args);
 
 
 	result<size_t> _print_help(streams::any_sink_ref sink) const;
@@ -181,7 +184,7 @@ app& app::hide()
 	vsm_self(private_class);
 	if (no_flags(m_flags, flags::hide))
 	{
-		if (private_class* app = self->m_parent)
+		if (app_impl* app = self->m_parent)
 		{
 			vsm_verify(app->m_visible_command_count-- > 0);
 		}
@@ -212,7 +215,7 @@ app& app::command(std::string_view const name)
 
 	auto const r = self->m_commands.insert(
 		name,
-		std::make_unique<private_class>(self, name));
+		std::make_unique<app_impl>(self, name));
 
 	vsm_assert(r.inserted && "Duplicate command");
 	return *r.iterator->value;
@@ -264,6 +267,17 @@ result<void> app::print_help(streams::any_sink_ref const sink) const
 	return vsm::discard_value(self->_print_help(sink));
 }
 
+void app::set_error_reporter(error_reporter_type error_reporter)
+{
+	vsm_self(private_class);
+	self->m_error_reporter = vsm_move(error_reporter);
+}
+
+void app::operator delete(app* const ptr, ::std::destroying_delete_t)
+{
+	vsm_qualified_delete(static_cast<private_class*>(ptr));
+}
+
 std::unique_ptr<app> cli::make_app(std::string_view const name)
 {
 	return std::make_unique<app_impl>(nullptr, name);
@@ -291,7 +305,6 @@ option_internal& app_internal::create_option(
 
 	option_internal& option = *self->m_options.push_back(
 		option_internal::create(this, resource, group, flag));
-
 
 	bool has_option_form = false;
 
@@ -417,7 +430,7 @@ void app_internal::_report_error(std::string_view const format, std::format_args
 {
 	vsm_self(private_class);
 
-	for (private_class const* app = self; app != nullptr; app = app->m_parent)
+	for (app_impl const* app = self; app != nullptr; app = app->m_parent)
 	{
 		if (app->m_error_reporter)
 		{
@@ -428,7 +441,7 @@ void app_internal::_report_error(std::string_view const format, std::format_args
 	vsm_verify(streams::vformat(streams::cerr, format, vsm_move(args)));
 }
 
-result<void> app_impl::_parse(private_class* app, argument_view const args)
+result<void> app_impl::_parse(app_impl* app, argument_view const args)
 {
 	error first_error = error::success;
 
@@ -562,7 +575,8 @@ result<void> app_impl::_parse(private_class* app, argument_view const args)
 		{
 			if (auto const value = app->m_commands.at_ptr(argument))
 			{
-				app->m_command = app = value->get();
+				app->m_command = value->get();
+				app = app->m_command;
 				vsm_try_void(app->process_argument());
 				continue;
 			}
@@ -587,7 +601,7 @@ result<void> app_impl::_parse(private_class* app, argument_view const args)
 		set_error(error::invalid_syntax, "Unexpected argument: '{}'.\n", argument);
 	}
 
-	for (private_class* command = app; command != nullptr; command = command->m_parent)
+	for (app_impl* command = app; command != nullptr; command = command->m_parent)
 	{
 		vsm_try_void(command->process_completed());
 	}
@@ -741,7 +755,7 @@ result<size_t> app_impl::_print_help(streams::any_sink_ref const sink) const
 
 			vsm_try_void(use_size(streams::print(sink, "Usage:")));
 
-			for (private_class const* app = this; app != nullptr; app = app->m_parent)
+			for (app_impl const* app = this; app != nullptr; app = app->m_parent)
 			{
 				vsm_try_void(use_size(streams::format(sink, " {}", app->m_name)));
 			}

@@ -23,7 +23,12 @@ concept taggable_pointer_tag =
 	std::is_enum_v<Tag> && std::unsigned_integral<std::underlying_type_t<Tag>>;
 
 template<typename Tag>
-concept taggable_pointer_tag_arithmetic = std::unsigned_integral<Tag> && vsm::not_same_as<Tag, bool>;
+concept taggable_pointer_tag_arithmetic =
+	// std::unsigned_integral<Tag> &&
+	vsm::not_same_as<Tag, bool>;
+
+template<typename Tag>
+concept taggable_pointer_tag_bitwise = true;
 
 template<typename T, unsigned Alignment = 0>
 consteval unsigned taggable_bits_available()
@@ -148,7 +153,7 @@ class atomic_ref<pointer_tag_pair<T, Tag, BitsRequested>> : atomic_ref<uintptr_t
 	using base = atomic_ref<uintptr_t>;
 
 public:
-	using value_type = typename base::value_type;
+	using value_type = pointer_tag_pair<T, Tag, BitsRequested>;
 
 	using base::is_always_lock_free;
 	using base::required_alignment;
@@ -207,7 +212,7 @@ template<detail::taggable_pointee T, detail::taggable_pointer_tag Tag, Tag Max>
 using pointer_tag_pair_with_max = pointer_tag_pair<
 	T,
 	Tag,
-	std::bit_width(static_cast<uintptr_t>(Max))>;
+	static_cast<unsigned>(std::bit_width(static_cast<uintptr_t>(Max)))>;
 
 } // namespace vsm
 

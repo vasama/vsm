@@ -53,6 +53,7 @@ public:
 
 private:
 	vsm_partial(group);
+	vsm_partial_delete(group);
 
 	friend app;
 };

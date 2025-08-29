@@ -8,9 +8,9 @@ namespace detail {
 template<size_t Capacity, typename... Functions>
 class _any_new_base<0, Capacity, Functions...>
 	: detail::_any_tag
-	, _any_new_base_1<0, Capacity, Functions...>
+	, _any_base_1<0, Capacity, Functions...>
 {
-	using base_type = _any_new_base_1<0, Capacity, Functions...>;
+	using base_type = _any_base_1<0, Capacity, Functions...>;
 
 public:
 	_any_new_base() = default;
