@@ -40,14 +40,23 @@ function(vsm_define_package name)
 			if(NOT "${root_name}" STREQUAL "" AND "${require_name}" MATCHES "^${root_name}[\\.\\+\\-].+")
 				continue()
 			endif()
-	
+
 			string(
 				JSON find_package_name
 				ERROR_VARIABLE json_error
 				GET "${requirement}" "find_package")
-	
+
 			if("${find_package_name}" STREQUAL "find_package-NOTFOUND")
 				set(find_package_name "${require_name}")
+			else()
+				string(
+					JSON find_package_type
+					ERROR_VARIABLE json_error
+					GET "${requirement}" "find_package")
+
+				if("${find_package_type}" STREQUAL "NULL")
+					continue()
+				endif()
 			endif()
 	
 			find_package("${find_package_name}")

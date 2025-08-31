@@ -56,6 +56,52 @@ def _vsm_read_package_info_json(directory, recurse=True):
 
 	return full_json_data
 
+def _parse_requirement_config(config):
+	tags = config.split("-")
+	def take_front(*permissible_values):
+		if len(tags) != 0:
+			for value in permissible_values:
+				if tags[0] == value:
+					tags.pop(0)
+					return value
+		return None
+
+	domain = take_front("header", "source", "test")
+	usage = take_front("library", "scripts", "tooling")
+
+	if len(tags) != 0:
+		raise ConanException(f"invalid dependency config: '{config}'")
+
+	if usage is None:
+		usage = "library"
+
+	if usage == "library" and domain is None:
+		domain = "source"
+
+	if usage != "library" and domain is not None and domain != "test":
+		raise ConanException(f"domain {domain} is not applicable to {usage} dependency")
+
+	arguments = {}
+
+	if usage != "library":
+		arguments["headers"] = False
+		arguments["libs"] = False
+		arguments["build"] = True
+
+	if usage == "tooling":
+		arguments["run"] = True
+
+	if domain == "header":
+		arguments["transitive_headers"] = True
+
+	if domain != "header":
+		arguments["visible"] = False
+
+	if domain == "test":
+		arguments["test"] = True
+
+	return arguments
+
 class _vsm_requirement:
 	def __init__(self, json):
 		self.package = json["package"]
@@ -64,22 +110,21 @@ class _vsm_requirement:
 		self.user = json.get("user")
 		self.channel = json.get("channel")
 
-		self.arguments = {}
-		def set_argument(type, name, argument_name=None):
-			if argument_name is None: argument_name = name
+		self.configs = []
 
-			value = json.get(name)
-			if value is not None:
-				if not isinstance(value, type):
-					raise RuntimeError(f"Mistyped requirement option: {name}")
+		json_configs = json.get("configs", "header-library")
 
-				self.arguments[name] = value
+		if isinstance(json_configs, str):
+			json_configs = [json_configs]
 
-		set_argument(bool, "host", "build")
-		set_argument(bool, "test")
-		set_argument(bool, "visible")
+		for json_config in json_configs:
+			if not isinstance(json_config, str):
+				raise ConanException(f"invalid dependency config: '{json_config}'")
 
-		self.arguments["transitive_headers"] = True
+			self.configs.append(_parse_requirement_config(json_config))
+
+		for arguments in self.configs:
+			print(f"requires{arguments}")
 
 	def __str__(self):
 		reference = f"{self.package}/{self.version}"
@@ -158,7 +203,10 @@ class base:
 
 	def requirements(self):
 		for requirement in _vsm_read_package_requirements(self.recipe_folder):
-			self.requires(str(requirement), **requirement.arguments)
+			requirement_name = str(requirement)
+
+			for arguments in requirement.configs:
+				self.requires(requirement_name, **arguments)
 
 	def build(self):
 		cmake = CMake(self)
@@ -219,7 +267,9 @@ class root:
 					continue
 				package_versions[requirement.package] = requirement.version
 
-				self.requires(str(requirement), **requirement.arguments)
+				requirement_name = str(requirement)
+				for arguments in requirement.configs:
+					self.requires(requirement_name, **arguments)
 
 		visit_directory(self.recipe_folder, filter_root_prefix=False)
 
