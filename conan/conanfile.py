@@ -111,7 +111,6 @@ class _vsm_requirement:
 		self.channel = json.get("channel")
 
 		self.configs = []
-
 		json_configs = json.get("configs", "header-library")
 
 		if isinstance(json_configs, str):
@@ -122,9 +121,6 @@ class _vsm_requirement:
 				raise ConanException(f"invalid dependency config: '{json_config}'")
 
 			self.configs.append(_parse_requirement_config(json_config))
-
-		for arguments in self.configs:
-			print(f"requires{arguments}")
 
 	def __str__(self):
 		reference = f"{self.package}/{self.version}"
@@ -139,6 +135,13 @@ def _vsm_read_package_requirements(directory, recurse=True):
 
 	for json_require in json.get("requirements", []):
 		yield _vsm_requirement(json_require)
+
+	if "library" in json.get("package_type", "unknown"):
+		yield _vsm_requirement({
+			"package": "catch2",
+			"version": "[^3.4]",
+			"configs": ["test-library"],
+		})
 
 def _vsm_create_package_setup_cmake(conanfile, directory, required=False):
 	setup_script = ""
@@ -237,9 +240,12 @@ class base:
 			if package_type != "header-library":
 				self.cpp_info.libs.append(self.name.replace(".", "_"))
 
-		setup_path = os.path.join("cmake", f"{self.name}-setup-conan.cmake")
-		if os.path.isfile(os.path.join(self.package_folder, setup_path)):
-			self.cpp_info.set_property("cmake_build_modules", [setup_path])
+		if os.path.isdir(os.path.join(self.package_folder, "cmake")):
+			self.cpp_info.builddirs.append("cmake")
+
+			setup_path = os.path.join("cmake", f"{self.name}-setup-conan.cmake")
+			if os.path.isfile(os.path.join(self.package_folder, setup_path)):
+				self.cpp_info.set_property("cmake_build_modules", [setup_path])
 
 # Base class for multi-package monorepo roots.
 class root:

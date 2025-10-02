@@ -68,7 +68,7 @@ using detail::type_list_append;
 
 
 template<typename T, typename... Pack>
-inline constexpr bool instances_in_pack_v = (std::is_same_v<T, Pack> + ...);
+inline constexpr size_t instances_in_pack_v = (std::is_same_v<T, Pack> + ...);
 
 template<typename T, typename... Pack>
 inline constexpr bool is_contained_in_pack_v = instances_in_pack_v<T, Pack...> != 0;

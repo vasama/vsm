@@ -113,7 +113,7 @@ private:
 		}
 
 		m_buffer_offset = 0;
-		return {};
+		return streams::flush(m_sink);
 	}
 };
 

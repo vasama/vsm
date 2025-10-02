@@ -16,6 +16,12 @@ struct allocation
 	void* storage;
 	size_t size;
 
+	explicit allocation(decltype(nullptr))
+		: storage(nullptr)
+		, size(0)
+	{
+	}
+
 	explicit allocation(void* const storage, size_t const size) noexcept
 		: storage(storage)
 		, size(size)
@@ -39,11 +45,26 @@ struct allocation
 namespace detail {
 
 template<typename T>
+inline constexpr bool _allocator_has_allocate_in_range = requires (T& t, size_t const& s)
+{
+	// allocation allocate(size_t min_size, size_t max_size) /* const */;
+	{ t.allocate(s, s) } noexcept -> std::same_as<allocation>;
+};
+
+template<typename T>
 inline constexpr bool _allocator_has_resize = requires (T& t, size_t const& s, allocation const& a)
 {
 	// size_t resize(allocation allocation, size_t min_size) /* const */;
 	{ t.resize(a, s) } noexcept -> std::same_as<size_t>;
 };
+
+template<typename T>
+inline constexpr bool _allocator_has_resize_in_range =
+	requires (T& t, size_t const& s, allocation const& a)
+	{
+		// size_t resize(allocation allocation, size_t min_size, size_t max_size) /* const */;
+		{ t.resize(a, s, s) } noexcept -> std::same_as<size_t>;
+	};
 
 template<typename T>
 consteval bool _allocator_is_always_equal()
@@ -71,6 +92,12 @@ consteval bool _allocator_is_propagatable()
 	}
 }
 
+template<typename T>
+typename T::position_type _allocator_position_type(int);
+
+template<typename T>
+void _allocator_position_type(...);
+
 } // namespace detail
 
 template<typename T>
@@ -89,7 +116,44 @@ concept allocator =
 	std::is_copy_constructible_v<T> &&
 	std::is_nothrow_move_constructible_v<T>;
 
+
+template<typename T>
+concept managed_memory_resource = memory_resource<T> && requires (T& t)
+{
+	// void deallocate_all() /* const */;
+	{ t.deallocate_all() } noexcept -> std::same_as<void>;
+};
+
+template<typename T>
+concept managed_allocator = allocator<T> && managed_memory_resource<remove_cvref_t<T const>>;
+
+
+template<typename T>
+concept monotonic_memory_resource = memory_resource<T> && requires (T& t)
+{
+	requires std::is_trivially_copyable_v<typename T::position_type>;
+
+	{ static_cast<T const&>(t).get_position() } noexcept
+		-> std::same_as<typename T::position_type>;
+
+	t.reset_position(std::declval<typename T::position_type const&>());
+};
+
+template<typename T>
+concept monotonic_allocator = allocator<T> && monotonic_memory_resource<remove_cvref_t<T const>>;
+
+
 namespace allocators {
+
+template<memory_resource T>
+inline constexpr bool has_allocate_in_range_v = detail::_allocator_has_allocate_in_range<T const>;
+
+template<memory_resource T>
+inline constexpr bool has_resize_v = detail::_allocator_has_resize<T const>;
+
+template<memory_resource T>
+inline constexpr bool has_resize_in_range_v = detail::_allocator_has_resize_in_range<T const>;
+
 
 template<allocator T>
 inline constexpr bool is_always_equal_v = detail::_allocator_is_always_equal<T>();
@@ -97,8 +161,6 @@ inline constexpr bool is_always_equal_v = detail::_allocator_is_always_equal<T>(
 template<allocator T>
 inline constexpr bool is_propagatable_v = detail::_allocator_is_propagatable<T>();
 
-template<memory_resource T>
-inline constexpr bool has_resize_v = detail::_allocator_has_resize<T const>;
 
 template<memory_resource Allocator>
 [[nodiscard]] constexpr size_t resize(
@@ -116,7 +178,64 @@ template<memory_resource Allocator>
 	}
 }
 
+template<memory_resource Allocator>
+[[nodiscard]] constexpr size_t resize(
+	Allocator&& allocator,
+	allocation const allocation,
+	size_t const min_size,
+	size_t const max_size)
+{
+	vsm_assert(min_size <= max_size);
+
+	if constexpr (has_resize_in_range_v<Allocator>)
+	{
+		return allocator.resize(allocation, min_size, max_size);
+	}
+	else
+	{
+		return allocators::resize(allocator, allocation, min_size);
+	}
+}
+
+
+template<typename MemoryResource>
+using position_type_or_void = decltype(detail::_allocator_position_type<MemoryResource>(0));
+
 } // namespace allocators
+
+template<memory_resource Allocator>
+[[nodiscard]] constexpr allocation allocate_in_range(
+	Allocator&& allocator,
+	size_t const min_size,
+	size_t const max_size) noexcept
+{
+	vsm_assert(min_size <= max_size);
+
+	if constexpr (allocators::has_allocate_in_range_v<Allocator>)
+	{
+		return allocator.allocate(min_size, max_size);
+	}
+	else
+	{
+		return allocator.allocate(min_size);
+	}
+}
+
+template<memory_resource Allocator>
+[[nodiscard]] constexpr allocation allocate_or_throw(
+	Allocator&& allocator,
+	size_t const min_size,
+	size_t const max_size)
+{
+	auto const allocation = vsm::allocate_in_range(allocator, min_size, max_size);
+
+	if (allocation.storage == nullptr)
+	{
+		vsm_except_throw_or_terminate(std::bad_alloc());
+	}
+
+	return allocation;
+}
 
 template<memory_resource Allocator>
 [[nodiscard]] constexpr allocation allocate_or_throw(
@@ -173,6 +292,52 @@ constexpr void delete_via(T* const object, Allocator&& allocator)
 		allocator.deallocate(allocation(object, sizeof(T)));
 	}
 }
+
+
+template<non_ref MemoryResource>
+	requires memory_resource<MemoryResource>
+class basic_allocator
+{
+	MemoryResource* m_memory_resource;
+
+public:
+	using position_type = allocators::position_type_or_void<MemoryResource>;
+
+	basic_allocator(MemoryResource& m_memory_resource) noexcept
+		: m_memory_resource(std::addressof(m_memory_resource))
+	{
+	}
+
+	[[nodiscard]] vsm::allocation allocate(size_t const min_size) const noexcept
+	{
+		return m_memory_resource->allocate(min_size);
+	}
+
+	void deallocate(vsm::allocation const allocation) const noexcept
+	{
+		m_memory_resource->deallocate(allocation);
+	}
+
+	void deallocate_all() const noexcept
+		requires managed_memory_resource<MemoryResource>
+	{
+		m_memory_resource->deallocate_all();
+	}
+
+	template<typename MR = MemoryResource>
+		requires monotonic_memory_resource<MemoryResource>
+	[[nodiscard]] typename MR::position_type get_position() const noexcept
+	{
+		return m_memory_resource->get_position();
+	}
+
+	template<typename MR = MemoryResource>
+		requires monotonic_memory_resource<MemoryResource>
+	void reset_position(typename MR::position_type const pos) const noexcept
+	{
+		m_memory_resource->reset_position(pos);
+	}
+};
 
 
 class new_allocator

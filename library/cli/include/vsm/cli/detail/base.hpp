@@ -48,6 +48,7 @@ protected:
 		// option
 		flag                            = 1 << 16,
 		positional                      = 1 << 17,
+		has_option_form                 = 1 << 18,
 	};
 	vsm_flag_enum_friend(flags);
 

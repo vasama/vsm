@@ -19,14 +19,6 @@ set(vsm_detail_configure_lib_opt_n
 	INTERNAL_DEPENDENCIES
 )
 
-function(vsm_detail_get_target_type target variable)
-	get_target_property(type ${target} TYPE)
-	if ("${type}" STREQUAL "type-NOTFOUND")
-		message(FATAL_ERROR "Target '${target}' was not defined using vsm_add_xxx")
-	endif()
-	set("${variable}" ${type} PARENT_SCOPE)
-endfunction()
-
 macro(vsm_detail_configure_parse type opt_0 opt_1 opt_n)
 	set(vsm_detail_opt_0 ${opt_0})
 	set(vsm_detail_opt_1 ${opt_1})
@@ -58,6 +50,18 @@ macro(vsm_detail_configure_parse type opt_0 opt_1 opt_n)
 	endif()
 endmacro()
 
+function(vsm_detail_check_platform platform_var)
+	set(configure ON)
+
+	if(DEFINED "${platform_var}")
+		if(NOT "x${CMAKE_SYSTEM_NAME}" STREQUAL "x${${platform_var}}")
+			set(configure OFF)
+		endif()
+	endif()
+
+	set(vsm_detail_do_configure "${configure}" PARENT_SCOPE)
+endfunction()
+
 function(vsm_detail_add_file_set)
 	cmake_parse_arguments(
 		VSM_OPT2
@@ -69,7 +73,7 @@ function(vsm_detail_add_file_set)
 
 	set(configure OFF)
 
-	if(do_configure)
+	if(vsm_detail_do_configure)
 		target_sources(
 			"${target}"
 			"${public_type}"
@@ -128,7 +132,7 @@ function(vsm_detail_configure name target public_type)
 	endif()
 
 	if(DEFINED VSM_OPT_SOURCES) # Add sources
-		if(do_configure)
+		if(vsm_detail_do_configure)
 			target_sources(${target} PRIVATE ${VSM_OPT_SOURCES})
 		endif()
 
@@ -164,24 +168,24 @@ function(vsm_detail_configure name target public_type)
 		endif()
 	endif()
 
-	if(do_configure AND DEFINED VSM_OPT_HEADER_DEPENDENCIES)
+	if(vsm_detail_do_configure AND DEFINED VSM_OPT_HEADER_DEPENDENCIES)
 		target_link_libraries(${target} ${public_type} ${VSM_OPT_HEADER_DEPENDENCIES})
 	endif()
 
-	if(do_configure AND DEFINED VSM_OPT_SOURCE_DEPENDENCIES)
+	if(vsm_detail_do_configure AND DEFINED VSM_OPT_SOURCE_DEPENDENCIES)
 		target_link_libraries(${target} PRIVATE ${VSM_OPT_SOURCE_DEPENDENCIES})
 	endif()
 
-	if(do_configure AND DEFINED VSM_OPT_HEADER_DEFINITIONS)
+	if(vsm_detail_do_configure AND DEFINED VSM_OPT_HEADER_DEFINITIONS)
 		target_compile_definitions(${target} ${public_type} ${VSM_OPT_HEADER_DEFINITIONS})
 	endif()
 
-	if(do_configure AND DEFINED VSM_OPT_SOURCE_DEFINITIONS)
+	if(vsm_detail_do_configure AND DEFINED VSM_OPT_SOURCE_DEFINITIONS)
 		target_compile_definitions(${target} PRIVATE ${VSM_OPT_SOURCE_DEFINITIONS})
 	endif()
 
 	if(DEFINED VSM_OPT_TEST_SOURCES)
-		if(do_configure)
+		if(vsm_detail_do_configure)
 			if(NOT "${VSM_OPT_TEST_COMPILE_ONLY}" AND NOT "${Catch2_FOUND}")
 				find_package(Catch2 REQUIRED QUIET)
 			endif()
@@ -235,7 +239,7 @@ function(vsm_detail_configure name target public_type)
 		vsm_detail_add_directory_files("sources" "${VSM_OPT_TEST_SOURCES}")
 	endif()
 
-	if(do_configure AND DEFINED VSM_OPT_TEST_DEPENDENCIES)
+	if(vsm_detail_do_configure AND DEFINED VSM_OPT_TEST_DEPENDENCIES)
 		get_target_property(test_target ${target} vsm_detail_test_target)
 
 		if(NOT ${test_target} STREQUAL "test_target-NOTFOUND")
@@ -245,7 +249,7 @@ function(vsm_detail_configure name target public_type)
 		endif()
 	endif()
 
-	if(do_configure AND DEFINED VSM_OPT_INTERNAL_DEPENDENCIES)
+	if(vsm_detail_do_configure AND DEFINED VSM_OPT_INTERNAL_DEPENDENCIES)
 		target_link_libraries(${target} PRIVATE ${VSM_OPT_INTERNAL_DEPENDENCIES})
 
 		get_target_property(test_target ${target} vsm_detail_test_target)
@@ -254,14 +258,14 @@ function(vsm_detail_configure name target public_type)
 		endif()
 	endif()
 
-	if(do_configure AND DEFINED VSM_OPT_PROPERTIES)
+	if(vsm_detail_do_configure AND DEFINED VSM_OPT_PROPERTIES)
 		set_target_properties(
 			${target}
 			PROPERTIES ${VSM_OPT_PROPERTIES}
 		)
 	endif()
 
-	if(do_configure AND DEFINED VSM_OPT_FOLDER)
+	if(vsm_detail_do_configure AND DEFINED VSM_OPT_FOLDER)
 		set_target_properties(
 			${target}
 			PROPERTIES FOLDER "${VSM_OPT_FOLDER}"
@@ -282,7 +286,7 @@ function(vsm_detail_add_target function name)
 	endif()
 
 	set(target ${target} PARENT_SCOPE)
-	set(do_configure ON PARENT_SCOPE)
+	set(vsm_detail_do_configure ON PARENT_SCOPE)
 endfunction()
 
 function(vsm_add_executable name)
@@ -371,12 +375,6 @@ function(vsm_configure name)
 		set(public_type PUBLIC)
 	endif()
 
-	set(do_configure ON)
-	if(DEFINED VSM_OPT_PLATFORM)
-		if(NOT "x${CMAKE_SYSTEM_NAME}" STREQUAL "x${VSM_OPT_PLATFORM}")
-			set(do_configure OFF)
-		endif()
-	endif()
-
+	vsm_detail_check_platform(VSM_OPT_PLATFORM)
 	vsm_detail_configure(${name} ${target} ${public_type})
 endfunction()

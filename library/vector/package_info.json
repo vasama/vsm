@@ -14,14 +14,12 @@
 		{
 			"package": "vsm.testing.allocator",
 			"version": "0.1",
-			"visible": false,
-			"test": true
+			"configs": "test-library"
 		},
 		{
 			"package": "vsm.testing.core",
 			"version": "0.1",
-			"visible": false,
-			"test": true
+			"configs": "test-library"
 		}
 	]
 }

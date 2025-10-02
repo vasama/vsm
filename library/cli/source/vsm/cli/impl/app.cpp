@@ -306,8 +306,6 @@ option_internal& app_internal::create_option(
 	option_internal& option = *self->m_options.push_back(
 		option_internal::create(this, resource, group, flag));
 
-	bool has_option_form = false;
-
 	option_view view = { &option };
 	for (auto const& spec_part_range : std::views::split(spec, ','))
 	{
@@ -402,13 +400,13 @@ option_internal& app_internal::create_option(
 			break;
 
 		set_option_form:
-			if (!has_option_form)
+			if (vsm::no_flags(option.m_flags, flags::has_option_form))
 			{
-				has_option_form = true;
 				option.m_help_option = std::string_view(
 					std::to_address(spec_part.begin()),
 					std::to_address(spec.end()));
 
+				option.m_flags |= flags::has_option_form;
 				++m_visible_option_count;
 			}
 			break;
@@ -788,7 +786,7 @@ result<size_t> app_impl::_print_help(streams::any_sink_ref const sink) const
 	// Commands.
 	if (m_visible_command_count > 0)
 	{
-		vsm_try_void(print_section_header("Commands:"));
+		vsm_try_void(print_section_header("Commands"));
 		for (auto const& [name, command] : m_commands)
 		{
 			if (is_visible(*command))
@@ -803,7 +801,7 @@ result<size_t> app_impl::_print_help(streams::any_sink_ref const sink) const
 	// Positionals.
 	if (m_visible_positional_count > 0)
 	{
-		vsm_try_void(print_section_header("Positional arguments:"));
+		vsm_try_void(print_section_header("Positional arguments"));
 		for (auto const option : m_positional_options)
 		{
 			if (is_visible(*option))
@@ -817,10 +815,10 @@ result<size_t> app_impl::_print_help(streams::any_sink_ref const sink) const
 	// Options.
 	if (m_visible_option_count > 0)
 	{
-		vsm_try_void(print_section_header("Options:"));
+		vsm_try_void(print_section_header("Options"));
 		for (auto const& option : m_options)
 		{
-			if (is_visible(*option))
+			if (is_visible(*option) && vsm::any_flags(option->m_flags, flags::has_option_form))
 			{
 				vsm_try_void(print_option_help(*option, option->m_help_option));
 			}

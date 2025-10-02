@@ -44,6 +44,12 @@ struct _list
 
 		iterator() = default;
 
+		explicit iterator(T& node)
+			: m_hook(detail::linker::get_hook<hook, Tag>(std::addressof(node)))
+		{
+			static_assert(detail::check<T, T, hook>);
+		}
+
 		explicit iterator(hook* const node)
 			: m_hook(node)
 		{

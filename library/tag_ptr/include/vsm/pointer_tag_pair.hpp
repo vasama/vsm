@@ -130,9 +130,9 @@ public:
 
 	friend constexpr void swap(pointer_tag_pair& lhs, pointer_tag_pair& rhs) noexcept
 	{
-		auto const lhs_value = lhs.value;
-		lhs.value = rhs.value;
-		rhs.value = lhs_value;
+		auto const lhs_value = lhs.m_value;
+		lhs.m_value = rhs.m_value;
+		rhs.m_value = lhs_value;
 	}
 
 	friend constexpr auto operator<=>(pointer_tag_pair const&, pointer_tag_pair const&) = default;

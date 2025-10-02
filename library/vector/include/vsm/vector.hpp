@@ -11,12 +11,6 @@
 
 namespace vsm {
 
-struct default_initialize_t
-{
-	explicit default_initialize_t() = default;
-};
-inline constexpr default_initialize_t default_initialize{};
-
 template<typename T, allocator Allocator = default_allocator>
 class small_vector_base;
 
@@ -40,7 +34,7 @@ template<typename T, size_t Alignment>
 using _vector_padding_before = _vector_padding<Alignment - sizeof(T) % Alignment>;
 
 template<typename T1, typename T2, size_t Alignment>
-using _vector_padding_between = _vector_padding<Alignment - (sizeof(T1) + sizeof(T2) % Alignment)>;
+using _vector_padding_between = _vector_padding<Alignment - (sizeof(T1) + sizeof(T2)) % Alignment>;
 
 struct _vector_size
 {
@@ -868,7 +862,7 @@ public:
 
 		if (min_capacity > this->m_capacity)
 		{
-			detail::_vector_reserve(*this, min_capacity);
+			detail::_vector_reserve<T>(*this, min_capacity);
 		}
 	}
 
@@ -958,7 +952,7 @@ public:
 		}
 	}
 
-	iterator insert(const_iterator const pos, size_t const count, default_initialize_t)
+	iterator insert_default(const_iterator const pos, size_t const count)
 	{
 		static_assert(is_nothrow_relocatable_v<T>);
 
@@ -1116,6 +1110,55 @@ public:
 		return emplace_back(vsm_forward(value));
 	}
 
+	iterator push_back_n(size_t const count, T const& value)
+		requires std::is_copy_constructible_v<T>
+	{
+		T* const hole = detail::_vector_push_back<T>(*this, count);
+
+		vsm_except_try
+		{
+			std::uninitialized_fill_n(
+				hole,
+				count,
+				value);
+		}
+			vsm_except_catch(...)
+		{
+			if constexpr (!std::is_nothrow_copy_constructible_v<T>)
+			{
+				detail::_vector_pop_back<T>(*this, count);
+			}
+
+			vsm_except_rethrow;
+		}
+
+		return iterator(hole);
+	}
+
+	iterator push_back_default(size_t const count = 1)
+		requires std::is_default_constructible_v<T>
+	{
+		T* const hole = detail::_vector_push_back<T>(*this, count);
+
+		vsm_except_try
+		{
+			std::uninitialized_default_construct_n(
+				hole,
+				count);
+		}
+			vsm_except_catch(...)
+		{
+			if constexpr (!std::is_nothrow_default_constructible_v<T>)
+			{
+				detail::_vector_pop_back<T>(*this, count);
+			}
+
+			vsm_except_rethrow;
+		}
+
+		return iterator(hole);
+	}
+
 	template<typename... Args>
 	T& emplace_back(Args&&... args)
 		requires std::constructible_from<T, Args...>
@@ -1189,7 +1232,7 @@ public:
 	iterator append_n(Iterator begin, size_t const count)
 		requires std::convertible_to<std::iter_reference_t<Iterator>, T>
 	{
-		T const hole = detail::_vector_push_back<T>(*this, count);
+		T* const hole = detail::_vector_push_back<T>(*this, count);
 
 		vsm_except_try
 		{
@@ -1201,55 +1244,6 @@ public:
 		vsm_except_catch (...)
 		{
 			if constexpr (!std::is_nothrow_convertible_v<std::iter_reference_t<Iterator>, T>)
-			{
-				detail::_vector_pop_back<T>(*this, count);
-			}
-
-			vsm_except_rethrow;
-		}
-
-		return iterator(hole);
-	}
-
-	iterator append_fill(size_t const count, T const& value)
-		requires std::is_copy_constructible_v<T>
-	{
-		T* const hole = detail::_vector_push_back<T>(*this, count);
-
-		vsm_except_try
-		{
-			std::uninitialized_fill_n(
-				hole,
-				count,
-				value);
-		}
-		vsm_except_catch (...)
-		{
-			if constexpr (!std::is_nothrow_copy_constructible_v<T>)
-			{
-				detail::_vector_pop_back<T>(*this, count);
-			}
-
-			vsm_except_rethrow;
-		}
-
-		return iterator(hole);
-	}
-
-	iterator append_fill(size_t const count, default_initialize_t)
-		requires std::is_default_constructible_v<T>
-	{
-		T* const hole = detail::_vector_push_back<T>(*this, count);
-
-		vsm_except_try
-		{
-			std::uninitialized_default_construct_n(
-				hole,
-				count);
-		}
-		vsm_except_catch (...)
-		{
-			if constexpr (!std::is_nothrow_default_constructible_v<T>)
 			{
 				detail::_vector_pop_back<T>(*this, count);
 			}
@@ -1349,7 +1343,7 @@ public:
 		}
 	}
 
-	void resize(size_t const new_size, default_initialize_t)
+	void resize_default(size_t const new_size)
 		requires std::is_default_constructible_v<T>
 	{
 		static_assert(is_nothrow_relocatable_v<T>);
@@ -1539,6 +1533,15 @@ public:
 		static_assert(std::is_nothrow_swappable_v<Allocator>);
 
 		detail::_vector_swap<T, Capacity != 0>(*this, other);
+	}
+
+	[[nodiscard]] T* release()
+		requires (Capacity == 0)
+	{
+		T* const ptr = this->_get_storage_ptr<T>();
+		vsm_vector_annotate(remove, *this);
+		detail::_vector_initialize<T>(*this, /* Capacity: */ 0);
+		return ptr;
 	}
 
 private:

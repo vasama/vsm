@@ -216,7 +216,7 @@ public:
 	/// @brief Remove the first element from the list.
 	/// @return The first element in the list.
 	/// @pre The list is not empty.
-	[[nodiscard]] element_type& pop_front()
+	element_type& pop_front()
 	{
 		vsm_assert(m_root.next != &m_root);
 		return *get_elem(_flist::pop_front());

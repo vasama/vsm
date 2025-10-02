@@ -19,9 +19,6 @@ using std::same_as;
 template<typename T, typename U>
 concept not_same_as = !same_as<T, U>;
 
-template<typename T>
-concept voidy = same_as<T, void>;
-
 template<typename T, typename... Ts>
 concept any_of = is_any_of_v<T, Ts...>;
 

@@ -43,11 +43,15 @@ option& option::hide()
 	vsm_self(private_class);
 	if (no_flags(m_flags, flags::hide))
 	{
-		uint32_t& visible_count = vsm::any_flags(m_flags, flags::positional)
-			? self->m_app->m_visible_positional_count
-			: self->m_app->m_visible_option_count;
+		if (vsm::any_flags(m_flags, flags::positional))
+		{
+			vsm_verify(self->m_app->m_visible_positional_count-- > 0);
+		}
 
-		vsm_verify(visible_count-- > 0);
+		if (vsm::any_flags(m_flags, flags::has_option_form))
+		{
+			vsm_verify(self->m_app->m_visible_option_count-- > 0);
+		}
 	}
 	m_flags |= flags::hide;
 	return *this;
