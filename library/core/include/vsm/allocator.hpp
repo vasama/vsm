@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vsm/assert.h>
 #include <vsm/concepts.hpp>
 #include <vsm/exceptions.hpp>
 #include <vsm/type_traits.hpp>
@@ -45,26 +46,11 @@ struct allocation
 namespace detail {
 
 template<typename T>
-inline constexpr bool _allocator_has_allocate_in_range = requires (T& t, size_t const& s)
-{
-	// allocation allocate(size_t min_size, size_t max_size) /* const */;
-	{ t.allocate(s, s) } noexcept -> std::same_as<allocation>;
-};
-
-template<typename T>
 inline constexpr bool _allocator_has_resize = requires (T& t, size_t const& s, allocation const& a)
 {
-	// size_t resize(allocation allocation, size_t min_size) /* const */;
-	{ t.resize(a, s) } noexcept -> std::same_as<size_t>;
+	// size_t resize(allocation allocation, size_t min_size, size_t max_size) /* const */;
+	{ t.resize(a, s, s) } noexcept -> std::same_as<size_t>;
 };
-
-template<typename T>
-inline constexpr bool _allocator_has_resize_in_range =
-	requires (T& t, size_t const& s, allocation const& a)
-	{
-		// size_t resize(allocation allocation, size_t min_size, size_t max_size) /* const */;
-		{ t.resize(a, s, s) } noexcept -> std::same_as<size_t>;
-	};
 
 template<typename T>
 consteval bool _allocator_is_always_equal()
@@ -103,8 +89,8 @@ void _allocator_position_type(...);
 template<typename T>
 concept memory_resource = requires (T& t, size_t const& s, allocation const& a)
 {
-	// allocation allocate(size_t min_size) /* const */;
-	{ t.allocate(s) } noexcept -> std::same_as<allocation>;
+	// allocation allocate(size_t min_size, size_t max_size) /* const */;
+	{ t.allocate(s, s) } noexcept -> std::same_as<allocation>;
 
 	// void deallocate(allocation allocation) /* const */;
 	{ t.deallocate(a) } noexcept -> std::same_as<void>;
@@ -146,13 +132,7 @@ concept monotonic_allocator = allocator<T> && monotonic_memory_resource<remove_c
 namespace allocators {
 
 template<memory_resource T>
-inline constexpr bool has_allocate_in_range_v = detail::_allocator_has_allocate_in_range<T const>;
-
-template<memory_resource T>
 inline constexpr bool has_resize_v = detail::_allocator_has_resize<T const>;
-
-template<memory_resource T>
-inline constexpr bool has_resize_in_range_v = detail::_allocator_has_resize_in_range<T const>;
 
 
 template<allocator T>
@@ -170,7 +150,7 @@ template<memory_resource Allocator>
 {
 	if constexpr (has_resize_v<Allocator>)
 	{
-		return allocator.resize(allocation, min_size);
+		return allocator.resize(allocation, min_size, min_size);
 	}
 	else
 	{
@@ -187,13 +167,13 @@ template<memory_resource Allocator>
 {
 	vsm_assert(min_size <= max_size);
 
-	if constexpr (has_resize_in_range_v<Allocator>)
+	if constexpr (has_resize_v<Allocator>)
 	{
 		return allocator.resize(allocation, min_size, max_size);
 	}
 	else
 	{
-		return allocators::resize(allocator, allocation, min_size);
+		return 0;
 	}
 }
 
@@ -204,21 +184,44 @@ using position_type_or_void = decltype(detail::_allocator_position_type<MemoryRe
 } // namespace allocators
 
 template<memory_resource Allocator>
-[[nodiscard]] constexpr allocation allocate_in_range(
+[[nodiscard]] constexpr allocation allocate(
+	Allocator&& allocator,
+	size_t const min_size)
+{
+	return allocator.allocate(min_size, min_size);
+}
+
+template<memory_resource Allocator>
+[[nodiscard]] constexpr allocation allocate(
 	Allocator&& allocator,
 	size_t const min_size,
-	size_t const max_size) noexcept
+	size_t const max_size)
 {
-	vsm_assert(min_size <= max_size);
+	return allocator.allocate(min_size, max_size);
+}
 
-	if constexpr (allocators::has_allocate_in_range_v<Allocator>)
+template<memory_resource Allocator>
+[[nodiscard]] constexpr allocation allocate_at_least(
+	Allocator&& allocator,
+	size_t const min_size)
+{
+	return allocator.allocate(min_size, static_cast<size_t>(-1));
+}
+
+
+template<memory_resource Allocator>
+[[nodiscard]] constexpr allocation allocate_or_throw(
+	Allocator&& allocator,
+	size_t const min_size)
+{
+	auto const allocation = allocator.allocate(min_size, min_size);
+
+	if (allocation.storage == nullptr)
 	{
-		return allocator.allocate(min_size, max_size);
+		vsm_except_throw_or_terminate(std::bad_alloc());
 	}
-	else
-	{
-		return allocator.allocate(min_size);
-	}
+
+	return allocation;
 }
 
 template<memory_resource Allocator>
@@ -227,7 +230,9 @@ template<memory_resource Allocator>
 	size_t const min_size,
 	size_t const max_size)
 {
-	auto const allocation = vsm::allocate_in_range(allocator, min_size, max_size);
+	vsm_assert(min_size <= max_size);
+
+	auto const allocation = allocator.allocate(min_size, max_size);
 
 	if (allocation.storage == nullptr)
 	{
@@ -238,11 +243,11 @@ template<memory_resource Allocator>
 }
 
 template<memory_resource Allocator>
-[[nodiscard]] constexpr allocation allocate_or_throw(
+[[nodiscard]] constexpr allocation allocate_at_least_or_throw(
 	Allocator&& allocator,
 	size_t const min_size)
 {
-	auto const allocation = allocator.allocate(min_size);
+	auto const allocation = allocator.allocate(min_size, static_cast<size_t>(-1));
 
 	if (allocation.storage == nullptr)
 	{
@@ -252,11 +257,12 @@ template<memory_resource Allocator>
 	return allocation;
 }
 
+
 template<non_decaying T, memory_resource Allocator, typename... Args>
 	requires std::constructible_from<T, Args...>
 [[nodiscard]] constexpr T* new_via(Allocator&& allocator, Args&&... args)
 {
-	auto const allocation = static_cast<Allocator const&>(allocator).allocate(sizeof(T));
+	auto const allocation = allocator.allocate(sizeof(T), sizeof(T));
 
 	if (allocation.storage == nullptr)
 	{
@@ -269,15 +275,13 @@ template<non_decaying T, memory_resource Allocator, typename... Args>
 	}
 	else
 	{
-		std::decay_t<Allocator> const local_allocator(static_cast<Allocator const&>(allocator));
-
 		vsm_except_try
 		{
 			return ::new (allocation.storage) T(static_cast<Args&&>(args)...);
 		}
 		vsm_except_catch (...)
 		{
-			local_allocator.deallocate(allocation);
+			allocator.deallocate(allocation);
 			vsm_except_rethrow;
 		}
 	}
@@ -308,9 +312,11 @@ public:
 	{
 	}
 
-	[[nodiscard]] vsm::allocation allocate(size_t const min_size) const noexcept
+	[[nodiscard]] vsm::allocation allocate(
+		size_t const min_size,
+		size_t const max_size) const noexcept
 	{
-		return m_memory_resource->allocate(min_size);
+		return m_memory_resource->allocate(min_size, max_size);
 	}
 
 	void deallocate(vsm::allocation const allocation) const noexcept
@@ -322,6 +328,15 @@ public:
 		requires managed_memory_resource<MemoryResource>
 	{
 		m_memory_resource->deallocate_all();
+	}
+
+	[[nodiscard]] size_t resize(
+		vsm::allocation const allocation,
+		size_t const min_size,
+		size_t const max_size) const noexcept
+		requires allocators::has_resize_v<MemoryResource>
+	{
+		return m_memory_resource->resize(allocation, min_size, max_size);
 	}
 
 	template<typename MR = MemoryResource>
@@ -346,9 +361,9 @@ public:
 	static constexpr bool is_always_equal = true;
 	static constexpr bool is_propagatable = true;
 
-	[[nodiscard]] allocation allocate(size_t const size) const noexcept
+	[[nodiscard]] allocation allocate(size_t const min_size, size_t const max_size) const noexcept
 	{
-		return allocation(::operator new(size, std::nothrow), size);
+		return allocation(::operator new(min_size, std::nothrow), min_size);
 	}
 
 	void deallocate(allocation const allocation) const noexcept
@@ -373,5 +388,5 @@ template<vsm::memory_resource Allocator>
 	Allocator&& allocator,
 	std::nothrow_t) noexcept
 {
-	return allocator.allocate(size);
+	return allocator.allocate(size, size);
 }

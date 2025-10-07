@@ -245,7 +245,8 @@ T* _vector_reserve_at(_vector_base<A>& vector, size_t const index, size_t const 
 	{
 		size_t const new_allocation_size = vector.m_allocator.resize(
 			allocation(old_ptr, old_allocation_size),
-			min_allocation_size);
+			min_allocation_size,
+			static_cast<size_t>(-1));
 
 		if (new_allocation_size != 0)
 		{

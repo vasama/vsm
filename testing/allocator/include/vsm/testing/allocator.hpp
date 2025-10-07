@@ -27,9 +27,9 @@ public:
 	static constexpr bool is_always_equal = true;
 	static constexpr bool is_propagatable = true;
 
-	[[nodiscard]] allocation allocate(size_t const size) const noexcept
+	[[nodiscard]] allocation allocate(size_t const min_size, size_t const max_size) const noexcept
 	{
-		return detail::allocate(size);
+		return detail::allocate(min_size);
 	}
 
 	void deallocate(allocation const allocation) const noexcept

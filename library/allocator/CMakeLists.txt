@@ -8,6 +8,7 @@ vsm_add_library(vsm::allocator
 	HEADERS
 		include/vsm/allocator.hpp
 		include/vsm/any_allocator.hpp
+		include/vsm/any_monotonic_allocator.hpp
 		include/vsm/default_allocator.hpp
 		include/vsm/new_allocator.hpp
 
@@ -17,6 +18,7 @@ vsm_add_library(vsm::allocator
 
 	TEST_SOURCES
 		source/vsm/test/any_allocator.cpp
+		source/vsm/test/any_monotonic_allocator.cpp
 
 	TEST_DEPENDENCIES
 		vsm::testing::allocator

@@ -37,7 +37,7 @@ struct any_memory_resource_reset_position
 } // namespace detail
 
 class any_monotonic_memory_resource_ref
-	: any_ref<
+	: public any_ref<
 		detail::any_memory_resource_allocate,
 		detail::any_memory_resource_deallocate,
 		detail::any_memory_resource_resize,
@@ -47,22 +47,34 @@ class any_monotonic_memory_resource_ref
 public:
 	using position_type = detail::any_memory_resource_position_type;
 
-	template<monotonic_memory_resource MemoryResource>
+	template<no_cvref_of<any_monotonic_memory_resource_ref> MemoryResource>
+		requires monotonic_memory_resource<MemoryResource>
 	constexpr any_monotonic_memory_resource_ref(MemoryResource& memory_resource)
 		: any_ref(memory_resource)
 	{
 	}
 
-	template<allocator Allocator>
-		requires constructible_from<any_ref, std::in_place_t, Allocator const&>
+	template<no_cvref_of<any_monotonic_memory_resource_ref> AnyMemoryResourceRef>
+		requires constructible_from<any_ref, typename AnyMemoryResourceRef::any_ref>
+	constexpr any_monotonic_memory_resource_ref(AnyMemoryResourceRef const& ref)
+		: any_ref(ref)
+	{
+	}
+
+	template<no_cvref_of<any_monotonic_memory_resource_ref> Allocator>
+		requires
+			allocator<Allocator> &&
+			constructible_from<any_ref, std::in_place_t, Allocator const&>
 	any_monotonic_memory_resource_ref(Allocator const allocator) noexcept
 		: any_ref(std::in_place, allocator)
 	{
 	}
 
-	[[nodiscard]] vsm::allocation allocate(size_t const min_size) const noexcept
+	[[nodiscard]] vsm::allocation allocate(
+		size_t const min_size,
+		size_t const max_size) const noexcept
 	{
-		return any_ref::invoke<detail::any_memory_resource_allocate>(min_size);
+		return any_ref::invoke<detail::any_memory_resource_allocate>(min_size, max_size);
 	}
 
 	void deallocate(vsm::allocation const allocation) const noexcept
@@ -72,9 +84,10 @@ public:
 
 	[[nodiscard]] size_t resize(
 		vsm::allocation const allocation,
-		size_t const min_size) const noexcept
+		size_t const min_size,
+		size_t const max_size) const noexcept
 	{
-		return any_ref::invoke<detail::any_memory_resource_resize>(allocation, min_size);
+		return any_ref::invoke<detail::any_memory_resource_resize>(allocation, min_size, max_size);
 	}
 
 	[[nodiscard]] position_type get_position() const noexcept
@@ -85,6 +98,11 @@ public:
 	void reset_position(position_type const pos) const noexcept
 	{
 		any_ref::invoke<detail::any_memory_resource_reset_position>(pos);
+	}
+
+	[[nodiscard]] operator any_allocator() const noexcept
+	{
+		return any_allocator(*this);
 	}
 };
 
