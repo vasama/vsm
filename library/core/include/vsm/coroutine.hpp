@@ -65,6 +65,11 @@ public:
 		return m_coroutine;
 	}
 
+	[[nodiscard]] bool done() const noexcept
+	{
+		return m_coroutine.done();
+	}
+
 	[[nodiscard]] std::coroutine_handle<T> release() noexcept
 	{
 		auto const coroutine = m_coroutine;
@@ -93,7 +98,7 @@ public:
 		}
 	}
 
-	explicit constexpr operator bool() const noexcept
+	[[nodiscard]] explicit constexpr operator bool() const noexcept
 	{
 		return static_cast<bool>(m_coroutine);
 	}

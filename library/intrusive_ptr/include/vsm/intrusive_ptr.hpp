@@ -567,6 +567,13 @@ private:
 	friend class intrusive_ptr;
 };
 
+template<typename T, typename... Args>
+	requires std::constructible_from<T, Args...>
+[[nodiscard]] vsm::intrusive_ptr<T> make_intrusive(Args&&... args)
+{
+	return vsm::intrusive_ptr<T>(new T(vsm_forward(args)...));
+}
+
 } // namespace vsm
 
 template<typename T, typename Manager>

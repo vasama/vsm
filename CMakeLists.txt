@@ -3,7 +3,7 @@ project(vsm)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-# Find vsm-cmake using the bootstrap config.
+# Find vsm.cmake using the bootstrap config.
 find_package(
 	vsm.cmake REQUIRED
 	NO_DEFAULT_PATH
