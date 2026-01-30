@@ -1,9 +1,9 @@
 #pragma once
 
-#if __has_include(<sanitizer/asan_interface.h>)
-#	include <sanitizer/asan_interface.h>
-
-#	if defined(__has_feature)
+#if __SANITIZE_ADDRESS__
+#	define vsm_has_address_sanitizer 1
+#else
+#	ifdef __has_feature
 #		if __has_feature(address_sanitizer)
 #			define vsm_has_address_sanitizer 1
 #		else
@@ -12,6 +12,13 @@
 #	else
 #		define vsm_has_address_sanitizer 0
 #	endif
+#endif
+
+#if vsm_has_address_sanitizer
+#	include <vsm/detail/sanitizer/address.h>
 #else
-#	define vsm_has_address_sanitizer 0
+#	define vsm_no_sanitize_address
+#	define vsm_memcpy_no_sanitize_address memcpy
+#	define vsm_memset_no_sanitize_address memset
+#	define vsm_memmove_no_sanitize_address memmove
 #endif

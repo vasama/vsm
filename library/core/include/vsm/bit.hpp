@@ -2,6 +2,7 @@
 
 #include <vsm/platform.h>
 #include <vsm/standard.hpp>
+#include <vsm/standard/bit.hpp>
 
 #include <concepts>
 
@@ -14,6 +15,41 @@
 #include <vsm/detail/bit/generic/compression.hpp>
 
 namespace vsm {
+
+template<std::integral T>
+[[nodiscard]] T little_endian(T const value)
+{
+	/**/ if constexpr (std::endian::native == std::endian::little)
+	{
+		return value;
+	}
+	else if constexpr (std::endian::native == std::endian::big)
+	{
+		return vsm::byteswap(value);
+	}
+	else
+	{
+		static_assert(sizeof(T) == 0);
+	}
+}
+
+template<std::integral T>
+[[nodiscard]] T big_endian(T const value)
+{
+	/**/ if constexpr (std::endian::native == std::endian::little)
+	{
+		return vsm::byteswap(value);
+	}
+	else if constexpr (std::endian::native == std::endian::big)
+	{
+		return value;
+	}
+	else
+	{
+		static_assert(sizeof(T) == 0);
+	}
+}
+
 
 #if vsm_has_native_bit_compression
 template<std::unsigned_integral T>

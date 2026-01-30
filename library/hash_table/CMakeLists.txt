@@ -8,22 +8,21 @@ vsm_add_library(
 	vsm::hash_table
 
 	HEADERS
-		include/vsm/detail/deterministic_table.hpp
-		include/vsm/detail/hash_table.hpp
-		include/vsm/detail/swiss_table.hpp
-		include/vsm/detail/swiss_table.ipp
-
 		include/vsm/hash_map.hpp
 		include/vsm/hash_set.hpp
 
-		include/vsm/deterministic_map.hpp
-		include/vsm/deterministic_set.hpp
+		include/vsm/array_map.hpp
+		include/vsm/array_set.hpp
 
 		include/vsm/swiss_map.hpp
 		include/vsm/swiss_set.hpp
 
+		include/vsm/detail/array_table.hpp
+		include/vsm/detail/hash_table.hpp
+		include/vsm/detail/swiss_table.hpp
+
 	SOURCES
-		source/vsm/impl/deterministic_table.cpp
+		source/vsm/impl/array_table.cpp
 		source/vsm/impl/swiss_table.cpp
 
 	VISUALIZERS
@@ -35,10 +34,10 @@ vsm_add_library(
 		vsm::hash
 
 	TEST_SOURCES
-		source/vsm/test/deterministic_set.cpp
-		source/vsm/test/deterministic_map.cpp
-		source/vsm/test/swiss_set.cpp
+		source/vsm/test/array_map.cpp
+		source/vsm/test/array_set.cpp
 		source/vsm/test/swiss_map.cpp
+		source/vsm/test/swiss_set.cpp
 		source/vsm/test/swiss_table.cpp
 
 	TEST_DEPENDENCIES

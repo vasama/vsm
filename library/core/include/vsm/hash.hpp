@@ -6,6 +6,7 @@
 #include <vsm/type_traits.hpp>
 
 #include <bit>
+#include <tuple>
 
 #include <cstddef>
 
@@ -46,8 +47,8 @@ T mix_unsigned_integer(T state, std::unsigned_integral auto value)
 
 struct hash_append_cpo;
 
-template<typename State, typename T>
-concept _hash_append_concept =
+template<typename T, typename State>
+concept hash_appendable_to =
 	tag_invocable<hash_append_cpo, State&, T const&> ||
 	is_trivially_hashable_v<T> ||
 	requires (T const& value) { std::hash<T>()(value); };
@@ -84,6 +85,10 @@ struct hash_append_bits_cpo
 	}
 };
 static constexpr hash_append_bits_cpo hash_append_bits = {};
+
+
+template<typename State, typename... Ts, size_t... Is>
+void hash_append_tuple(State& state, std::tuple<Ts...> const& tuple, std::index_sequence<Is...>);
 
 struct hash_append_cpo
 {
@@ -133,8 +138,14 @@ struct hash_append_cpo
 		hash_append_cpo()(state, std::ranges::begin(range), std::ranges::end(range));
 	}
 
+	template<typename State, hash_appendable_to<State>... Ts>
+	friend void tag_invoke(hash_append_cpo, State& state, std::tuple<Ts...> const& tuple)
+	{
+		detail::hash_append_tuple(state, tuple, std::index_sequence_for<Ts...>());
+	}
+
 	template<typename State, non_cvref T>
-		requires _hash_append_concept<State, T>
+		requires hash_appendable_to<T, State>
 	vsm_static_operator void operator()(State& state, T const& value) vsm_static_operator_const
 	{
 		if constexpr (tag_invocable<hash_append_cpo, State&, T const&>)
@@ -152,7 +163,7 @@ struct hash_append_cpo
 	}
 
 	template<typename State, std::input_iterator Iterator, std::sentinel_for<Iterator> Sentinel>
-		requires _hash_append_concept<State, std::iter_value_t<Iterator>>
+		requires hash_appendable_to<std::iter_value_t<Iterator>, State>
 	vsm_static_operator void operator()(
 		State& state,
 		Iterator begin,
@@ -187,6 +198,12 @@ struct hash_append_cpo
 };
 static constexpr hash_append_cpo hash_append = {};
 
+template<typename State, typename... Ts, size_t... Is>
+void hash_append_tuple(State& state, std::tuple<Ts...> const& tuple, std::index_sequence<Is...>)
+{
+	(detail::hash_append(state, std::get<Is>(tuple)), ...);
+}
+
 } // namespace detail
 
 using detail::is_trivially_hashable_v;
@@ -198,6 +215,7 @@ using detail::is_trivially_hashable_v;
 
 
 using detail::hash_append_bits;
+using detail::hash_appendable_to;
 using detail::hash_append;
 
 
@@ -209,12 +227,11 @@ struct basic_hasher_state : Hash::state_type {};
 template<typename Hash, typename Policy = default_hash_policy>
 struct basic_hasher
 {
-	template<typename T>
+	template<hash_appendable_to<basic_hasher_state<Hash, Policy>> T>
 	vsm_static_operator constexpr size_t operator()(T const& value) vsm_static_operator_const
-		requires requires (basic_hasher_state<Hash, Policy>& state) { hash_append(state, value); }
 	{
 		basic_hasher_state<Hash, Policy> state = { Hash::initialize(get_aslr_seed()) };
-		hash_append(state, value);
+		vsm::hash_append(state, value);
 		return Hash::finalize(static_cast<typename Hash::state_type const&>(state));
 	}
 };

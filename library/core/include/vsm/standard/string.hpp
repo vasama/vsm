@@ -8,6 +8,7 @@
 namespace vsm {
 
 template<typename Char, typename Traits, typename Operation>
+	requires std::is_invocable_r_v<size_t, Operation, Char*, size_t>
 static void resize_and_overwrite(
 	std::basic_string<Char, Traits>& string,
 	size_t const new_size,

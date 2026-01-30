@@ -110,7 +110,6 @@ public:
 
 
 	option& handle(handler_type handler);
-
 	option& handle_else(else_handler_type handler);
 
 private:

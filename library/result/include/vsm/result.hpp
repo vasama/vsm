@@ -98,6 +98,26 @@ template<typename Expected>
 		: expected_type(result_error, vsm_forward(expected).error());
 }
 
+template<typename Target, typename Expected>
+	requires
+		instance_of<remove_cvref_t<Expected>, expected> &&
+		std::assignable_from<Target&, vsm::copy_cvref_t<Expected, typename Expected::value_type>>
+[[nodiscard]] expected<void, typename remove_cvref_t<Expected>::error_type> assign_value(
+	Target& target,
+	Expected&& expected)
+{
+	using expected_type = vsm::expected<void, typename remove_cvref_t<Expected>::error_type>;
+
+	if (!expected)
+	{
+		return expected_type(result_error, vsm_forward(expected).error());
+	}
+
+	target = *vsm_forward(expected);
+
+	return {};
+}
+
 inline std::error_code make_error_code(std::errc const e)
 {
 	return std::error_code(static_cast<int>(e), std::generic_category());

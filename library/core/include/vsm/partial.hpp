@@ -71,10 +71,10 @@ public:
 		class internal_class; \
 		class private_class; \
 		T() = default; \
-		T(T&&) = delete; \
-		T(T const&) = delete; \
-		T& operator=(T&&) = delete; \
-		T& operator=(T const&) = delete; \
+		T(T&&) = default; \
+		T(T const&) = default; \
+		T& operator=(T&&) = default; \
+		T& operator=(T const&) = default; \
 	vsm_detail_partial_1: \
 		~T() = default; \
 	private: \

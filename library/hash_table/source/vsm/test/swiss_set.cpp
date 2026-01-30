@@ -6,7 +6,7 @@ using namespace vsm;
 
 TEST_CASE("swiss_table full tombs", "[hash_table][swiss_table]")
 {
-	vsm::swiss_set<
+	swiss_set<
 		size_t,
 		default_key_selector,
 		default_allocator,

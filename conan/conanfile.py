@@ -3,7 +3,7 @@
 from conan import ConanFile
 from conan.errors import ConanException
 from conan.tools.files import load, save, copy
-from conan.tools.cmake import CMake, CMakeToolchain, cmake_layout
+from conan.tools.cmake import CMake, CMakeDeps, CMakeToolchain, cmake_layout
 
 import glob
 import json
@@ -155,12 +155,24 @@ def _vsm_create_package_setup_cmake(conanfile, directory, required=False):
 	if setup_script or required:
 		save(conanfile, os.path.join(directory, f"{conanfile.name}-setup-conan.cmake"), setup_script)
 
+def _vsm_generate_cmake(conanfile):
+	deps = CMakeDeps(conanfile)
+
+	for requirement in conanfile.dependencies.direct_build.values():
+		if requirement.package_type == "application":
+			name = str(requirement).split("/", 1)[0]
+			deps.build_context_activated.append(name)
+			deps.build_context_build_modules.append(name)
+
+	deps.generate()
+
+	toolchain = CMakeToolchain(conanfile)
+	toolchain.generate()
+
 
 # Base class for user package definitions.
 class base:
 	settings = "os", "compiler", "build_type", "arch"
-
-	generators = "CMakeToolchain", "CMakeDeps"
 
 	def init(self):
 		json = _vsm_read_package_info_json(self.recipe_folder, recurse=False)
@@ -178,7 +190,13 @@ class base:
 		set_attr("authors", "author")
 		set_attr("license")
 		set_attr("website", "homepage")
-		set_attr("package_type")
+
+		package_type = json.get("package_type")
+		if package_type is not None:
+			self.vsm_package_type = package_type
+			if package_type == "object-library":
+				package_type = "static-library"
+			self.package_type = package_type
 
 	def export(self):
 		# Write the full self-contained package_info.json to the export folder:
@@ -196,12 +214,17 @@ class base:
 		copy(self, src=self.recipe_folder, dst=self.export_sources_folder, pattern="source/*")
 		copy(self, src=self.recipe_folder, dst=self.export_sources_folder, pattern="visualizers/*")
 
+	def generate(self):
+		_vsm_generate_cmake(self)
+
 	def layout(self):
 		cmake_layout(self)
 
 		# Add source visualizer directory as a resource directory:
 		self.cpp.source.resdirs.append("visualizers")
 
+		# It is not possible to test for the presence of the setup script in package info when the
+		# package is in editable mode, so it is used unconditionally.
 		self.cpp.build.set_property("cmake_build_modules", [f"{self.name}-setup-conan.cmake"])
 
 	def requirements(self):
@@ -225,7 +248,7 @@ class base:
 		_vsm_create_package_setup_cmake(self, os.path.join(self.package_folder, "cmake"))
 
 	def package_info(self):
-		package_type = str(self.package_type)
+		package_type = str(self.vsm_package_type)
 
 		if package_type == "" or package_type == "unknown":
 			raise ConanException(f"Invalid package_type: '{package_type}'")
@@ -234,11 +257,33 @@ class base:
 		if "::" not in target_name:
 			target_name = f"{target_name}::{target_name}"
 
+		output_name = self.name.replace(".", "_")
+
 		if "library" in package_type:
 			self.cpp_info.set_property("cmake_target_name", target_name)
 
-			if package_type != "header-library":
-				self.cpp_info.libs.append(self.name.replace(".", "_"))
+			if package_type in ["library", "static-library", "dynamic-library"]:
+				self.cpp_info.libs.append(output_name)
+
+			if package_type == "object-library":
+				object_files = None
+
+				#object_list_file = os.path.join(self.package_folder, f"{output_name}.objects.txt")
+				#if os.path.isfile(object_list_file):
+				#	with open(os.path.join()) as file:
+				#		object_files = [line for line in file]
+				#else:
+				object_file_dir = os.path.join(self.package_folder, "obj")
+				if os.path.isdir(object_file_dir):
+					object_files = []
+					for r, ds, fs in os.walk(object_file_dir):
+						for f in fs:
+							object_files.append(os.path.join(r, f))
+				#end else
+
+				if object_files is not None:
+					for absolute_object_path in object_files:
+						self.cpp_info.objects.append(os.path.relpath(absolute_object_path, self.package_folder))
 
 		if os.path.isdir(os.path.join(self.package_folder, "cmake")):
 			self.cpp_info.builddirs.append("cmake")
@@ -252,10 +297,12 @@ class root:
 	settings = "os", "compiler", "build_type", "arch"
 
 	layout = cmake_layout
-	generators = "CMakeToolchain", "CMakeDeps"
 
 	def export(self):
 		raise ConanException("This conanfile can only be used in editable mode.")
+
+	def generate(self):
+		_vsm_generate_cmake(self)
 
 	def requirements(self):
 		root_prefix_regex = f"{re.escape(self.name)}[\\.\\+\\-].+"

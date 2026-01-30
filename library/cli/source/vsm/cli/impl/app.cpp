@@ -207,7 +207,7 @@ app& app::exclusive_lock(resource& resource)
 	return *this;
 }
 
-app& app::command(std::string_view const name)
+app& app::command(std::string_view const name, bool const use_existing)
 {
 	vsm_self(private_class);
 
@@ -217,7 +217,7 @@ app& app::command(std::string_view const name)
 		name,
 		std::make_unique<app_impl>(self, name));
 
-	vsm_assert(r.inserted && "Duplicate command");
+	vsm_assert((r.inserted || use_existing) && "Duplicate command");
 	return *r.iterator->value;
 }
 

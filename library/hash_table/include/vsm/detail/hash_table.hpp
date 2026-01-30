@@ -39,11 +39,15 @@ vsm_always_inline decltype(auto) get_lookup_key(
 }
 
 template<typename Key, typename Table>
-concept _hash_table_key = requires (Key const& key, typename Table::policies_type const& p)
-{
-	p.hasher(normalize_key(key));
-	p.comparator(normalize_key(key), std::declval<typename Table::key_type const&>());
-};
+concept _hash_table_key =
+	requires (
+		Key const& key,
+		typename Table::policies_type const& p,
+		typename Table::key_type const& table_key)
+	{
+		p.hasher(normalize_key(key));
+		p.comparator(normalize_key(key), normalize_key(p.key_selector(table_key)));
+	};
 
 template<typename Key, typename Table>
 concept hash_table_key = requires (Key const& key, typename Table::policies_type const& p)

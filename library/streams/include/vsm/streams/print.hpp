@@ -26,8 +26,8 @@ vsm::result<size_t> print_integral(Sink& sink, T const value, int const radix) n
 	{
 		if (auto const r = sink.direct_write_acquire(max_string_size))
 		{
-			auto const [ec, end] = std::to_chars(r->data(), r->data() + r->size(), value, radix);
-			vsm_assert(!ec);
+			auto const [end, ec] = std::to_chars(r->data(), r->data() + r->size(), value, radix);
+			vsm_assert(ec == std::errc());
 
 			sink.direct_write_release(static_cast<size_t>(end - r->data()));
 			return {};
@@ -35,8 +35,8 @@ vsm::result<size_t> print_integral(Sink& sink, T const value, int const radix) n
 	}
 
 	char buffer[max_string_size];
-	auto const [ec, end] = std::to_chars(buffer, buffer + max_string_size, value, radix);
-	vsm_assert(!ec);
+	auto const [end, ec] = std::to_chars(buffer, buffer + max_string_size, value, radix);
+	vsm_assert(ec == std::errc());
 
 	return vsm::tag_invoke(print_t(), sink, std::string_view(buffer, end));
 }

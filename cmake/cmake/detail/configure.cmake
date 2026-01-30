@@ -2,6 +2,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/directory_test.cmake")
 
 set(vsm_detail_configure_opt_1
 	FOLDER
+	OUTPUT_NAME
 )
 set(vsm_detail_configure_opt_n
 	SOURCES
@@ -161,10 +162,13 @@ function(vsm_detail_configure name target public_type)
 			list(TRANSFORM arguments APPEND "\"")
 			string(JOIN " " arguments ${arguments})
 
-			vsm_cmake_package_setup(
-				NAME import_visualizers
-				INCLUDE "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/import_visualizers_v1.cmake"
-				CONTENT "vsm_detail_import_visualizers_v1(${arguments})\n")
+			if(NOT VSM_OPT_INTERNAL)
+				vsm_add_cmake_package_setup(
+					NAME vsm_import_visualizers
+					INCLUDE "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/import_visualizers_v1.cmake"
+					CONTENT "vsm_detail_import_visualizers_v1(${arguments})\n"
+				)
+			endif()
 		endif()
 	endif()
 
@@ -292,7 +296,7 @@ endfunction()
 function(vsm_add_executable name)
 	vsm_detail_configure_parse(
 		exe
-		""
+		"INTERNAL"
 		""
 		""
 		${ARGN}
@@ -304,8 +308,18 @@ function(vsm_add_executable name)
 	target_include_directories(${target} PRIVATE source)
 	target_link_libraries(${target} PRIVATE vsm_detail_cxx_options)
 
-	if(DEFINED VSM_EXPORT_COMPONENTS)
-		file(APPEND "${VSM_EXPORT_COMPONENTS}" "${name}\n")
+	set(executable_name "${target}")
+	if(DEFINED VSM_OPT_OUTPUT_NAME)
+		set(executable_name "${VSM_OPT_OUTPUT_NAME}")
+	set_target_properties(${target} PROPERTIES OUTPUT_NAME "${VSM_OPT_OUTPUT_NAME}")
+	endif()
+
+	if(NOT VSM_OPT_INTERNAL)
+		vsm_add_cmake_package_setup(
+			NAME vsm_import_executables
+			INCLUDE "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/import_executable_v1.cmake"
+			CONTENT "vsm_detail_import_executable_v1(\"${name}\" \"${executable_name}\")\n"
+		)
 	endif()
 
 	vsm_detail_configure(${name} ${target} PUBLIC)
@@ -314,7 +328,7 @@ endfunction()
 function(vsm_add_library name)
 	vsm_detail_configure_parse(
 		lib
-		"OBJECT_LIBRARY;ADDITIONAL_SOURCES;TEST_COMPILE_ONLY;TEST_CUSTOM_MAIN"
+		"INTERNAL;OBJECT_LIBRARY;ADDITIONAL_SOURCES;TEST_COMPILE_ONLY;TEST_CUSTOM_MAIN"
 		""
 		""
 		${ARGN}
@@ -336,13 +350,32 @@ function(vsm_add_library name)
 	endif()
 
 	vsm_detail_add_target(add_library ${name} ${add_library_args})
-	
+
 	set_target_properties(${target} PROPERTIES vsm_detail_type lib)
 	target_include_directories(${target} ${public_type} include)
 
 	if(${private_type} STREQUAL PRIVATE)
 		target_include_directories(${target} PRIVATE source)
 		target_link_libraries(${target} PRIVATE vsm_detail_cxx_options)
+	endif()
+
+	if(VSM_OPT_OBJECT_LIBRARY)
+		install(TARGETS "${target}" OBJECTS DESTINATION "obj")
+
+#		set(object_list_file "${PROJECT_BINARY_DIR}/${target}.objects.txt")
+#		set(object_list_target "${target}.write_object_list")
+#
+#		add_custom_command(
+#			OUTPUT "${object_list_file}"
+#			COMMAND "${CMAKE_COMMAND}"
+#				-D "LIST_FILE=\"${object_list_file}\""
+#				-D "LIST_DATA=\"$<TARGET_OBJECTS:${target}>\""
+#				-P "\"${CMAKE_CURRENT_FUNCTION_LIST_DIR}/write_list.cmake\""
+#		)
+#
+#		add_custom_target("${object_list_target}" DEPENDS "${object_list_file}")
+#		set_target_properties("${object_list_target}" PROPERTIES FOLDER "CustomTargets")
+#		add_dependencies("${target}" "${object_list_target}")
 	endif()
 
 	vsm_detail_configure(${name} ${target} ${public_type})

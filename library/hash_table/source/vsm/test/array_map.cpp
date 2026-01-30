@@ -1,4 +1,4 @@
-#include <vsm/deterministic_map.hpp>
+#include <vsm/array_map.hpp>
 #include <vsm/testing/allocator.hpp>
 
 #include <catch2/catch_all.hpp>
@@ -14,7 +14,7 @@ template<typename Allocator, size_t Capacity>
 struct map_template
 {
 	template<typename K, typename V>
-	using type = deterministic_map<K, V, default_key_selector, Allocator>;
+	using type = small_array_map<K, V, Capacity, default_key_selector, Allocator>;
 };
 
 using map_types = std::tuple<
@@ -25,8 +25,8 @@ using map_types = std::tuple<
 using std_map_type = std::unordered_map<size_t, size_t>;
 
 TEMPLATE_LIST_TEST_CASE(
-	"deterministic_map can be default constructed",
-	"[hash_table][deterministic_table][deterministic_map]",
+	"array_map can be default constructed",
+	"[hash_table][array_table][array_map]",
 	map_types)
 {
 	using key_type = size_t;
@@ -38,8 +38,8 @@ TEMPLATE_LIST_TEST_CASE(
 }
 
 TEMPLATE_LIST_TEST_CASE(
-	"elements can be inserted into a deterministic_map",
-	"[hash_table][deterministic_table][deterministic_map]",
+	"elements can be inserted into a array_map",
+	"[hash_table][array_table][array_map]",
 	map_types)
 {
 	using key_type = size_t;
@@ -81,8 +81,8 @@ TEMPLATE_LIST_TEST_CASE(
 }
 
 TEMPLATE_LIST_TEST_CASE(
-	"deterministic_map insert & find",
-	"[hash_table][deterministic_table][deterministic_map]",
+	"array_map insert & find",
+	"[hash_table][array_table][array_map]",
 	map_types)
 {
 	using key_type = uint8_t;

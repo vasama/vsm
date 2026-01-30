@@ -4,6 +4,7 @@
 #include <vsm/assert.h>
 #include <vsm/atomic.hpp>
 #include <vsm/concepts.hpp>
+#include <vsm/hash.hpp>
 #include <vsm/standard.hpp>
 #include <vsm/tag_invoke.hpp>
 #include <vsm/utility.hpp>
@@ -18,6 +19,16 @@ struct intrusive_ptr_adopt_t
 	explicit intrusive_ptr_adopt_t() = default;
 };
 
+
+struct intrusive_ptr_refcount_cpo
+{
+	template<typename T>
+	[[nodiscard]] vsm_static_operator size_t operator()(T const* const ptr) vsm_static_operator_const noexcept
+		requires nothrow_tag_invocable<intrusive_ptr_refcount_cpo, T const*>
+	{
+		return vsm::tag_invoke(intrusive_ptr_refcount_cpo(), ptr);
+	}
+};
 
 struct intrusive_ptr_deleter_cpo
 {
@@ -117,6 +128,12 @@ protected:
 	~basic_intrusive_refcount() = default;
 
 
+	template<std::derived_from<basic_intrusive_refcount> T>
+	[[nodiscard]] friend size_t tag_invoke(intrusive_ptr_refcount_cpo, T const* const ptr) noexcept
+	{
+		return ptr->Base::m_refcount.load(std::memory_order_relaxed);
+	}
+
 	template<typename Manager, std::derived_from<basic_intrusive_refcount> T>
 	friend void tag_invoke(
 		intrusive_ptr_acquire_cpo,
@@ -124,7 +141,7 @@ protected:
 		T* const ptr,
 		size_t const count) noexcept
 	{
-		(void)ptr->m_refcount.fetch_add(count, std::memory_order_relaxed);
+		(void)ptr->Base::m_refcount.fetch_add(count, std::memory_order_relaxed);
 	}
 
 	template<typename Manager, std::derived_from<basic_intrusive_refcount> T>
@@ -134,7 +151,7 @@ protected:
 		T* const ptr,
 		size_t const count) noexcept
 	{
-		size_t const old_count = ptr->m_refcount.fetch_sub(count, std::memory_order_acq_rel);
+		size_t const old_count = ptr->Base::m_refcount.fetch_sub(count, std::memory_order_acq_rel);
 
 		vsm_assert(count <= old_count);
 
@@ -183,6 +200,7 @@ using basic_intrusive_mutable_refcount =
 using intrusive_refcount = basic_intrusive_refcount<atomic<size_t>>;
 using intrusive_mutable_refcount = basic_intrusive_mutable_refcount<atomic<size_t>>;
 
+inline constexpr detail::intrusive_ptr_refcount_cpo intrusive_ptr_refcount = {};
 inline constexpr detail::intrusive_ptr_deleter_cpo intrusive_ptr_deleter = {};
 inline constexpr detail::intrusive_ptr_acquire_cpo intrusive_ptr_acquire = {};
 inline constexpr detail::intrusive_ptr_release_cpo intrusive_ptr_release = {};
@@ -197,16 +215,16 @@ struct default_refcount_manager
 
 	template<typename T>
 	void acquire(T* const object, size_t const count) const
-		noexcept(noexcept(intrusive_ptr_acquire(*this, object, count)))
+		noexcept(noexcept(vsm::intrusive_ptr_acquire(*this, object, count)))
 	{
-		intrusive_ptr_acquire(*this, object, count);
+		vsm::intrusive_ptr_acquire(*this, object, count);
 	}
 
 	template<typename T>
 	void release(T* const object, size_t const count) const
-		noexcept(noexcept(intrusive_ptr_release(*this, object, count)))
+		noexcept(noexcept(vsm::intrusive_ptr_release(*this, object, count)))
 	{
-		intrusive_ptr_release(*this, object, count);
+		vsm::intrusive_ptr_release(*this, object, count);
 	}
 };
 
@@ -548,6 +566,13 @@ public:
 		return std::compare_three_way()(ptr.m_ptr, static_cast<T*>(nullptr));
 	}
 
+
+	template<typename State>
+	friend void tag_invoke(decltype(vsm::hash_append), State& state, intrusive_ptr const& ptr)
+	{
+		vsm::hash_append(state, ptr.get());
+	}
+
 private:
 	explicit intrusive_ptr(detail::intrusive_ptr_adopt_t, T* const ptr)
 		: m_ptr(ptr)
@@ -568,7 +593,9 @@ private:
 };
 
 template<typename T, typename... Args>
-	requires std::constructible_from<T, Args...>
+	requires
+		std::constructible_from<T, Args...> &&
+		detail::_intrusive_ptr_manager_for<default_refcount_manager, T>
 [[nodiscard]] vsm::intrusive_ptr<T> make_intrusive(Args&&... args)
 {
 	return vsm::intrusive_ptr<T>(new T(vsm_forward(args)...));

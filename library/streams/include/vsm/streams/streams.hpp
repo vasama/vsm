@@ -114,5 +114,91 @@ vsm::result<std::span<std::byte>> direct_write_refresh(
 	}
 }
 
+
+namespace detail {
+
+class fill_chunk_buffer
+{
+	static constexpr size_t large_size = 256;
+	static constexpr size_t small_size = 16;
+
+	std::byte m_buffer[large_size];
+
+public:
+	[[nodiscard]] std::span<std::byte const> initialize(std::byte const data, size_t const size)
+	{
+		if (size >= large_size)
+		{
+			std::memset(m_buffer, static_cast<uint8_t>(data), large_size);
+			return std::span<std::byte const>(m_buffer, large_size);
+		}
+		else
+		{
+			std::memset(m_buffer, static_cast<uint8_t>(data), small_size);
+			return std::span<std::byte const>(m_buffer, small_size);
+		}
+	}
+};
+
+} // namespace detail
+
+template<sink Sink>
+vsm::result<size_t> fill_some(Sink& sink, std::byte const data, size_t const size)
+{
+	size_t written_size = 0;
+
+	if constexpr (direct_sink<Sink>)
+	{
+		vsm_try(buffer, sink.direct_write_acquire(1));
+
+		size_t direct_write_size = 0;
+		while (true)
+		{
+			direct_write_size = std::min(size, buffer.size());
+			std::memset(buffer.data(), static_cast<uint8_t>(data), direct_write_size);
+			written_size += direct_write_size;
+
+			if (written_size == size)
+			{
+				break;
+			}
+
+			if (auto const r = streams::direct_write_refresh(sink, direct_write_size, 1))
+			{
+				buffer = *r;
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		sink.direct_write_release(direct_write_size);
+	}
+	else
+	{
+		detail::fill_chunk_buffer chunk_buffer;
+		auto const chunk = chunk_buffer.initialize(data, size);
+
+		while (written_size <= size)
+		{
+			if (auto const r = sink.write_some(chunk))
+			{
+				written_size += *r;
+			}
+			else if (written_size == 0)
+			{
+				return vsm::unexpected(r.error());
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
+
+	return written_size;
+}
+
 } // namespace streams
 } // namespace vsm

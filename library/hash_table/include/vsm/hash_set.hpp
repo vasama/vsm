@@ -1,80 +1,72 @@
 #pragma once
 
 #include <vsm/concepts.hpp>
-#include <vsm/default_hash.hpp>
 #include <vsm/detail/hash_table.hpp>
+#include <vsm/key_value_pair.hpp>
 #include <vsm/standard/stdexcept.hpp>
-
-#include <vsm/detail/swiss_table.hpp>
 
 #include <memory>
 #include <new>
 
 namespace vsm {
 
-template<non_cvref Table>
-class basic_hash_set : public Table
+template<non_cvref HashTableBase>
+class new_basic_hash_set_base : public HashTableBase
 {
 public:
-	using element_type          = typename Table::element_type;
-	using key_type              = element_type;
-	using value_type            = element_type;
-
-private:
-	using ordered_iterator_or_void = select_t<Table::is_ordered, typename Table::iterator, void>;
-
-public:
-	using Table::Table;
+	using HashTableBase::HashTableBase;
 
 
-	template<detail::hash_table_key<Table> K>
-	[[nodiscard]] element_type* find_ptr(K const& key)
+	template<detail::hash_table_key<HashTableBase> K>
+	[[nodiscard]] typename HashTableBase::value_type* find_ptr(K const& key)
 	{
-		auto const it = Table::find(key);
-		return it != Table::end() ? &*it : nullptr;
+		auto const it = HashTableBase::find(key);
+		return it != HashTableBase::end() ? &*it : nullptr;
 	}
 
-	template<detail::hash_table_key<Table> K>
-	[[nodiscard]] element_type const* find_ptr(K const& key) const
+	template<detail::hash_table_key<HashTableBase> K>
+	[[nodiscard]] typename HashTableBase::value_type const* find_ptr(K const& key) const
 	{
-		auto const it = Table::find(key);
-		return it != Table::end() ? &*it : nullptr;
+		auto const it = HashTableBase::find(key);
+		return it != HashTableBase::end() ? &*it : nullptr;
 	}
 
-	template<detail::hash_table_key<Table> K>
+	template<detail::hash_table_key<HashTableBase> K>
 	[[nodiscard]] size_t count(K const& key) const
 	{
-		return Table::find(key) != Table::end();
+		return HashTableBase::find(key) != HashTableBase::end();
 	}
 
-	template<detail::hash_table_key<Table> K>
+	template<detail::hash_table_key<HashTableBase> K>
 	[[nodiscard]] bool contains(K const& key) const
 	{
-		return Table::find(key) != Table::end();
+		return HashTableBase::find(key) != HashTableBase::end();
 	}
 
 
-	template<detail::hash_table_key<Table> K>
-	typename Table::insert_result insert(K&& key)
+	template<detail::hash_table_key<HashTableBase> K>
+	typename HashTableBase::insert_result insert(K&& key)
 	{
-		typename Table::insert_result r = Table::insert(vsm_as_const(key));
+		auto const r = HashTableBase::insert_uninitialized(vsm_as_const(key));
 
 		if (r.inserted)
 		{
-			::new (std::to_address(r.iterator)) element_type(vsm_forward(key));
+			::new (std::to_address(r.iterator)) typename HashTableBase::value_type(
+				vsm_forward(key));
 		}
 
 		return r;
 	}
 
-	template<detail::hash_table_key<Table> K>
-	typename Table::insert_result insert_or_assign(K&& key)
+	template<detail::hash_table_key<HashTableBase> K>
+	typename HashTableBase::insert_result insert_or_assign(K&& key)
 	{
-		typename Table::insert_result r = Table::insert(vsm_as_const(key));
+		auto const r = HashTableBase::insert_uninitialized(vsm_as_const(key));
 
 		if (r.inserted)
 		{
-			::new (std::to_address(r.iterator)) element_type(vsm_forward(key));
+			::new (std::to_address(r.iterator)) typename HashTableBase::value_type(
+				vsm_forward(key));
 		}
 		else
 		{
@@ -86,30 +78,32 @@ public:
 
 	template<typename... Args>
 		requires std::constructible_from<value_type, Args...>
-	typename Table::insert_result emplace(Args&&... args)
+	typename HashTableBase::insert_result emplace(Args&&... args)
 	{
-		element_type new_element(vsm_forward(args)...);
+		typename HashTableBase::value_type new_element(vsm_forward(args)...);
 
-		typename Table::insert_result r = Table::insert(vsm_as_const(new_element));
+		auto const r = HashTableBase::insert_uninitialized(vsm_as_const(new_element));
 
 		if (r.inserted)
 		{
-			::new (std::to_address(r.iterator)) element_type(vsm_move(new_element));
+			::new (std::to_address(r.iterator)) typename HashTableBase::value_type(
+				vsm_move(new_element));
 		}
 
 		return r;
 	}
 
 	template<typename... Args>
-	typename Table::insert_result emplace_or_assign(Args&&... args)
+	typename HashTableBase::insert_result emplace_or_assign(Args&&... args)
 	{
-		element_type new_element(vsm_forward(args)...);
+		typename HashTableBase::value_type new_element(vsm_forward(args)...);
 
-		typename Table::insert_result r = Table::insert(vsm_as_const(new_element));
+		auto const r = HashTableBase::insert_uninitialized(vsm_as_const(new_element));
 
 		if (r.inserted)
 		{
-			::new (std::to_address(r.iterator)) element_type(vsm_move(new_element));
+			::new (std::to_address(r.iterator)) typename HashTableBase::value_type(
+				vsm_move(new_element));
 		}
 		else
 		{
@@ -120,15 +114,14 @@ public:
 	}
 
 
-	template<detail::hash_table_key<Table> K>
-	bool erase(K const& key)
+	[[nodiscard]] auto vsm_always_inline cbegin() const
 	{
-		return Table::erase(key);
+		return HashTableBase::begin();
 	}
 
-	ordered_iterator_or_void erase(typename Table::const_single_iterator const position)
+	[[nodiscard]] auto vsm_always_inline cend() const
 	{
-		return Table::erase(position);
+		return HashTableBase::end();
 	}
 };
 

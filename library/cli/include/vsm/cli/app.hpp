@@ -64,12 +64,16 @@ public:
 	app& exclusive_lock(resource& resource);
 
 
-	app& command(std::string_view name);
+	app& command(std::string_view name, bool use_existing = false);
 
 	cli::group& group(std::string_view name);
 
 	cli::option& option(std::string_view name);
 	cli::option& flag(std::string_view name);
+
+
+	app& handle(handler_type handler);
+	app& handle_else(handler_type handler);
 
 
 	result<void> parse(std::span<std::string_view const> args);

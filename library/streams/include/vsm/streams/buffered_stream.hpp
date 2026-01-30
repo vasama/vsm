@@ -16,6 +16,13 @@ class basic_buffered_sink
 	Buffer m_buffer;
 
 public:
+	template<vsm::any_cvref_of<Sink> S>
+		requires std::is_default_constructible_v<Buffer>
+	basic_buffered_sink(S&& sink)
+		: m_sink(vsm_forward(sink))
+	{
+	}
+
 	template<std::convertible_to<Sink> S, typename... Args>
 		requires std::constructible_from<Buffer, Args...>
 	explicit basic_buffered_sink(S&& sink, Args&&... args)

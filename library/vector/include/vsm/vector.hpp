@@ -1,10 +1,9 @@
 #pragma once
 
-#include <vsm/sanitizer/address.h>
 #include <vsm/algorithm/remove_unstable.hpp>
 #include <vsm/allocator.hpp>
-#include <vsm/exceptions.hpp>
 #include <vsm/relocate.hpp>
+#include <vsm/sanitizer/address.h>
 #include <vsm/standard/stdexcept.hpp>
 
 #include <cstddef>
@@ -43,7 +42,7 @@ struct _vector_size
 
 struct _vector_capacity
 {
-	size_t m_capacity : sizeof(size_t) * 8 - 1;
+	size_t m_capacity : sizeof(size_t) * CHAR_BIT - 1;
 	size_t m_is_local : 1;
 };
 
@@ -94,7 +93,7 @@ struct _vector_allocator
 
 	_vector_allocator() = default;
 
-	_vector_allocator(auto&& allocator)
+	explicit _vector_allocator(auto&& allocator)
 		: m_allocator(vsm_forward(allocator))
 	{
 	}
@@ -504,12 +503,12 @@ auto _vector_compare(_vector const& lhs, _vector const& rhs)
 }
 
 template<typename T>
-void _vector_initialize(_vector& vector, size_t const capacity)
+void _vector_initialize(_vector& vector, size_t const capacity) noexcept
 {
 	vector.m_size = 0;
 	vector._set(capacity, capacity != 0);
 
-	if (capacity != 0)
+	if (capacity == 0)
 	{
 		vector.template _set_storage_ptr<T>(nullptr);
 	}
@@ -518,7 +517,7 @@ void _vector_initialize(_vector& vector, size_t const capacity)
 }
 
 template<typename T, typename A>
-void _vector_destroy(_vector_base<A>& vector)
+void _vector_destroy(_vector_base<A>& vector) noexcept
 {
 	vsm_vector_annotate(remove, vector);
 
@@ -540,7 +539,7 @@ void _vector_destroy(_vector_base<A>& vector)
 }
 
 template<typename T, typename A>
-void _vector_move(_vector_base<A>& dst, _vector_base<A>& src)
+void _vector_move(_vector_base<A>& dst, _vector_base<A>& src) noexcept
 {
 	if (src.m_is_local)
 	{
@@ -566,10 +565,10 @@ void _vector_move(_vector_base<A>& dst, _vector_base<A>& src)
 }
 
 template<typename T, typename A>
-void _vector_move_assign(_vector_base<A>& dst, _vector_base<A>& src)
+void _vector_move_assign(_vector_base<A>& dst, _vector_base<A>& src) noexcept
 {
 	detail::_vector_destroy<T>(dst);
-	dst.m_allocator = src.m_allocator;
+	dst.m_allocator = static_cast<A const&>(src.m_allocator);
 	detail::_vector_move<T>(dst, src);
 }
 
@@ -690,6 +689,7 @@ void _vector_swap(_vector_base<A>& lhs, _vector_base<A>& rhs)
 
 } // namespace detail
 
+// TODO: Rename to vector_base?
 template<typename T, allocator Allocator>
 class small_vector_base : detail::_vector_base<Allocator>
 {
@@ -1487,6 +1487,23 @@ public:
 		_initialize();
 	}
 
+	template<std::ranges::input_range Range>
+		requires std::convertible_to<std::ranges::range_reference_t<Range>, T>
+	small_vector(std::from_range_t, Range&& range)
+	{
+		_initialize();
+		this->append_range(vsm_forward(range));
+	}
+
+	template<std::ranges::input_range Range>
+		requires std::convertible_to<std::ranges::range_reference_t<Range>, T>
+	small_vector(std::from_range_t, Range&& range, Allocator const& allocator)
+		: base(allocator)
+	{
+		_initialize();
+		this->append_range(vsm_forward(range));
+	}
+
 	small_vector(small_vector&& other) noexcept
 		requires allocators::is_propagatable_v<Allocator>
 		: base(other.m_allocator)
@@ -1518,6 +1535,7 @@ public:
 		detail::_vector_destroy<T>(*this);
 	}
 
+
 	void shrink_to_fit()
 	{
 		static_assert(is_nothrow_relocatable_v<T>);
@@ -1536,14 +1554,19 @@ public:
 		detail::_vector_swap<T, Capacity != 0>(*this, other);
 	}
 
+
 	[[nodiscard]] T* release()
-		requires (Capacity == 0)
 	{
+		vsm_assert(!this->m_is_local);
+
 		T* const ptr = this->_get_storage_ptr<T>();
 		vsm_vector_annotate(remove, *this);
 		detail::_vector_initialize<T>(*this, /* Capacity: */ 0);
+
 		return ptr;
 	}
+
+	[[nodiscard]] void adopt(T* const ptr, size_t const size, size_t const capacity) noexcept;
 
 private:
 	void _initialize() noexcept

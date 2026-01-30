@@ -2,6 +2,7 @@
 
 #include <vsm/concepts.hpp>
 #include <vsm/tag_ptr.hpp>
+#include <vsm/type_list.hpp>
 
 namespace vsm {
 namespace detail::_variant_ptr {
@@ -82,6 +83,13 @@ public:
 	template<typename T = base_type>
 	[[nodiscard]] T* operator->() const noexcept
 		requires vsm::not_same_as<Base, void>
+	{
+		return m_ptr.ptr();
+	}
+
+	template<typename T>
+		requires std::convertible_to<base_type*, T*>
+	[[nodiscard]] operator T*() const noexcept
 	{
 		return m_ptr.ptr();
 	}

@@ -73,8 +73,11 @@ vsm_add_library(
 		include/vsm/detail/start_lifetime_as.hpp
 
 	SOURCES
+		source/vsm/impl/ascii.cpp
 		source/vsm/impl/hash.cpp
 		source/vsm/impl/memory.cpp
+
+		source/vsm/impl/sanitizer/address.cpp
 
 	TEST_SOURCES
 		source/vsm/test/atomic.cpp

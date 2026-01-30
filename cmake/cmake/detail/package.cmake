@@ -1,4 +1,16 @@
 function(vsm_define_package name)
+	cmake_parse_arguments(
+		OPT
+		"SETUP_SCRIPT"
+		""
+		""
+		${ARGN}
+	)
+
+	if(DEFINED OPT_UNPARSED_ARGUMENTS)
+		message(SEND_ERROR "vsm_define_package: unrecognized arguments: ${OPT_UNPARSED_ARGUMENTS}")
+	endif()
+
 	# Load the package_info.json:
 	set(package_info_file "${CMAKE_CURRENT_SOURCE_DIR}/package_info.json")
 	if(NOT EXISTS "${package_info_file}")
@@ -72,9 +84,16 @@ function(vsm_define_package name)
 
 	# Clear out the package setup script directory:
 	file(REMOVE_RECURSE "${PROJECT_BINARY_DIR}/${name}-setup")
+
+	if(OPT_SETUP_SCRIPT)
+		vsm_add_cmake_package_setup(
+			NAME vsm_setup_script
+			CONTENT "include(${name})\n"
+		)
+	endif()
 endfunction()
 
-function(vsm_cmake_package_setup)
+function(vsm_add_cmake_package_setup)
 	cmake_parse_arguments(
 		OPT
 		""
@@ -86,7 +105,8 @@ function(vsm_cmake_package_setup)
 	get_property(
 		package_name
 		DIRECTORY "${PROJECT_SOURCE_DIR}"
-		PROPERTY vsm_detail_package_name)
+		PROPERTY vsm_detail_package_name
+	)
 
 	set(setup_file "${PROJECT_BINARY_DIR}/${package_name}-setup/${OPT_NAME}.cmake")
 	if(NOT EXISTS "${setup_file}")
