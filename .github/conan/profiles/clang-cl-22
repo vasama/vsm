@@ -1,0 +1,6 @@
+[settings]
+compiler=clang
+compiler.cppstd=23
+compiler.runtime=dynamic
+compiler.runtime_version=v144
+compiler.version=22

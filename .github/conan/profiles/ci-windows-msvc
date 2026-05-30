@@ -1,0 +1,6 @@
+include(./common)
+include(./msvc-194)
+include(./msvc-x86)
+include(./visual-studio-22)
+include(./windows)
+include(./x86_64)

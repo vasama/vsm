@@ -1,0 +1,8 @@
+[settings]
+compiler=msvc
+compiler.cppstd=23
+compiler.runtime=dynamic
+compiler.version=194
+
+[conf]
+tools.build:cxxflags+=["/permissive-", "/Zc:preprocessor", "/Zc:__cplusplus"]

@@ -1,0 +1,8 @@
+include(./common)
+include(./msvc-x86)
+include(./msvc)
+include(./ninja)
+include(./windows)
+include(./x86_64)
+
+include(./intellisense)

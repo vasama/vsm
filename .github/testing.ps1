@@ -68,7 +68,7 @@ if (!(Test-Path -PathType Leaf $Analysis)) {
 	$Analysis = $null
 }
 
-$ConanProfile = "vsm-$OS-$Tool"
+$ConanProfile = "ci-$OS-$Tool"
 $ConanSettings = @("build_type=$Config")
 
 if ($IsWindows) {
