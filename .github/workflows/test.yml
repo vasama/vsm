@@ -1,0 +1,8 @@
+on:
+  push:
+    branches:
+    - main
+
+jobs:
+  test-job:
+    uses: vasama/actions/.github/workflows/test-workflow.yml@main

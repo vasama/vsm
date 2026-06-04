@@ -1,6 +1,0 @@
-include(./clang-18)
-include(./clang-x86)
-include(./common)
-include(./ninja)
-include(./windows)
-include(./x86_64)

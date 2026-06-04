@@ -1,2 +1,0 @@
-[conf]
-tools.cmake.cmake_layout:build_folder_vars+=["const.vsm", "settings.os", "settings.compiler", "settings.build_type"]

@@ -1,6 +1,0 @@
-include(./clang-cl-18)
-include(./clang-x86)
-include(./common)
-include(./visual-studio-22)
-include(./windows)
-include(./x86_64)

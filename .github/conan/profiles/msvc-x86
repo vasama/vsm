@@ -1,2 +1,0 @@
-[conf]
-tools.build:cxxflags+=["/arch:SSE4.2"]

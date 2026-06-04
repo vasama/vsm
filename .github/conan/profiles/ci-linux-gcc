@@ -1,6 +1,0 @@
-include(./common)
-include(./gcc-14)
-include(./gcc-x86)
-include(./linux)
-include(./ninja)
-include(./x86_64)
