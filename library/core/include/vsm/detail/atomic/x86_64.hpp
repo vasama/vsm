@@ -82,7 +82,7 @@ public:
 		return expected;
 	}
 
-	[[nodiscard]] vsm_detail_atomic_inline void store(
+	vsm_detail_atomic_inline void store(
 		T const value,
 		[[maybe_unused]] std::memory_order const memory_order) const noexcept
 	{

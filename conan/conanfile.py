@@ -56,7 +56,7 @@ def _vsm_read_package_info_json(directory, recurse=True):
 
 	return full_json_data
 
-def _parse_requirement_config(config):
+def _vsm_parse_requirement_config(config):
 	tags = config.split("-")
 	def take_front(*permissible_values):
 		if len(tags) != 0:
@@ -120,7 +120,7 @@ class _vsm_requirement:
 			if not isinstance(json_config, str):
 				raise ConanException(f"invalid dependency config: '{json_config}'")
 
-			self.configs.append(_parse_requirement_config(json_config))
+			self.configs.append(_vsm_parse_requirement_config(json_config))
 
 	def __str__(self):
 		reference = f"{self.package}/{self.version}"
@@ -284,6 +284,7 @@ class base:
 			setup_path = os.path.join("cmake", f"{self.name}-setup-conan.cmake")
 			if os.path.isfile(os.path.join(self.package_folder, setup_path)):
 				self.cpp_info.set_property("cmake_build_modules", [setup_path])
+
 
 # Base class for multi-package monorepo roots.
 class root:

@@ -17,7 +17,7 @@ struct allocation
 	void* storage;
 	size_t size;
 
-	explicit allocation(decltype(nullptr))
+	explicit allocation(decltype(nullptr)) noexcept
 		: storage(nullptr)
 		, size(0)
 	{
