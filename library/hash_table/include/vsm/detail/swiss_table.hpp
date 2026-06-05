@@ -176,7 +176,7 @@ private:
 	}
 
 	vsm_no_sanitize_address
-	[[nodiscard]] static vsm_always_inline void store(
+	static vsm_always_inline void store(
 		_swiss_table_ctrl* const ctrl,
 		Integer const integer) noexcept
 	{
@@ -238,7 +238,7 @@ private:
 	}
 
 	vsm_no_sanitize_address
-	[[nodiscard]] static void vsm_always_inline store(
+	static void vsm_always_inline store(
 		_swiss_table_ctrl* const ctrl,
 		__m128i const v_ctrl) noexcept
 	{
