@@ -4,42 +4,42 @@ on:
     - main
 
 jobs:
-#  testing-linux:
-#    name: Linux - ${{ matrix.tool }} - ${{ matrix.config }}
-#
-#    strategy:
-#      fail-fast: false
-#      matrix:
-#        tool:
-#        #- clang
-#        #- clang-tidy
-#        - gcc
-#        config:
-#        - Debug
-#        #- Release
-#        #exclude:
-#        #  - tool: clang-tidy
-#        #    config: Release
-#
-#    runs-on: ubuntu-latest
-#    container:
-#      image: ghcr.io/vasama/actions-ubuntu:v0_3
-#
-#    steps:
-#    - uses: actions/checkout@v4
-#    - uses: vasama/actions/setup@main
-#    #- uses: vasama/actions/setup-conan-index@main
-#
-#    - name: Add local conan package
-#      shell: pwsh
-#      run: |
-#        conan create ./conan
-#        conan create ./cmake
-#
-#    - uses: vasama/actions/test-cxx-project@main
-#      with:
-#        tool: ${{ matrix.tool }}
-#        config: ${{ matrix.config }}
+  testing-linux:
+    name: Linux - ${{ matrix.tool }} - ${{ matrix.config }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        tool:
+        - clang
+        - clang-tidy
+        - gcc
+        config:
+        - Debug
+        #- Release
+        #exclude:
+        #  - tool: clang-tidy
+        #    config: Release
+
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/vasama/actions-ubuntu:v0_3
+
+    steps:
+    - uses: actions/checkout@v6
+    - uses: vasama/actions/setup@main
+    #- uses: vasama/actions/setup-conan-index@main
+
+    - name: Add local conan package
+      shell: pwsh
+      run: |
+        conan create ./conan
+        conan create ./cmake
+
+    - uses: vasama/actions/test-cxx-project@main
+      with:
+        tool: ${{ matrix.tool }}
+        config: ${{ matrix.config }}
 
   testing-windows:
     name: Windows - ${{ matrix.tool }} - ${{ matrix.config }}
@@ -48,7 +48,7 @@ jobs:
       fail-fast: false
       matrix:
         tool:
-        #- clang
+        - clang
         #- clang-cl
         - msvc
         #- msvc-intellisense
@@ -62,7 +62,7 @@ jobs:
     runs-on: windows-2025-vs2026
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - uses: vasama/actions/setup@main
     - uses: vasama/actions/setup-conan-windows@main
     - uses: vasama/actions/setup-conan-index@main
