@@ -14,7 +14,7 @@
 namespace vsm {
 
 template<typename T, allocator Allocator = default_allocator>
-class small_vector_base;
+class vector_base;
 
 template<typename T, size_t Capacity, allocator Allocator = default_allocator>
 class small_vector;
@@ -113,10 +113,10 @@ struct _vector_base
 
 template<typename T, typename A, size_t Capacity>
 class _vector_storage
-	: _vector_padding_before<small_vector_base<T, A>, std::max(alignof(T), alignof(T*))>
-	, public small_vector_base<T, A>
+	: _vector_padding_before<vector_base<T, A>, std::max(alignof(T), alignof(T*))>
+	, public vector_base<T, A>
 {
-	using small_vector_base<T, A>::small_vector_base;
+	using vector_base<T, A>::vector_base;
 
 	union
 	{
@@ -130,10 +130,10 @@ class _vector_storage
 
 template<typename T, typename A>
 class _vector_storage<T, A, 0>
-	: _vector_padding_before<small_vector_base<T, A>, alignof(T*)>
-	, public small_vector_base<T, A>
+	: _vector_padding_before<vector_base<T, A>, alignof(T*)>
+	, public vector_base<T, A>
 {
-	using small_vector_base<T, A>::small_vector_base;
+	using vector_base<T, A>::vector_base;
 
 	T* m_storage_ptr;
 
@@ -339,6 +339,10 @@ void _vector_shrink_to_fit(_vector_base<A>& vector, size_t const storage_capacit
 	else
 	{
 		// TODO: Implement vector::shrink_to_fit using in-place resizing.
+		//
+		//       This requires more feedback from the allocator: did the resize fail because
+		//       a) the existing block could not be resized, or because
+		//       b) the allocator is not able to dispense a block smaller than the existing one.
 
 		size_t new_capacity = vector.m_size;
 		T* const new_ptr = detail::_vector_allocate<T>(vector, new_capacity);
@@ -685,9 +689,8 @@ void _vector_swap(_vector_base<A>& lhs, _vector_base<A>& rhs)
 
 } // namespace detail
 
-// TODO: Rename to vector_base?
 template<typename T, allocator Allocator>
-class small_vector_base : detail::_vector_base<Allocator>
+class vector_base : detail::_vector_base<Allocator>
 {
 public:
 	using value_type                    = T;
@@ -1395,12 +1398,12 @@ public:
 		}
 	}
 
-	friend bool operator==(small_vector_base const& lhs, small_vector_base const& rhs)
+	friend bool operator==(vector_base const& lhs, vector_base const& rhs)
 	{
 		return detail::_vector_equal(lhs, rhs);
 	}
 
-	friend auto operator<=>(small_vector_base const& lhs, small_vector_base const& rhs)
+	friend auto operator<=>(vector_base const& lhs, vector_base const& rhs)
 	{
 		return detail::_vector_compare(lhs, rhs);
 	}
@@ -1408,10 +1411,10 @@ public:
 private:
 	using detail::_vector_base<Allocator>::_vector_base;
 
-	small_vector_base(small_vector_base const&) = default;
-	small_vector_base& operator=(small_vector_base const&) = default;
+	vector_base(vector_base const&) = default;
+	vector_base& operator=(vector_base const&) = default;
 
-	~small_vector_base() = default;
+	~vector_base() = default;
 
 	template<typename T2, typename A2, size_t C2>
 	friend class detail::_vector_storage;
@@ -1420,46 +1423,41 @@ private:
 	friend class vsm::small_vector;
 };
 
+template<typename T, allocator Allocator>
+using small_vector_base [[deprecated("Use vector_base")]] = vector_base<T, Allocator>;
+
 template<typename T, typename A, typename U>
-typename small_vector_base<T, A>::size_type erase(
-	small_vector_base<T, A>& v,
-	U const& value)
+typename vector_base<T, A>::size_type erase(vector_base<T, A>& v, U const& value)
 {
 	auto it = std::remove(v.begin(), v.end(), value);
-	typename small_vector_base<T, A>::size_type n = v.end() - it;
+	typename vector_base<T, A>::size_type n = v.end() - it;
 	v.pop_back(n);
 	return n;
 }
 
 template<typename T, typename A, typename Predicate>
-typename small_vector_base<T, A>::size_type erase_if(
-	small_vector_base<T, A>& v,
-	Predicate&& predicate)
+typename vector_base<T, A>::size_type erase_if(vector_base<T, A>& v, Predicate&& predicate)
 {
 	auto it = std::remove_if(v.begin(), v.end(), vsm_forward(predicate));
-	typename small_vector_base<T, A>::size_type n = v.end() - it;
+	typename vector_base<T, A>::size_type n = v.end() - it;
 	v.pop_back(n);
 	return n;
 }
 
 template<typename T, typename A, typename U>
-typename small_vector_base<T, A>::size_type erase_unstable(
-	small_vector_base<T, A>& v,
-	U const& value)
+typename vector_base<T, A>::size_type erase_unstable(vector_base<T, A>& v, U const& value)
 {
 	auto it = remove_unstable(v.begin(), v.end(), value);
-	typename small_vector_base<T, A>::size_type n = v.end() - it;
+	typename vector_base<T, A>::size_type n = v.end() - it;
 	v.pop_back(n);
 	return n;
 }
 
 template<typename T, typename A, typename Predicate>
-typename small_vector_base<T, A>::size_type erase_if_unstable(
-	small_vector_base<T, A>& v,
-	Predicate&& predicate)
+typename vector_base<T, A>::size_type erase_if_unstable(vector_base<T, A>& v, Predicate&& predicate)
 {
 	auto it = remove_if_unstable(v.begin(), v.end(), vsm_forward(predicate));
-	typename small_vector_base<T, A>::size_type n = v.end() - it;
+	typename vector_base<T, A>::size_type n = v.end() - it;
 	v.pop_back(n);
 	return n;
 }

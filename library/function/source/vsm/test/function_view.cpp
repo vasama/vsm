@@ -1,10 +1,40 @@
 #include <vsm/function_view.hpp>
 
+#include <vsm/detail/categories.hpp>
+
 #include <catch2/catch_all.hpp>
 
 using namespace vsm;
 
 namespace {
+
+template<typename Signature>
+struct test_invocable;
+
+#define vsm_define_test_invocable(category, noexcept) \
+	template<typename R, typename... Ps> \
+	struct test_invocable<R(Ps...) category noexcept> \
+	{ \
+		R operator() category noexcept;
+	}; \
+
+#define vsm_define_test_invocables(noexcept) \
+	vsm_define_test_invocable(/* no category */, noexcept) \
+	vsm_detail_reference_categories(vsm_define_test_invocable, noexcept) \
+
+vsm_define_test_invocables()
+vsm_define_test_invocables(noexcept)
+
+#undef vsm_define_test_invocable
+#undef vsm_define_test_invocables
+
+vsm_dependent_context
+{
+	static_assert(!std::constructible_from<
+		function_view<void()>)
+	std::declval<vsm_dependent_t(test_invocable<int()>) const&>()
+};
+
 
 using view_type = function_view<int(int)>;
 

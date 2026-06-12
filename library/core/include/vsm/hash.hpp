@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vsm/concepts.hpp>
+#include <vsm/detail/core_api.h>
 #include <vsm/standard.hpp>
 #include <vsm/tag_invoke.hpp>
 #include <vsm/type_traits.hpp>
@@ -19,7 +20,7 @@ inline constexpr bool is_trivially_hashable_v = false;
 template<std::integral T>
 inline constexpr bool is_trivially_hashable_v<T> = true;
 
-//TODO: Add conditional DLL export
+vsm_detail_linkage_core
 extern void const* const aslr_seed;
 
 
