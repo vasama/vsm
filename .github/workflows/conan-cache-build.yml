@@ -1,0 +1,13 @@
+name: Update Conan cache
+
+on:
+  workflow_dispatch:
+#  push:
+#    branches:
+#    - main
+
+jobs:
+  cxx-conan-cache-build:
+    uses: vasama/actions/.github/workflows/cxx-conan-cache-build.yml@main
+    with:
+      setup: .github/Setup-CxxProject.ps1

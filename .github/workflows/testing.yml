@@ -1,3 +1,5 @@
+name: Testing
+
 on:
   push:
     branches:
@@ -7,7 +9,7 @@ on:
     - main
 
 jobs:
-  testing:
+  cxx-testing:
     uses: vasama/actions/.github/workflows/cxx-testing.yml@main
     with:
       setup: .github/Setup-CxxProject.ps1
