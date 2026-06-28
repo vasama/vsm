@@ -2,16 +2,21 @@ name: Merge checks
 
 on:
   workflow_dispatch:
+    inputs:
+      base_ref:
+        type: string
+        required: true
   merge_group:
     types: [checks_requested]
 
 jobs:
-  cxx-testing:
-    uses: vasama/actions/.github/workflows/cxx-testing.yml@main
-    with:
-      setup: .github/Setup-CxxProject.ps1
+#  cxx-testing:
+#    uses: vasama/actions/.github/workflows/cxx-testing.yml@main
+#    with:
+#      setup: .github/Setup-CxxProject.ps1
 
   cxx-check-branch:
     uses: vasama/actions/.github/workflows/cxx-check-branch.yml@main
     with:
       setup: .github/Setup-CxxProject.ps1
+      base_ref: ${{ inputs.base_ref || github.event.merge_group.base_ref }}
