@@ -1,0 +1,17 @@
+name: Merge checks
+
+on:
+  workflow_dispatch:
+  merge_group:
+    types: [checks_requested]
+
+jobs:
+  cxx-testing:
+    uses: vasama/actions/.github/workflows/cxx-testing.yml@main
+    with:
+      setup: .github/Setup-CxxProject.ps1
+
+  cxx-check-branch:
+    uses: vasama/actions/.github/workflows/cxx-check-branch.yml@main
+    with:
+      setup: .github/Setup-CxxProject.ps1

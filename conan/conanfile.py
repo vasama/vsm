@@ -136,6 +136,7 @@ def _vsm_read_package_requirements(directory, recurse=True):
 	for json_require in json.get("requirements", []):
 		yield _vsm_requirement(json_require)
 
+	# TODO: Move this to library package_info.json files.
 	if "library" in json.get("package_type", "unknown"):
 		yield _vsm_requirement({
 			"package": "catch2",
