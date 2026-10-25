@@ -1,0 +1,13 @@
+name: Check branch label
+
+on:
+  pull_request_target:
+    types: [labeled]
+
+permissions: {}
+
+jobs:
+  check-branch:
+    permissions:
+      actions: write
+    uses: vasama/actions/.github/workflows/cxx-check-branch-label.yml@main

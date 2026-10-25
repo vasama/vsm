@@ -1,0 +1,28 @@
+name: Merge pull request
+run-name: "Merge pull request #${{ inputs.pull_request }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      pull_request:
+        type: number
+        required: true
+      head_sha:
+        type: string
+        required: true
+      base_ref:
+        type: string
+        required: true
+
+permissions: {}
+
+jobs:
+  merge:
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: vasama/actions/.github/workflows/merge-pull-request.yml@main
+    with:
+      pull_request: ${{ inputs.pull_request }}
+      head_sha: ${{ inputs.head_sha }}
+      base_ref: ${{ inputs.base_ref }}

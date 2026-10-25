@@ -1,0 +1,21 @@
+name: Check branch
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions: {}
+
+jobs:
+  cxx-check-branch:
+    if: >-
+      github.run_attempt != '1' ||
+      contains(github.event.pull_request.labels.*.name, 'check-branch')
+    concurrency:
+      group: cxx-check-branch-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+    uses: vasama/actions/.github/workflows/cxx-check-branch.yml@main
+    with:
+      setup: .github/Setup-CxxProject.ps1

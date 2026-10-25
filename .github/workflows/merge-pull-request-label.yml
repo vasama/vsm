@@ -1,0 +1,14 @@
+name: Merge pull request label
+
+on:
+  pull_request_target:
+    types: [labeled]
+
+permissions: {}
+
+jobs:
+  merge:
+    permissions:
+      actions: write
+      pull-requests: write
+    uses: vasama/actions/.github/workflows/merge-pull-request-label.yml@main
