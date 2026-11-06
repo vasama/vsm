@@ -5,7 +5,7 @@
 namespace {
 
 template<typename = void>
-int prvalue();
+[[maybe_unused]] int prvalue();
 
 // NOLINTBEGIN(readability-identifier-naming)
 

@@ -77,6 +77,16 @@ if("${vsm_compiler_frontend}" STREQUAL "GNU" OR DEFINED "gnu_prefix")
 				${gnu_prefix}-Wno-nested-anon-types
 				${gnu_prefix}-Wno-zero-length-array
 		)
+
+		if(
+			"${CMAKE_CXX_COMPILER_VERSION}" VERSION_GREATER_EQUAL 23 AND
+			"${CMAKE_CXX_COMPILER_VERSION}" VERSION_LESS 24)
+			target_compile_options(
+				vsm_detail_cxx_options
+				INTERFACE
+					${gnu_prefix}-Wno-unused-template
+			)
+		endif()
 	endif()
 endif()
 
